@@ -1,0 +1,29 @@
+services:
+  # Backend-Gateway: läuft dauerhaft im Hintergrund
+  ghost-daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gateway          # nur diese Stage bauen
+    container_name: ghost-daemon
+    restart: unless-stopped
+    ports:
+      # Port 3000 wird auf dem Host verfügbar gemacht
+      # Linux/macOS/Windows: die App verbindet sich via ws://127.0.0.1:3000
+      - "3000:3000"
+    volumes:
+      # Datenpersistenz:
+      # Linux/Fedora: :Z für SELinux
+      - ~/.ghost:/root/.ghost:Z
+
+  # Einmal-Build-Service: kompiliert die Flutter Linux-App und legt die Binary in ./dist/ ab
+  # Aufruf: docker-compose --profile build run --rm builder
+  builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder-export
+    volumes:
+      - ./dist:/output
+    profiles:
+      - build

@@ -1,0 +1,70 @@
+# Ghost 👻
+
+<p align="center">
+  <img src="app/assets/images/ghost-mini.png" alt="Ghost Logo" width="300">
+</p>
+
+<a href="https://aquawitchcode.dev/">Entwickler-Website</a> &nbsp; &bull; &nbsp; <a href="README.md">English</a>
+
+**Ghost** ist ein schlanker, selbst-gehosteter persönlicher KI-Assistent, der mit [Dart](https://github.com/dart-lang) und [Flutter](https://github.com/flutter) von Google entwickelt wurde.
+
+### 🏗️ Architektur auf einen Blick
+
+Ghost folgt einer modularen Client-Server-Architektur:
+- **Gateway (Daemon)**: Ein hochperformanter, Dart-basierter WebSocket-Server, der KI-Agenten, Speicher und Werkzeuge verwaltet.
+- **App (UI)**: Eine moderne, Flutter-basierte Desktop-Anwendung (Linux, macOS, Windows) und eine Web-Oberfläche.
+- **Agenten & Skills**: Erweiterbare KI-Gehirne und Fähigkeiten, die über ein einfaches, Markdown-basiertes System hinzugefügt werden können.
+- **Memory Engine**: Dual-Modus-Speicher mit Hive (Standard) und ObjectBox (RAG) für sicheres, lokales Wissen.
+
+---
+
+## 🚀 Installation & Setup
+
+Um mit Ghost zu starten, folge bitte unserer detaillierten Installationsanleitung:
+
+👉 **[Installation & Setup Guide (English)](docs/installation/INSTALLATION_EN.md)**
+👉 **[Installs- & Setup-Anleitung (Deutsch)](docs/installation/INSTALLATION_DE.md)**
+
+### 📚 Weiterführende Dokumentation
+- **[Skills Development Guide](docs/SKILLS_GUIDE_DE.md)**: Erfahre, wie du eigene KI-Skills erstellst und paketierst.
+- **[STT & TTS Setup](docs/STT_TTS_SETUP_DE.md)**: Konfiguriere lokale Spracherkennung und -synthese.
+- **[RPC API Reference](docs/RPC_API_REFERENCE_DE.md)**: Detaillierte Dokumentation der JSON-RPC 2.0 WebSocket-API.
+- **[Docker Setup Guide](docs/DOCKER_SETUP.md)**: Deployment und Verwaltung via Docker.
+
+---
+
+## 🌟 Funktionen
+
+- **Multi-Modell-Unterstützung**: Nutze Anthropic (Claude), OpenAI (GPT), Google (Gemini), DeepSeek, Mistral, Groq, Together AI, Perplexity, X.AI (Grok) oder lokale Modelle via Ollama und OpenRouter.
+- **Memory Engine (RAG & Standard)**: Erweitere das Wissen deines Agenten durch lokale Vektor- und Stichwortspeicher.
+    - **Standard Memory**: Stichwortbasiertes, verschlüsseltes lokales Gedächtnis (Hive). Informationen werden sicher gespeichert und über exakte Treffer abgerufen.
+    - **RAG Memory (ObjectBox)**: Retrieval-Augmented Generation mit semantischer Vektorsuche, betrieben durch eine hochleistungsfähige lokale ObjectBox-Datenbank.
+    - **Automatische Embeddings**: Wenn ein OpenRouter-API-Schlüssel vorhanden ist, nutzt RAG Memory standardmäßig das kostenlose Modell `nvidia/llama-nemotron-embed-vl-1b-v2:free`.
+    - **Langzeitgedächtnis**: Der Agent kann wichtige Fakten speichern und später mittels semantischer Suche wiederfinden.
+- **Google Workspace Integration**:
+    - **Gmail**: E-Mails lesen, suchen, **löschen** (Papierkorb) und **neue E-Mails senden**.
+    - **Kalender**: Termine auflisten, **neue Events hinzufügen** und **Events löschen**.
+    - **Google Drive**: Dateien suchen, auflisten und **löschen**.
+- **Erweiterbare Skills**:
+    - **Modulares System**: Laden und Verwalten von Skills zur Erweiterung der Fähigkeiten des Agenten.
+    - **Globale & Agenten-spezifische Skills**: Aktiviere Funktionen für alle Agenten oder nur für bestimmte Profile.
+- **Erweiterte Werkzeuge**:
+    - **Interaktive Shell**: Ausführung von Shell-Skripten und Python-Code direkt durch den Agenten.
+    - **Websuche**: Integrierte Websuche via DuckDuckGo.
+    - **Dateisystem**: Vollständiger Zugriff zum Lesen, Schreiben und Verwalten lokaler Dateien.
+    - **GitHub**: Integration zur Verwaltung von Repositories und Issues.
+- **Sichere Kommunikation**:
+    - **Telegram Bot**: Steuere deinen Agenten sicher von unterwegs.
+      - **Sprachnachrichten**: Der Agent unterstützt den Empfang und den Versand von Sprachnachrichten.
+    - **Google Chat**: Integration als App in Google Chat Räumen.
+- **Privacy & Security**:
+    - **Sicherer Tresor**: API-Schlüssel, Agenten-Konfigurationen und Memory-Einstellungen sind mit AES-256-GCM verschlüsselt und nur auf deinem Rechner gespeichert.
+    - **Verschlüsselte Datenbank**: Chat-Sitzungen und Avatare werden in einer lokalen Hive-Datenbank mit zusätzlicher Verschlüsselung gespeichert.
+    - **Avatar-Management**: Bilder werden direkt in der Datenbank gespeichert, um maximale Privatsphäre zu gewährleisten.
+    - **Selbstgehostet**: Volle Kontrolle über deine Daten und die Codebasis.
+
+---
+
+## 📜 Lizenz
+
+Veröffentlicht unter der freizügigen [MIT-Lizenz](LICENSE), die dir volle Freiheit gibt, den Code zu ändern und ohne Einschränkungen zu verteilen.

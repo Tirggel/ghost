@@ -1,0 +1,81 @@
+# Default Flutter + Dart .gitignore
+# https://dart.dev/guides/libraries/private-files
+
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+.vscode/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains configureation files for the VS Code editor.
+.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Web related
+lib/generated_plugin_registrant.dart
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will automatically add this to its gitignore, but we
+# should also ignore it to be safe.
+*.jks
+*.keystore
+
+# Exceptions to above rules.
+!/packages/*/lib/
+
+# Local configuration
+*.env
+.env
+
+# Local tool configurations
+.claude/
+.local-chrome/
+
+# Temporary data and scratch files
+*.json
+
+# Large assets and models
+scripts/models/
+
+# Build and tool artifacts
+dist/
+download/
+
+# Database files
+**/objectbox/
+
+# Python cache
+**/__pycache__/
+
+# Local tests and scripts
+test/
+app/test/
+app.sh
+gateway.sh

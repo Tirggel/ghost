@@ -1,0 +1,23 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    missing_return: error
+    dead_code: warning
+
+linter:
+  rules:
+    - prefer_final_locals
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - avoid_print
+    - always_declare_return_types
+    - annotate_overrides
+    - prefer_single_quotes
+    - sort_constructors_first
+    - unawaited_futures
+    - prefer_relative_imports
