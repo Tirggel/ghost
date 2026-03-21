@@ -92,6 +92,28 @@ class Agent {
         }
       }
 
+      // 2.5 Query Memory (RAG) — never block chat if this fails
+      List<String> memoryContext = [];
+      try {
+        _log.fine('Automatic memory retrieval for: $content');
+        onActivityUpdate?.call('Memory: Searching...');
+        memoryContext =
+            await memory.query(content, activeProvider: activeProvider);
+        if (memoryContext.isNotEmpty) {
+          _log.info(
+              'Found ${memoryContext.length} relevant memory chunks automatically.');
+          onActivityUpdate?.call('Memory: Found context');
+        } else {
+          onActivityUpdate?.call('Memory: No relevant facts');
+        }
+      } catch (e) {
+        _log.warning('Memory query failed (non-blocking): $e');
+        onActivityUpdate?.call('');
+      }
+
+      // Wait a tiny bit so the user can see the memory status
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
       while (iterations < maxToolIterations) {
         if (_stoppedSessions.contains(sessionId)) {
           _log.info('Session $sessionId stopped by user.');
@@ -117,28 +139,6 @@ class Agent {
             '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
             '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} '
             '(${days[now.weekday - 1]})';
-
-        // 2.5 Query Memory (RAG) — never block chat if this fails
-        List<String> memoryContext = [];
-        try {
-          _log.fine('Automatic memory retrieval for: $content');
-          onActivityUpdate?.call('Memory: Searching...');
-          memoryContext =
-              await memory.query(content, activeProvider: activeProvider);
-          if (memoryContext.isNotEmpty) {
-            _log.info(
-                'Found ${memoryContext.length} relevant memory chunks automatically.');
-            onActivityUpdate?.call('Memory: Found context');
-          } else {
-            onActivityUpdate?.call('Memory: No relevant facts');
-          }
-        } catch (e) {
-          _log.warning('Memory query failed (non-blocking): $e');
-          onActivityUpdate?.call('');
-        }
-        
-        // Wait a tiny bit so the user can see the memory status
-        await Future<void>.delayed(const Duration(milliseconds: 300));
 
         final contextString = memoryContext.isNotEmpty
             ? '\n\n[MEMORY CONTEXT]:\n${memoryContext.join('\n---\n')}'
@@ -272,13 +272,14 @@ class Agent {
 
         for (var i = 0; i < response.toolCalls.length; i++) {
           final call = response.toolCalls[i];
-          final progress =
-              response.toolCalls.length > 1 ? ' [${i + 1}/${response.toolCalls.length}]' : '';
+          final progress = response.toolCalls.length > 1
+              ? ' [${i + 1}/${response.toolCalls.length}]'
+              : '';
           try {
             final tool = toolRegistry.getTool(call.name);
             final summary = tool?.getLogSummary(call.arguments);
             final label = tool?.label ?? call.name;
-            
+
             final activity = summary != null && summary.isNotEmpty
                 ? '$label: $summary$progress'
                 : '$label$progress';

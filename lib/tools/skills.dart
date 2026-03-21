@@ -48,7 +48,7 @@ class ImportSkillTool extends Tool {
     _log.info('Importing skill from $path');
 
     try {
-      final skill = await skillManager.installSkillFromDirectory(path);
+      final skill = await skillManager.installSkillFromDirectory(path, moveSource: true);
       return ToolResult(
         output: 'Successfully imported skill "${skill.name}" (slug: ${skill.slug}) to .ghost/skills/. '
             'The environment has been initialized. The skill is now permanent and manageable.',

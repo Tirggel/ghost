@@ -72,17 +72,21 @@ class GhostConfig {
     bool includeAgent = true,
     bool includeMemory = false,
     bool includeCustomAgents = false,
+    bool includeChannels = false,
+    bool includeTools = false,
+    bool includeSession = false,
+    bool includeIntegrations = false,
   }) =>
       {
         'gateway': gateway.toJson(),
         if (includeAgent) 'agent': agent.toJson(),
-        'channels': channels.toJson(),
-        'tools': tools.toJson(),
+        if (includeChannels) 'channels': channels.toJson(),
+        if (includeTools) 'tools': tools.toJson(),
         if (includeMemory) 'memory': memory.toJson(),
-        'session': session.toJson(),
-        // NOTE: user, identity, and agent are stored in the encrypted vault.
+        if (includeSession) 'session': session.toJson(),
+        // NOTE: user, identity, agent, etc. are stored in the encrypted vault.
         // They are intentionally NOT written to ghost.json.
-        'integrations': integrations.toJson(),
+        if (includeIntegrations) 'integrations': integrations.toJson(),
         if (includeCustomAgents)
           'customAgents': customAgents.map((a) => a.toJson()).toList(),
       };
@@ -260,7 +264,8 @@ class IdentityConfig {
     return IdentityConfig(
       name: name,
       creature: json['creature'] as String? ?? 'Digital Ghost',
-      vibe: json['vibe'] as String? ?? 'Friendly, analytical, and economically accountable',
+      vibe: json['vibe'] as String? ??
+          'Friendly, analytical, and economically accountable',
       emoji: json['emoji'] as String? ?? '👻',
       notes: json['notes'] as String? ?? '',
       avatar: json['avatar'] as String?,

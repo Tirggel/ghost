@@ -24,6 +24,13 @@ import 'package:ghost/tools/browser.dart';
 import 'package:ghost/tools/skills.dart';
 
 Future<void> main(List<String> arguments) async {
+  print(r''' ██████   ██    ██   ██████    ██████   ████████
+██        ██    ██  ██    ██  ██           ██   
+██  ████  ████████  ██    ██   ██████      ██   
+██    ██  ██    ██  ██    ██        ██     ██   
+ ██████   ██    ██   ██████    ██████      ██   
+ ''');
+
   final runner = CommandRunner<void>(
     'ghost',
     '👻 Ghost — Personal AI Assistant',
@@ -86,8 +93,7 @@ class GatewayCommand extends Command<void> {
 
     final tokenHash = config.gateway.auth.tokenHash;
     final passwordHash = config.gateway.auth.passwordHash;
-    final seedString =
-        tokenHash ?? passwordHash ?? 'ghost-default-session-key';
+    final seedString = tokenHash ?? passwordHash ?? 'ghost-default-session-key';
     final sessionKey =
         Uint8List.fromList(sha256.convert(utf8.encode(seedString)).bytes);
 
@@ -134,13 +140,8 @@ class GatewayCommand extends Command<void> {
       try {
         final json = jsonDecode(rawMemory) as Map<String, dynamic>;
         final memory = MemoryConfig.fromJson(json);
-        // Only override if it looks like a real config (e.g. RAG enabled or non-empty model)
-        if (memory.ragEnabled || memory.embeddingModel.isNotEmpty) {
-           config = config.copyWith(memory: memory);
-           _log.info('Applied memory config from vault');
-        } else {
-           _log.fine('Vault has empty memory config, keeping defaults');
-        }
+        config = config.copyWith(memory: memory);
+        _log.info('Applied memory config from vault');
       } catch (e) {
         print('⚠️  Failed to load memory config from vault: $e');
       }
@@ -155,9 +156,51 @@ class GatewayCommand extends Command<void> {
               .map((a) => CustomAgentConfig.fromJson(a as Map<String, dynamic>))
               .toList(),
         );
-        _log.info('Applied ${config.customAgents.length} custom agents from vault');
+        _log.info(
+            'Applied ${config.customAgents.length} custom agents from vault');
       } catch (e) {
         print('⚠️  Failed to load custom agents config from vault: $e');
+      }
+    }
+
+    final rawChannels = await storage.get('channels_config');
+    if (rawChannels != null) {
+      try {
+        final json = jsonDecode(rawChannels) as Map<String, dynamic>;
+        config = config.copyWith(channels: ChannelsConfig.fromJson(json));
+      } catch (e) {
+        print('⚠️  Failed to load channels config from vault: $e');
+      }
+    }
+
+    final rawTools = await storage.get('tools_config');
+    if (rawTools != null) {
+      try {
+        final json = jsonDecode(rawTools) as Map<String, dynamic>;
+        config = config.copyWith(tools: ToolsConfig.fromJson(json));
+      } catch (e) {
+        print('⚠️  Failed to load tools config from vault: $e');
+      }
+    }
+
+    final rawSession = await storage.get('session_config');
+    if (rawSession != null) {
+      try {
+        final json = jsonDecode(rawSession) as Map<String, dynamic>;
+        config = config.copyWith(session: SessionConfig.fromJson(json));
+      } catch (e) {
+        print('⚠️  Failed to load session config from vault: $e');
+      }
+    }
+
+    final rawIntegrations = await storage.get('integrations_config');
+    if (rawIntegrations != null) {
+      try {
+        final json = jsonDecode(rawIntegrations) as Map<String, dynamic>;
+        config =
+            config.copyWith(integrations: IntegrationsConfig.fromJson(json));
+      } catch (e) {
+        print('⚠️  Failed to load integrations config from vault: $e');
       }
     }
 
@@ -244,6 +287,10 @@ class GatewayCommand extends Command<void> {
         'chunk': chunk,
       });
     };
+
+    agentManager.skillManager.onSkillsChanged.listen((_) {
+      server.broadcast('skills.changed');
+    });
 
     // 7. Initialize Agent Router
     final agentRouter = AgentRouter(
@@ -503,8 +550,7 @@ class ConfigSetKeyCommand extends Command<void> {
 
     if (service == null || key == null) {
       // ignore: avoid_print
-      print(
-          'Usage: ghost config set-key --service <service> --key <key>');
+      print('Usage: ghost config set-key --service <service> --key <key>');
       exit(64);
     }
 
@@ -517,8 +563,8 @@ class ConfigSetKeyCommand extends Command<void> {
     final tokenHash = config.gateway.auth.tokenHash;
     final passwordHash = config.gateway.auth.passwordHash;
     final sessionKey = Uint8List.fromList(sha256
-        .convert(utf8.encode(
-            tokenHash ?? passwordHash ?? 'ghost-default-session-key'))
+        .convert(utf8
+            .encode(tokenHash ?? passwordHash ?? 'ghost-default-session-key'))
         .bytes);
 
     Hive.init(stateDir);

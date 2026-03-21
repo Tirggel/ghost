@@ -1,5 +1,6 @@
 // Ghost — Skill Manager
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
@@ -25,12 +26,41 @@ class SkillManager {
   /// List of globally enabled skill slugs
   Set<String> _globalSlugs = {};
 
+  final _skillsChangedController = StreamController<void>.broadcast();
+  Stream<void> get onSkillsChanged => _skillsChangedController.stream;
+  StreamSubscription<FileSystemEvent>? _watchSubscription;
+
   Future<void> initialize() async {
     final dir = Directory(skillsDir);
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
     await _loadGlobals();
+    _startWatching();
+  }
+
+  void _startWatching() {
+    final dir = Directory(skillsDir);
+    if (!dir.existsSync()) return;
+    
+    Timer? debounceTimer;
+    try {
+      _watchSubscription = dir.watch(recursive: true).listen((event) {
+        debounceTimer?.cancel();
+        debounceTimer = Timer(const Duration(milliseconds: 500), () {
+          if (!_skillsChangedController.isClosed) {
+            _skillsChangedController.add(null);
+          }
+        });
+      });
+    } catch (e) {
+      _log.warning('Could not start directory watcher on skills dir: $e');
+    }
+  }
+
+  void dispose() {
+    _watchSubscription?.cancel();
+    _skillsChangedController.close();
   }
 
   Future<void> _loadGlobals() async {
@@ -109,7 +139,7 @@ class SkillManager {
           final mcpCommand = metaData?['mcp_command'] as String?;
 
           final skill = Skill(
-            slug: metaData?['slug'] as String? ?? slug,
+            slug: slug,
             name: metaData?['name'] as String? ?? slug,
             description: metaData?['description'] as String? ?? '',
             emoji: metaData?['emoji'] as String?,
@@ -262,8 +292,8 @@ class SkillManager {
     );
   }
 
-  /// Installs a skill from a local directory by copying it to the skills folder.
-  Future<Skill> installSkillFromDirectory(String sourcePath) async {
+  /// Installs a skill from a local directory by copying (or moving) it to the skills folder.
+  Future<Skill> installSkillFromDirectory(String sourcePath, {bool moveSource = false}) async {
     final sourceDir = Directory(sourcePath);
     if (!await sourceDir.exists()) {
       throw Exception('Source directory does not exist: $sourcePath');
@@ -346,6 +376,14 @@ class SkillManager {
     }
 
     await _initializeRuntimes(foundSlug, targetPath);
+
+    if (moveSource) {
+      try {
+        await sourceDir.delete(recursive: true);
+      } catch (e) {
+        _log.warning('Failed to delete source directory after moving skill: $e');
+      }
+    }
 
     return Skill(
       slug: foundSlug,

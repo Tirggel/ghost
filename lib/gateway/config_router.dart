@@ -45,6 +45,7 @@ class ConfigRouter {
       await _migrateAgentToVault();
       await _migrateMemoryToVault();
       await _migrateCustomAgentsToVault();
+      await _migrateAdditionalConfigsToVault();
 
       // We'll read the latest from disk to be sure
       final config = await loadConfig(configPath);
@@ -57,6 +58,12 @@ class ConfigRouter {
       final customAgents =
           await _loadCustomAgentsFromVault() ?? config.customAgents;
 
+      final session = await _loadSessionFromVault() ?? config.session;
+      final channels = await _loadChannelsFromVault() ?? config.channels;
+      final tools = await _loadToolsFromVault() ?? config.tools;
+      final integrations =
+          await _loadIntegrationsFromVault() ?? config.integrations;
+
       return {
         'agent': agent.toJson(),
         'memory': memory.toJson(),
@@ -68,9 +75,9 @@ class ConfigRouter {
         },
         'user': user.toJson(),
         'identity': identity.toJson(),
-        'integrations': config.integrations.toJson(),
-        'channels': config.channels.toJson(),
-        'tools': config.tools.toJson(),
+        'integrations': integrations.toJson(),
+        'channels': channels.toJson(),
+        'tools': tools.toJson(),
         'vault': {
           'keys': await storage.listKeys(),
         },
@@ -431,8 +438,7 @@ class ConfigRouter {
       await saveConfig(config.copyWith(agent: updated), configPath);
 
       // Reload agent manager
-      await agentManager.updateConfig(
-          (await loadConfig(configPath)).copyWith(agent: updated));
+      await _syncAgentManagerConfig();
 
       return {'status': 'ok'};
     });
@@ -457,19 +463,18 @@ class ConfigRouter {
       if (params == null) throw ProtocolError('Missing params');
 
       var config = await loadConfig(configPath);
-      config = config.copyWith(
-        integrations: config.integrations.copyWith(
-          googleClientIdWeb: params['googleClientIdWeb'] as String?,
-          googleClientIdDesktop: params['googleClientIdDesktop'] as String?,
-          googleClientSecret: params['googleClientSecret'] as String?,
-          googleEmail: params['googleEmail'] as String?,
-          googleDisplayName: params['googleDisplayName'] as String?,
-          googlePhotoUrl: params['googlePhotoUrl'] as String?,
-        ),
+      final updatedIntegrations = config.integrations.copyWith(
+        googleClientIdWeb: params['googleClientIdWeb'] as String?,
+        googleClientIdDesktop: params['googleClientIdDesktop'] as String?,
+        googleClientSecret: params['googleClientSecret'] as String?,
+        googleEmail: params['googleEmail'] as String?,
+        googleDisplayName: params['googleDisplayName'] as String?,
+        googlePhotoUrl: params['googlePhotoUrl'] as String?,
       );
+      await _saveIntegrationsToVault(updatedIntegrations);
       await saveConfig(config, configPath);
       await _syncAgentManagerConfig();
-      return {'status': 'ok', 'integrations': config.integrations.toJson()};
+      return {'status': 'ok', 'integrations': updatedIntegrations.toJson()};
     });
 
     // 7c. Update Channels Config
@@ -502,30 +507,29 @@ class ConfigRouter {
         _log.info('Cleared telegram_bot_token from vault (channel disabled)');
       }
 
-      config = config.copyWith(
-        channels: config.channels.copyWith(
-          googleChat: googleChatParams != null
-              ? ChannelConfig.fromJson(googleChatParams)
-              : config.channels.googleChat,
-          telegram: telegramParams != null
-              ? ChannelConfig.fromJson(telegramParams)
-              : config.channels.telegram,
-        ),
+      final updatedChannels = config.channels.copyWith(
+        googleChat: googleChatParams != null
+            ? ChannelConfig.fromJson(googleChatParams)
+            : config.channels.googleChat,
+        telegram: telegramParams != null
+            ? ChannelConfig.fromJson(telegramParams)
+            : config.channels.telegram,
       );
 
+      await _saveChannelsToVault(updatedChannels);
       await saveConfig(config, configPath);
 
       // Reconnect telegram if updated
-      if (telegramParams != null && config.channels.telegram.enabled) {
+      if (telegramParams != null && updatedChannels.telegram.enabled) {
         final botName =
-            config.channels.telegram.settings['botName'] as String? ??
+            updatedChannels.telegram.settings['botName'] as String? ??
                 'GhostBot';
         await channelManager.updateTelegram(botName);
       }
 
       return {
         'status': 'ok',
-        'channels': config.channels.toJson(),
+        'channels': updatedChannels.toJson(),
         'channelStatus': channelManager.getStatus(),
       };
     });
@@ -548,7 +552,7 @@ class ConfigRouter {
       await saveConfig(
           config.copyWith(customAgents: updatedAgents), configPath);
 
-      agentManager.config = config.copyWith(customAgents: updatedAgents);
+      await _syncAgentManagerConfig();
       await agentManager.reloadCustomAgents(updatedAgents);
 
       return {'status': 'ok', 'agent': newAgent.toJson()};
@@ -581,7 +585,7 @@ class ConfigRouter {
       await saveConfig(
           config.copyWith(customAgents: updatedAgents), configPath);
 
-      agentManager.config = config.copyWith(customAgents: updatedAgents);
+      await _syncAgentManagerConfig();
       await agentManager.reloadCustomAgents(updatedAgents);
 
       return {'status': 'ok', 'agent': updatedAgent.toJson()};
@@ -610,7 +614,7 @@ class ConfigRouter {
       await saveConfig(
           config.copyWith(customAgents: updatedAgents), configPath);
 
-      agentManager.config = config.copyWith(customAgents: updatedAgents);
+      await _syncAgentManagerConfig();
       await agentManager.reloadCustomAgents(updatedAgents);
 
       return {'status': 'ok', 'deletedId': agentId};
@@ -654,7 +658,8 @@ class ConfigRouter {
       final path = params['path'] as String?;
       if (path == null) throw ProtocolError('Missing path');
 
-      final skill = await agentManager.skillManager.installSkillFromDirectory(path);
+      final skill =
+          await agentManager.skillManager.installSkillFromDirectory(path);
       await _syncAgentManagerConfig();
       gateway.broadcast('skills.changed');
       return {'status': 'ok', 'skill': skill.toJson()};
@@ -781,14 +786,15 @@ class ConfigRouter {
       if (params == null) throw ProtocolError('Missing params');
 
       final config = await loadConfig(configPath);
-      final updated = config.tools.copyWith(
+      final updatedTools = config.tools.copyWith(
         profile: params['profile'] as String?,
         allow: (params['allow'] as List<dynamic>?)?.cast<String>(),
         deny: (params['deny'] as List<dynamic>?)?.cast<String>(),
         browserHeadless: params['browserHeadless'] as bool?,
       );
 
-      await saveConfig(config.copyWith(tools: updated), configPath);
+      await _saveToolsToVault(updatedTools);
+      await saveConfig(config, configPath);
       await _syncAgentManagerConfig();
 
       return {'status': 'ok'};
@@ -1061,8 +1067,7 @@ class ConfigRouter {
       await file.writeAsString(
         '${const JsonEncoder.withIndent('  ').convert(raw)}\n',
       );
-      _log.info(
-          'Stripped user+identity from ghost.json after vault migration');
+      _log.info('Stripped user+identity from ghost.json after vault migration');
     } catch (e) {
       _log.warning('Could not strip user/identity from JSON file: $e');
     }
@@ -1116,6 +1121,127 @@ class ConfigRouter {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Vault helpers for channels, tools, session, integrations
+  // ---------------------------------------------------------------------------
+
+  static const _channelsVaultKey = 'channels_config';
+  static const _toolsVaultKey = 'tools_config';
+  static const _sessionVaultKey = 'session_config';
+  static const _integrationsVaultKey = 'integrations_config';
+
+  Future<ChannelsConfig?> _loadChannelsFromVault() async {
+    final raw = await storage.get(_channelsVaultKey);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      return ChannelsConfig.fromJson(json);
+    } catch (e) {
+      _log.warning('Failed to parse channels_config from vault: $e');
+      return null;
+    }
+  }
+
+  Future<ToolsConfig?> _loadToolsFromVault() async {
+    final raw = await storage.get(_toolsVaultKey);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      return ToolsConfig.fromJson(json);
+    } catch (e) {
+      _log.warning('Failed to parse tools_config from vault: $e');
+      return null;
+    }
+  }
+
+  Future<SessionConfig?> _loadSessionFromVault() async {
+    final raw = await storage.get(_sessionVaultKey);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      return SessionConfig.fromJson(json);
+    } catch (e) {
+      _log.warning('Failed to parse session_config from vault: $e');
+      return null;
+    }
+  }
+
+  Future<IntegrationsConfig?> _loadIntegrationsFromVault() async {
+    final raw = await storage.get(_integrationsVaultKey);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      return IntegrationsConfig.fromJson(json);
+    } catch (e) {
+      _log.warning('Failed to parse integrations_config from vault: $e');
+      return null;
+    }
+  }
+
+  Future<void> _saveChannelsToVault(ChannelsConfig channels) async {
+    await storage.set(_channelsVaultKey, jsonEncode(channels.toJson()));
+    _log.info('Saved channels config to vault (encrypted)');
+  }
+
+  Future<void> _saveToolsToVault(ToolsConfig tools) async {
+    await storage.set(_toolsVaultKey, jsonEncode(tools.toJson()));
+    _log.info('Saved tools config to vault (encrypted)');
+  }
+
+  Future<void> _saveSessionToVault(SessionConfig session) async {
+    await storage.set(_sessionVaultKey, jsonEncode(session.toJson()));
+    _log.info('Saved session config to vault (encrypted)');
+  }
+
+  Future<void> _saveIntegrationsToVault(IntegrationsConfig integrations) async {
+    await storage.set(_integrationsVaultKey, jsonEncode(integrations.toJson()));
+    _log.info('Saved integrations config to vault (encrypted)');
+  }
+
+  Future<void> _migrateAdditionalConfigsToVault() async {
+    try {
+      final config = await loadConfig(configPath);
+
+      if (await storage.get(_channelsVaultKey) == null) {
+        await _saveChannelsToVault(config.channels);
+        await _stripSectionFromJson('channels');
+        _log.info('Migrated channels to vault');
+      }
+      if (await storage.get(_toolsVaultKey) == null) {
+        await _saveToolsToVault(config.tools);
+        await _stripSectionFromJson('tools');
+        _log.info('Migrated tools to vault');
+      }
+      if (await storage.get(_sessionVaultKey) == null) {
+        await _saveSessionToVault(config.session);
+        await _stripSectionFromJson('session');
+        _log.info('Migrated session to vault');
+      }
+      if (await storage.get(_integrationsVaultKey) == null) {
+        await _saveIntegrationsToVault(config.integrations);
+        await _stripSectionFromJson('integrations');
+        _log.info('Migrated integrations to vault');
+      }
+    } catch (e) {
+      _log.warning('Migration of additional configs to vault failed: $e');
+    }
+  }
+
+  Future<void> _stripSectionFromJson(String section) async {
+    try {
+      final file = File(configPath);
+      if (!await file.exists()) return;
+      final raw = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      raw.remove(section);
+      await file.writeAsString(
+        '${const JsonEncoder.withIndent('  ').convert(raw)}\n',
+      );
+      _log.info('Stripped $section from ghost.json');
+    } catch (e) {
+      _log.warning('Could not strip $section from JSON file: $e');
+    }
+  }
+
   /// Synchronizes the AgentManager with the latest consolidated configuration
   /// from disk (JSON) and the vault (encrypted).
   Future<void> _syncAgentManagerConfig() async {
@@ -1129,12 +1255,22 @@ class ConfigRouter {
     final customAgents =
         await _loadCustomAgentsFromVault() ?? diskConfig.customAgents;
 
+    final channels = await _loadChannelsFromVault() ?? diskConfig.channels;
+    final tools = await _loadToolsFromVault() ?? diskConfig.tools;
+    final session = await _loadSessionFromVault() ?? diskConfig.session;
+    final integrations =
+        await _loadIntegrationsFromVault() ?? diskConfig.integrations;
+
     final consolidated = diskConfig.copyWith(
       user: user,
       identity: identity,
       agent: agent,
       memory: memory,
       customAgents: customAgents,
+      channels: channels,
+      tools: tools,
+      session: session,
+      integrations: integrations,
     );
 
     // Push the full consolidated config to the manager

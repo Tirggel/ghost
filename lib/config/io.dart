@@ -38,7 +38,7 @@ Future<GhostConfig> loadConfig(String path) async {
     }
 
     final config = GhostConfig.fromJson(json);
-    _log.info('Config loaded from $path');
+    _log.fine('Config loaded from $path');
     return config;
   } on FormatException catch (e) {
     throw ConfigError(
