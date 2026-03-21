@@ -311,6 +311,14 @@ class ConfigNotifier extends Notifier<AppConfig> {
       Future.microtask(() => refresh());
     }
 
+    // Listen for remote skill changes (e.g. from an agent import)
+    final sub = ref.read(gatewayClientProvider).messages.listen((msg) {
+      if (msg['method'] == 'skills.changed') {
+        refresh();
+      }
+    });
+    ref.onDispose(() => sub.cancel());
+
     return AppConfig.empty();
   }
 

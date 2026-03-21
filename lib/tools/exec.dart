@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:path/path.dart' as p;
 import '../tools/registry.dart';
 
 /// Tools for executing processes.
@@ -42,12 +43,39 @@ class BashTool extends Tool {
   Future<ToolResult> execute(
       Map<String, dynamic> input, ToolContext context) async {
     final command = input['command'] as String;
+    final workingDir = context.workspaceDir;
 
     try {
+      String finalCommand = command;
+
+      // 1. Detect Python Venv
+      final venvPath = p.join(workingDir, '.venv');
+      if (await Directory(venvPath).exists()) {
+        final activatePath = Platform.isWindows
+            ? p.join(venvPath, 'Scripts', 'activate.bat')
+            : p.join(venvPath, 'bin', 'activate');
+        
+        if (await File(activatePath).exists()) {
+          finalCommand = Platform.isWindows 
+            ? 'call "$activatePath" && $finalCommand'
+            : 'source "$activatePath" && $finalCommand';
+        }
+      }
+
+      // 2. Detect Node Modules
+      final nodeModulesBin = p.join(workingDir, 'node_modules', '.bin');
+      if (await Directory(nodeModulesBin).exists()) {
+        final separator = Platform.isWindows ? ';' : ':';
+        final envPrefix = Platform.isWindows
+            ? 'set "PATH=$nodeModulesBin$separator%PATH%" && '
+            : 'export PATH="$nodeModulesBin$separator\$PATH" && ';
+        finalCommand = '$envPrefix$finalCommand';
+      }
+
       final result = await Process.run(
-        'bash',
-        ['-c', command],
-        workingDirectory: context.workspaceDir,
+        Platform.isWindows ? 'cmd' : 'bash',
+        Platform.isWindows ? ['/c', finalCommand] : ['-c', finalCommand],
+        workingDirectory: workingDir,
       );
 
       final output = [
@@ -105,12 +133,39 @@ class TerminalTool extends Tool {
       Map<String, dynamic> input, ToolContext context) async {
     final command = input['command'] as String;
     final title = input['title'] as String? ?? 'Ghost Terminal';
+    final workingDir = context.workspaceDir;
 
     try {
+      String commandToRun = command;
+
+      // 1. Detect Python Venv
+      final venvPath = p.join(workingDir, '.venv');
+      if (await Directory(venvPath).exists()) {
+        final activatePath = Platform.isWindows
+            ? p.join(venvPath, 'Scripts', 'activate.bat')
+            : p.join(venvPath, 'bin', 'activate');
+        
+        if (await File(activatePath).exists()) {
+          commandToRun = Platform.isWindows 
+            ? 'call "$activatePath" && $commandToRun'
+            : 'source "$activatePath" && $commandToRun';
+        }
+      }
+
+      // 2. Detect Node Modules
+      final nodeModulesBin = p.join(workingDir, 'node_modules', '.bin');
+      if (await Directory(nodeModulesBin).exists()) {
+        final separator = Platform.isWindows ? ';' : ':';
+        final envPrefix = Platform.isWindows
+            ? 'set "PATH=$nodeModulesBin$separator%PATH%" && '
+            : 'export PATH="$nodeModulesBin$separator\$PATH" && ';
+        commandToRun = '$envPrefix$commandToRun';
+      }
+
       if (Platform.isLinux) {
         // Construct the wrapper script to keep terminal open
         final fullCommand =
-            '$command; echo; echo "---------------------------------------"; '
+            '$commandToRun; echo; echo "---------------------------------------"; '
             'echo "Task finished. Press Enter to close window..."; read';
 
         // Try to find a terminal emulator
@@ -149,14 +204,14 @@ class TerminalTool extends Tool {
         await Process.start(
           foundTerminal,
           args,
-          workingDirectory: context.workspaceDir,
+          workingDirectory: workingDir,
           mode: ProcessStartMode.detached,
         );
       } else if (Platform.isWindows) {
         await Process.start(
           'cmd.exe',
-          ['/c', 'start', '"$title"', 'cmd', '/k', command],
-          workingDirectory: context.workspaceDir,
+          ['/c', 'start', '"$title"', 'cmd', '/k', commandToRun],
+          workingDirectory: workingDir,
           mode: ProcessStartMode.detached,
         );
       } else {

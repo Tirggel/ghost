@@ -42,8 +42,22 @@ Use the following logic:
 ...
 ```
 
-### 3. Adding Logic (Tools)
-If your skill requires external tools (like a Python script), you can reference them in your instructions. The agent has access to an `exec` tool that can run scripts within your skill directory.
+### 3. Adding Logic (Tools & Runtimes)
+If your skill requires external tools (like a Python script), you can reference them in your instructions. Ghost now automatically supports isolated environments:
+- **Python**: If a `requirements.txt` is present in the skill folder, Ghost automatically creates a virtual environment (`.venv`) and installs the dependencies.
+- **Node.js**: If a `package.json` is present, Ghost automatically runs `npm install`.
+
+### 4. MCP Server Integration
+You can configure your skill directly as a **Model Context Protocol (MCP)** server. Simply add the `mcp_command` to the YAML frontmatter:
+
+```markdown
+---
+name: "My MCP Server"
+slug: "my-mcp-server"
+mcp_command: "npx tsx src/index.ts"
+---
+```
+Ghost will then automatically start the server in the background and make its tools available to all agents.
 
 ---
 

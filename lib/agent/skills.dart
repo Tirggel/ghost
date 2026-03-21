@@ -94,18 +94,30 @@ class SkillManager {
               metaData['emoji'] = frontmatter['emoji'];
             if (frontmatter.containsKey('slug'))
               metaData['slug'] = frontmatter['slug'];
+            if (frontmatter.containsKey('mcp_command'))
+              metaData['mcp_command'] = frontmatter['mcp_command'];
           } catch (e) {
             _log.warning('Failed to parse SKILL.md for skill $slug: $e');
           }
         }
 
         if (metaData != null || await mdFile.exists()) {
+          final hasPython = await File(p.join(entity.path, 'scripts', 'requirements.txt')).exists() ||
+              await File(p.join(entity.path, 'requirements.txt')).exists();
+          final hasNode = await File(p.join(entity.path, 'package.json')).exists() ||
+              await File(p.join(entity.path, 'scripts', 'package.json')).exists();
+          final mcpCommand = metaData?['mcp_command'] as String?;
+
           final skill = Skill(
             slug: metaData?['slug'] as String? ?? slug,
             name: metaData?['name'] as String? ?? slug,
             description: metaData?['description'] as String? ?? '',
             emoji: metaData?['emoji'] as String?,
             isGlobal: _globalSlugs.contains(slug),
+            hasPython: hasPython,
+            hasNode: hasNode,
+            hasMcp: mcpCommand != null,
+            mcpCommand: mcpCommand,
           );
           skills.add(skill);
         }
@@ -239,12 +251,114 @@ class SkillManager {
       }
     }
 
+    await _initializeRuntimes(foundSlug, skillDir.path);
+
     return Skill(
       slug: foundSlug,
       name: metaJson['name'] as String? ?? foundSlug,
       description: metaJson['description'] as String? ?? '',
       emoji: metaJson['emoji'] as String?,
       isGlobal: _globalSlugs.contains(foundSlug),
+    );
+  }
+
+  /// Installs a skill from a local directory by copying it to the skills folder.
+  Future<Skill> installSkillFromDirectory(String sourcePath) async {
+    final sourceDir = Directory(sourcePath);
+    if (!await sourceDir.exists()) {
+      throw Exception('Source directory does not exist: $sourcePath');
+    }
+
+    final mdFile = File(p.join(sourcePath, 'SKILL.md'));
+    final metaFile = File(p.join(sourcePath, '_meta.json'));
+
+    Map<String, dynamic>? metaData;
+    String? foundSlug;
+
+    if (await metaFile.exists()) {
+      try {
+        final content = await metaFile.readAsString();
+        metaData = jsonDecode(content) as Map<String, dynamic>;
+        foundSlug = metaData['slug'] as String?;
+      } catch (e) {
+        _log.warning('Failed to parse _meta.json: $e');
+      }
+    }
+
+    if (await mdFile.exists()) {
+      try {
+        final content = await mdFile.readAsString();
+        final frontmatter = _parseFrontmatter(content);
+        metaData ??= {};
+        if (frontmatter.containsKey('name')) metaData['name'] = frontmatter['name'];
+        if (frontmatter.containsKey('slug')) metaData['slug'] = frontmatter['slug'];
+        if (frontmatter.containsKey('description')) metaData['description'] = frontmatter['description'];
+        if (frontmatter.containsKey('emoji')) metaData['emoji'] = frontmatter['emoji'];
+        if (frontmatter.containsKey('mcp_command')) metaData['mcp_command'] = frontmatter['mcp_command'];
+        foundSlug ??= frontmatter['slug'];
+      } catch (e) {
+        _log.warning('Failed to parse SKILL.md: $e');
+      }
+    }
+
+    foundSlug ??= p.basename(sourcePath);
+    
+    // Sanitize slug
+    foundSlug = foundSlug
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+
+    if (foundSlug.isEmpty) {
+      throw Exception('Could not determine a valid slug for the skill.');
+    }
+
+    // Handle duplicates
+    String uniqueSlug = foundSlug;
+    int suffix = 1;
+    while (await Directory(p.join(skillsDir, uniqueSlug)).exists()) {
+      uniqueSlug = '$foundSlug-${suffix++}';
+    }
+    foundSlug = uniqueSlug;
+
+    final targetPath = p.join(skillsDir, foundSlug);
+    final targetDir = Directory(targetPath);
+    await targetDir.create(recursive: true);
+
+    // Copy files recursively, excluding bulky env folders
+    await for (final entity in sourceDir.list(recursive: true)) {
+      if (entity is File) {
+        final relativePath = p.relative(entity.path, from: sourcePath);
+        final parts = p.split(relativePath);
+        
+        // Skip env folders and junk
+        if (parts.contains('.venv') || 
+            parts.contains('node_modules') || 
+            parts.contains('__pycache__') ||
+            parts.contains('.git')) {
+          continue;
+        }
+
+        final outFile = File(p.join(targetPath, relativePath));
+        await outFile.parent.create(recursive: true);
+        await entity.copy(outFile.path);
+      }
+    }
+
+    await _initializeRuntimes(foundSlug, targetPath);
+
+    return Skill(
+      slug: foundSlug,
+      name: metaData?['name'] as String? ?? foundSlug,
+      description: metaData?['description'] as String? ?? '',
+      emoji: metaData?['emoji'] as String?,
+      isGlobal: _globalSlugs.contains(foundSlug),
+      hasPython: await File(p.join(targetPath, 'scripts', 'requirements.txt')).exists() ||
+                 await File(p.join(targetPath, 'requirements.txt')).exists(),
+      hasNode: await File(p.join(targetPath, 'package.json')).exists() ||
+               await File(p.join(targetPath, 'scripts', 'package.json')).exists(),
+      hasMcp: metaData?['mcp_command'] != null,
+      mcpCommand: metaData?['mcp_command'] as String?,
     );
   }
 
@@ -440,6 +554,15 @@ class SkillManager {
           final relativePath = p.relative(entity.path, from: skillDirPath);
           if (relativePath.contains('..')) continue;
 
+          // Skip environment folders and other junk
+          final parts = p.split(relativePath);
+          if (parts.contains('.venv') || 
+              parts.contains('node_modules') || 
+              parts.contains('__pycache__') ||
+              parts.contains('.git')) {
+            continue;
+          }
+
           files.add(relativePath);
           fileContents[relativePath] = await entity.readAsString();
         }
@@ -496,11 +619,58 @@ class SkillManager {
         await outFile.writeAsString(content);
       }
 
+      await _initializeRuntimes(slug, skillDir.path);
+
       if (isGlobal) {
         _globalSlugs.add(slug);
       }
     }
 
     await _saveGlobals();
+  }
+
+  /// Detects runtimes and initializes environments (venv, npm install).
+  Future<void> _initializeRuntimes(String slug, String skillPath) async {
+    final hasPython = await File(p.join(skillPath, 'scripts', 'requirements.txt')).exists() ||
+        await File(p.join(skillPath, 'requirements.txt')).exists();
+    final hasNode = await File(p.join(skillPath, 'package.json')).exists() ||
+        await File(p.join(skillPath, 'scripts', 'package.json')).exists();
+
+    if (hasPython) {
+      _log.info('Initializing Python environment for $slug...');
+      try {
+        final venvPath = p.join(skillPath, '.venv');
+        if (!await Directory(venvPath).exists()) {
+          await Process.run('python3', ['-m', 'venv', '.venv'], workingDirectory: skillPath);
+        }
+        
+        final pipPath = Platform.isWindows 
+            ? p.join(venvPath, 'Scripts', 'pip.exe') 
+            : p.join(venvPath, 'bin', 'pip');
+            
+        final reqFile = await File(p.join(skillPath, 'scripts', 'requirements.txt')).exists()
+            ? p.join('scripts', 'requirements.txt')
+            : 'requirements.txt';
+
+        await Process.run(pipPath, ['install', '-r', reqFile], workingDirectory: skillPath);
+        _log.info('Python environment for $slug initialized successfully.');
+      } catch (e) {
+        _log.severe('Failed to initialize Python environment for $slug: $e');
+      }
+    }
+
+    if (hasNode) {
+      _log.info('Initializing Node.js environment for $slug...');
+      try {
+        final pkgDir = await File(p.join(skillPath, 'scripts', 'package.json')).exists()
+            ? p.join(skillPath, 'scripts')
+            : skillPath;
+            
+        await Process.run('npm', ['install'], workingDirectory: pkgDir);
+        _log.info('Node.js environment for $slug initialized successfully.');
+      } catch (e) {
+        _log.severe('Failed to initialize Node.js environment for $slug: $e');
+      }
+    }
   }
 }

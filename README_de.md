@@ -1,12 +1,8 @@
 # Ghost 👻
 
-<p align="center">
-  <img src="app/assets/images/ghost-mini.png" alt="Ghost Logo" width="300">
-</p>
-
 <a href="https://aquawitchcode.dev/">Entwickler-Website</a> &nbsp; &bull; &nbsp; <a href="README.md">English</a>
 
-**Ghost** ist ein schlanker, selbst-gehosteter persönlicher KI-Assistent, der mit [Dart](https://github.com/dart-lang) und [Flutter](https://github.com/flutter) von Google entwickelt wurde.
+**Ghost** ist ein schlanker, selbst-gehosteter persönlicher KI-Assistent, der mit den von Google entwickelten Technologien [Dart](https://github.com/dart-lang) und [Flutter](https://github.com/flutter) realisiert wurde.
 
 ### 🏗️ Architektur auf einen Blick
 
@@ -48,6 +44,8 @@ Um mit Ghost zu starten, folge bitte unserer detaillierten Installationsanleitun
 - **Erweiterbare Skills**:
     - **Modulares System**: Laden und Verwalten von Skills zur Erweiterung der Fähigkeiten des Agenten.
     - **Globale & Agenten-spezifische Skills**: Aktiviere Funktionen für alle Agenten oder nur für bestimmte Profile.
+    - **Polyglot Runtimes**: Automatisches Management von **Python (venv)** und **Node.js (node_modules)** Umgebungen für Skills.
+    - **MCP Server Support**: Direkte Integration von Model Context Protocol Servern als Ghost Skills.
 - **Erweiterte Werkzeuge**:
     - **Interaktive Shell**: Ausführung von Shell-Skripten und Python-Code direkt durch den Agenten.
     - **Websuche**: Integrierte Websuche via DuckDuckGo.

@@ -164,6 +164,13 @@ class GhostConfig {
       'When you save or generate a script, ONLY save it. Do NOT run it or open it in a terminal unless the user explicitly asks.',
       'Use the "terminal" tool ONLY when the user says they want to see the output or run it in a visible window.',
       'Use the "bash" tool for running commands silently in the background when the user asks you to test or run something yourself.',
+      '',
+      '### Skill Creation & MCP Servers:',
+      'If you are asked to create a new skill or MCP server:',
+      '1. Create the skill in a temporary folder in the current workspace.',
+      '2. Ensure it has a SKILL.md (with "name" and "mcp_command" in frontmatter) or a package.json/requirements.txt.',
+      '3. Once complete, use the "import_skill" tool to move it to the permanent .ghost/skills/ directory.',
+      'Ghost will then manage the skill (backup, restore, isolated runtime) automatically.',
     ].join('\n');
   }
 }

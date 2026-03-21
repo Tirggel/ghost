@@ -21,6 +21,7 @@ import 'package:ghost/tools/github.dart';
 import 'package:ghost/channels/google_chat.dart';
 import 'package:ghost/tools/memory.dart';
 import 'package:ghost/tools/browser.dart';
+import 'package:ghost/tools/skills.dart';
 
 Future<void> main(List<String> arguments) async {
   final runner = CommandRunner<void>(
@@ -229,6 +230,7 @@ class GatewayCommand extends Command<void> {
       stateDir: stateDir,
     );
     MemoryTools.registerAll(toolRegistry, agentManager.memorySystem);
+    SkillsTools.registerAll(toolRegistry, agentManager.skillManager);
 
     agentManager.onSessionUpdated = (sessionId, message) {
       server.broadcast('agent.response', {

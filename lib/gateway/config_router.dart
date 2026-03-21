@@ -633,6 +633,7 @@ class ConfigRouter {
       // but the agents load skills dynamically for system prompt on the fly. Wait, Agent system prompt
       // is static once built. Let's rebuild agent prompts.
       await _syncAgentManagerConfig();
+      gateway.broadcast('skills.changed');
       return {'status': 'ok', 'skill': skill.toJson()};
     });
 
@@ -644,6 +645,18 @@ class ConfigRouter {
 
       final skill = await agentManager.skillManager.downloadGithubSkill(url);
       await _syncAgentManagerConfig();
+      gateway.broadcast('skills.changed');
+      return {'status': 'ok', 'skill': skill.toJson()};
+    });
+
+    gateway.rpcRegistry.register('skills.import', (params, context) async {
+      if (params == null) throw ProtocolError('Missing params');
+      final path = params['path'] as String?;
+      if (path == null) throw ProtocolError('Missing path');
+
+      final skill = await agentManager.skillManager.installSkillFromDirectory(path);
+      await _syncAgentManagerConfig();
+      gateway.broadcast('skills.changed');
       return {'status': 'ok', 'skill': skill.toJson()};
     });
 
@@ -653,6 +666,7 @@ class ConfigRouter {
 
       await agentManager.skillManager.deleteSkill(slug);
       await _syncAgentManagerConfig();
+      gateway.broadcast('skills.changed');
       return {'status': 'ok', 'deletedSlug': slug};
     });
 
@@ -666,6 +680,7 @@ class ConfigRouter {
 
       await agentManager.skillManager.setGlobal(slug, isGlobal);
       await _syncAgentManagerConfig();
+      gateway.broadcast('skills.changed');
       return {'status': 'ok', 'slug': slug, 'isGlobal': isGlobal};
     });
 

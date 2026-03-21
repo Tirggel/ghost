@@ -621,8 +621,8 @@
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.11.1",
+  "generatorVersion": "3.11.3",
   "flutterRoot": "file:///home/peter/development/flutter",
-  "flutterVersion": "3.41.4",
+  "flutterVersion": "3.41.5",
   "pubCache": "file:///home/peter/.pub-cache"
 }

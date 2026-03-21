@@ -28,7 +28,7 @@ class Agent {
     required this.storage,
     required this.memory,
     this.systemPrompt = 'You are a helpful AI assistant.',
-    this.maxToolIterations = 10,
+    this.maxToolIterations = 30,
     this.workspaceDir = '.',
     this.stateDir = '.ghost',
     this.browserHeadless = true,
