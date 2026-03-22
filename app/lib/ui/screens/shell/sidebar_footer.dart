@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../../core/constants.dart';
 import '../../../providers/gateway_provider.dart';
 import '../../widgets/avatar_widget.dart';
+import '../../widgets/settings_side_nav_tile.dart';
 
 class SidebarFooter extends ConsumerWidget {
   final VoidCallback onShowSettings;
@@ -19,70 +20,150 @@ class SidebarFooter extends ConsumerWidget {
     final emoji = identity.emoji ?? '🫥';
 
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.border)),
+      padding: const EdgeInsets.symmetric(
+        vertical: 24,
       ),
-      child: Row(
+      decoration: const BoxDecoration(
+        color: AppColors.pureBlack,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          AppIdentityAvatar(
-            path: avatarPath,
-            emoji: emoji,
-            radius: AppConstants.avatarRadius,
-            iconSize: AppConstants.avatarIconSize,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              name,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-              overflow: TextOverflow.ellipsis,
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.sidebarPaddingHorizontal,
+            ),
+            child: SettingsSideNavTile(
+              label: 'settings.title'.tr(),
+              icon: Icons.settings,
+              isActive: false,
+              onTap: onShowSettings,
             ),
           ),
-          IconButton(
-            onPressed: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  backgroundColor: AppColors.surface,
-                  title: Text('sidebar.logout_title'.tr()),
-                  content: Text('sidebar.logout_content'.tr()),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: Text('common.cancel'.tr()),
+          const SizedBox(height: 24),
+          // IDENTITY SECTION
+          Padding (
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.sidebarPaddingHorizontal,
+            ),
+            child: Row(
+              children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: AppIdentityAvatar(
+                  path: avatarPath,
+                  emoji: emoji,
+                  borderRadius: BorderRadius.circular(4),
+                  radius: 16,
+                  iconSize: 16,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.0,
+                        color: AppColors.textMain,
+                        height: 1.1,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: Text(
-                        'common.logout'.tr(),
-                        style: const TextStyle(color: AppColors.errorDark),
+                    const Text(
+                      'Haupt-Agent',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDim,
+                        letterSpacing: 0.5,
+                        fontFamily: 'monospace',
                       ),
                     ),
                   ],
                 ),
-              );
-              if (confirmed == true) {
-                await ref.read(authTokenProvider.notifier).logout();
-              }
-            },
-            tooltip: 'sidebar.logout_title'.tr(),
-            icon: const Icon(
-              Icons.logout_rounded,
-              size: 18,
-              color: AppColors.error,
-            ),
+              ),
+              _HoverLogoutButton(
+                onTap: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: AppColors.background,
+                      title: Text(
+                        'sidebar.logout_title'.tr().toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      content: Text('sidebar.logout_content'.tr()),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: Text('common.cancel'.tr().toUpperCase()),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: Text(
+                            'common.logout'.tr().toUpperCase(),
+                            style: const TextStyle(color: AppColors.errorDark),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    await ref.read(authTokenProvider.notifier).logout();
+                  }
+                },
+              ),
+            ],
           ),
-          IconButton(
-            onPressed: onShowSettings,
-            tooltip: 'settings.title'.tr(),
-            icon: const Icon(
-              Icons.settings_outlined,
-              size: 18,
-              color: AppColors.textDim,
-            ),
-          ),
-        ],
+        ),
+      ],
+    ),
+  );
+}
+}
+
+class _HoverLogoutButton extends StatefulWidget {
+  final VoidCallback onTap;
+  const _HoverLogoutButton({required this.onTap});
+
+  @override
+  State<_HoverLogoutButton> createState() => _HoverLogoutButtonState();
+}
+
+class _HoverLogoutButtonState extends State<_HoverLogoutButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: IconButton(
+        icon: Icon(
+          Icons.logout_rounded,
+          size: 18,
+          color: _isHovered ? AppColors.error : AppColors.white,
+        ),
+        onPressed: widget.onTap,
+        tooltip: 'sidebar.logout_title'.tr(),
+        hoverColor: Colors.transparent,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
       ),
     );
   }

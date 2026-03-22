@@ -5,6 +5,7 @@ class AppConstants {
       GlobalKey<ScaffoldMessengerState>();
 
   static const String appName = 'Ghost';
+  static const String appVersion = 'v1.0.0-alpha';
 
   // UI Constants
   static const double settingsIconSize = 20.0;
@@ -25,12 +26,16 @@ class AppConstants {
   static const Color iconColorWhite = AppColors.white;
   static const Color iconColorDim = AppColors.textDim;
 
+  static const double sidebarPaddingHorizontal = 14.0;
+  static const double sidebarPaddingVertical = 14.0;
+  static const double sidebarItemOuterPadding = 14.0;
+  static const double sidebarItemInnerPadding = 14.0;
   static const double defaultPadding = 16.0;
   static const double borderRadiusSmall = 4.0;
-  static const double borderRadiusDefault = 4.0;
-  static const double borderRadiusLarge = 4.0;
-  static const double timestampFontSize = 11.0;
-  static const double buttonBorderRadius = 4.0;
+  static const double borderRadiusDefault = 6.0;
+  static const double borderRadiusLarge = 8.0;
+  static const double timestampFontSize = 10.0;
+  static const double buttonBorderRadius = 0.0;
 
   // Spacing
   static const double cardPadding = 14.0; // inner padding of selectable cards
@@ -93,7 +98,7 @@ class AppConstants {
       orElse: () => {},
     );
     final icon = provider['icon'];
-    if (icon == null) return '';
+    if (icon == null) return ''; 
     return 'assets/icons/llm/$icon';
   }
 
@@ -101,12 +106,15 @@ class AppConstants {
 }
 
 class AppColors {
-  // Theme Colors
-  static const Color primary = Color(0xFF22D3EE); // Cyan 400
-  static const Color background = Color.fromARGB(255, 0, 0, 0); // Zinc 950
-  static const Color surface = Color.fromARGB(255, 18, 18, 18); // Zinc 900
-  static const Color border = Color.fromARGB(255, 60, 60, 64); // Zinc 800
-  static const Color textMain = Color(0xFFFAFAFA);
+  // Theme Colors: The Monolith (Strictly Monochromatic)
+  static const Color primary = Color(0xFFFFFFFF); // Pure White
+  static const Color pureBlack = Color(0xFF000000);
+  static const Color background = Color(0xFF09090B); // Deep Zinc 950
+  static const Color surface = Color(0xFF18181B); // Zinc 900
+  static const Color surfaceLight = Color(0xFF27272A); // Zinc 800 (Hover)
+  static const Color surfaceDark = Color(0xFF09090B); // Zinc 950 (Background)
+  static const Color border = Color(0xFF27272A); // Zinc 800
+  static const Color textMain = Color(0xFFFAFAFA); // White-ish
   static const Color textDim = Color(0xFFA1A1AA); // Zinc 400
 
   // Semantic Colors

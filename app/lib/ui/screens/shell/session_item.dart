@@ -66,7 +66,10 @@ class SessionItem extends ConsumerWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.sidebarItemOuterPadding,
+        vertical: 1,
+      ),
       child: Material(
         color: AppColors.transparent,
         borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
@@ -86,7 +89,10 @@ class SessionItem extends ConsumerWidget {
                   ? Border.all(color: AppColors.primary.withValues(alpha: 0.4))
                   : null,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.sidebarItemInnerPadding,
+              vertical: 10,
+            ),
             child: Row(
               children: [
                 Icon(

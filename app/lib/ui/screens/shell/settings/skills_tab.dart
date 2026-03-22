@@ -11,6 +11,7 @@ import 'package:flutter_highlight/themes/dracula.dart';
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
+import '../../../widgets/skills_selector_widget.dart';
 
 class SkillsTab extends StatelessWidget {
   final VoidCallback? onBack;
@@ -338,105 +339,77 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
         ),
         const Divider(height: 1),
         Expanded(
-          child: skillsAsync.when(
-            data: (skills) {
-              if (skills.isEmpty) {
-                return Center(
-                  child: Text(
-                    'settings.skills.no_skills'.tr(),
-                    style: const TextStyle(color: AppColors.textDim),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: SkillsSelector(
+              isManagement: true,
+              title: '', // No internal header
+              onGlobalChanged: (slug, val) => ref
+                  .read(configProvider.notifier)
+                  .updateSkillGlobal(slug, val),
+              onTap: (slug) {
+                final skills = skillsAsync.value ?? [];
+                final skill = skills.firstWhere((s) => s['slug'] == slug);
+                showDialog(
+                  context: context,
+                  builder: (ctx) => _SkillEditDialog(
+                    slug: slug,
+                    name: skill['name'] ?? slug,
                   ),
                 );
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: skills.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final skill = skills[index] as Map<String, dynamic>;
-                  final slug = skill['slug'] as String;
-                  return AppSkillTile(
-                    name: skill['name'] ?? slug,
-                    description:
-                        skill['description'] ?? 'No description provided.',
-                    emoji: skill['emoji'],
-                    isGlobal: skill['isGlobal'] as bool? ?? false,
-                    onGlobalChanged: (val) => ref
-                        .read(configProvider.notifier)
-                        .updateSkillGlobal(slug, val),
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => _SkillEditDialog(
-                          slug: slug,
-                          name: skill['name'] ?? slug,
-                        ),
-                      );
-                    },
-                    onDelete: () async {
-                      final config = ref.read(configProvider);
-                      final isUsedByIdentity = config.agent.skills.contains(
-                        slug,
-                      );
-                      final isUsedByCustomAgent = config.customAgents.any((
-                        agent,
-                      ) {
-                        final skills =
-                            (agent as Map<String, dynamic>)['skills']
-                                as List<dynamic>?;
-                        return skills?.contains(slug) ?? false;
-                      });
+              },
+              onDelete: (slug) async {
+                final skills = skillsAsync.value ?? [];
+                final skill = skills.firstWhere((s) => s['slug'] == slug);
+                final config = ref.read(configProvider);
+                final isUsedByIdentity = config.agent.skills.contains(slug);
+                final isUsedByCustomAgent = config.customAgents.any((agent) {
+                  final skills = (agent as Map<String, dynamic>)['skills']
+                      as List<dynamic>?;
+                  return skills?.contains(slug) ?? false;
+                });
 
-                      if (isUsedByIdentity || isUsedByCustomAgent) {
-                        if (mounted) {
-                          showAppErrorDialog(
-                            context,
-                            'settings.skills.delete_error_used'.tr(),
-                          );
-                        }
-                        return;
-                      }
+                if (isUsedByIdentity || isUsedByCustomAgent) {
+                  if (mounted) {
+                    showAppErrorDialog(
+                      context,
+                      'settings.skills.delete_error_used'.tr(),
+                    );
+                  }
+                  return;
+                }
 
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          backgroundColor: AppColors.surface,
-                          title: Text('settings.skills.delete_title'.tr()),
-                          content: Text(
-                            'settings.skills.delete_content'.tr(
-                              namedArgs: {'name': skill['name'] ?? slug},
-                            ),
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: AppColors.surface,
+                    title: Text('settings.skills.delete_title'.tr()),
+                    content: Text(
+                      'settings.skills.delete_content'.tr(
+                        namedArgs: {'name': skill['name'] ?? slug},
+                      ),
+                    ),
+                    actions: [
+                      OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: Text('common.cancel'.tr()),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: Text(
+                          'common.delete'.tr(),
+                          style: const TextStyle(
+                            color: AppColors.errorDark,
                           ),
-                          actions: [
-                            OutlinedButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: Text('common.cancel'.tr()),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              child: Text(
-                                'common.delete'.tr(),
-                                style: const TextStyle(
-                                  color: AppColors.errorDark,
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
-                      );
-                      if (confirmed == true) {
-                        await ref
-                            .read(configProvider.notifier)
-                            .deleteSkill(slug);
-                      }
-                    },
-                  );
-                },
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, stack) => Center(
-              child: Text('settings.skills.error_loading_generic'.tr()),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true) {
+                  await ref.read(configProvider.notifier).deleteSkill(slug);
+                }
+              },
             ),
           ),
         ),

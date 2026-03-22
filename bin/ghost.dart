@@ -24,12 +24,18 @@ import 'package:ghost/tools/browser.dart';
 import 'package:ghost/tools/skills.dart';
 
 Future<void> main(List<String> arguments) async {
-  print(r''' ██████   ██    ██   ██████    ██████   ████████
-██        ██    ██  ██    ██  ██           ██   
-██  ████  ████████  ██    ██   ██████      ██   
-██    ██  ██    ██  ██    ██        ██     ██   
- ██████   ██    ██   ██████    ██████      ██   
- ''');
+  print(r'''
+
+         █████████
+       █████████████
+      ███   ███   ███
+      ███   ███   ███
+      ███████████████
+      ███████████████                    
+      ███████████████
+      ████ █████ ████
+       ██   ███   ██
+''');
 
   final runner = CommandRunner<void>(
     'ghost',

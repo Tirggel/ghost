@@ -10,6 +10,7 @@ class AvatarWidget extends ConsumerWidget {
   final double radius;
   final double iconSize;
   final bool isAssistant;
+  final BorderRadius? borderRadius;
   final int
   extraVersion; // Extra cache-buster; increment after upload to force refresh
 
@@ -20,6 +21,7 @@ class AvatarWidget extends ConsumerWidget {
     this.radius = AppConstants.avatarRadius,
     this.iconSize = AppConstants.avatarIconSize,
     this.isAssistant = false,
+    this.borderRadius,
     this.extraVersion = 0,
   });
 
@@ -44,6 +46,21 @@ class AvatarWidget extends ConsumerWidget {
         url = '$baseUrl/file?path=${Uri.encodeComponent(path!)}&v=$version';
       }
 
+      if (borderRadius != null) {
+        return ClipRRect(
+          borderRadius: borderRadius!,
+          child: Image.network(
+            url,
+            width: radius * 2,
+            height: radius * 2,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) {
+              return _buildFallback();
+            },
+          ),
+        );
+      }
+
       return ClipOval(
         child: Image.network(
           url,
@@ -62,6 +79,30 @@ class AvatarWidget extends ConsumerWidget {
 
   Widget _buildFallback() {
     if (emoji != null && emoji!.isNotEmpty) {
+      if (borderRadius != null) {
+        return Container(
+          width: radius * 2,
+          height: radius * 2,
+          decoration: BoxDecoration(
+            color: AppColors.border,
+            borderRadius: borderRadius,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            emoji!,
+            style: TextStyle(
+              fontSize: iconSize,
+              fontFamilyFallback: const [
+                'Apple Color Emoji',
+                'Segoe UI Emoji',
+                'Noto Color Emoji',
+                'Android Emoji',
+                'EmojiSymbols',
+              ],
+            ),
+          ),
+        );
+      }
       return CircleAvatar(
         radius: radius,
         backgroundColor: AppColors.border,
@@ -80,6 +121,26 @@ class AvatarWidget extends ConsumerWidget {
         ),
       );
     }
+
+    if (borderRadius != null) {
+      return Container(
+        width: radius * 2,
+        height: radius * 2,
+        decoration: BoxDecoration(
+          color: AppColors.border,
+          borderRadius: borderRadius,
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          isAssistant ? Icons.auto_awesome : Icons.person,
+          size: iconSize,
+          color: isAssistant
+              ? AppConstants.iconColorPrimary
+              : AppConstants.iconColorWhite,
+        ),
+      );
+    }
+
     return CircleAvatar(
       radius: radius,
       backgroundColor: AppColors.border,
@@ -100,6 +161,7 @@ class AppUserAvatar extends ConsumerWidget {
   final String? path;
   final double radius;
   final double iconSize;
+  final BorderRadius? borderRadius;
   final int extraVersion;
 
   const AppUserAvatar({
@@ -107,6 +169,7 @@ class AppUserAvatar extends ConsumerWidget {
     this.path,
     this.radius = AppConstants.avatarRadius,
     this.iconSize = AppConstants.avatarIconSize,
+    this.borderRadius,
     this.extraVersion = 0,
   });
 
@@ -119,6 +182,7 @@ class AppUserAvatar extends ConsumerWidget {
       radius: radius,
       iconSize: iconSize,
       isAssistant: false,
+      borderRadius: borderRadius,
       extraVersion: extraVersion,
     );
   }
@@ -129,6 +193,7 @@ class AppIdentityAvatar extends ConsumerWidget {
   final String? emoji;
   final double radius;
   final double iconSize;
+  final BorderRadius? borderRadius;
   final int extraVersion;
 
   const AppIdentityAvatar({
@@ -137,6 +202,7 @@ class AppIdentityAvatar extends ConsumerWidget {
     this.emoji,
     this.radius = AppConstants.avatarRadius,
     this.iconSize = AppConstants.avatarIconSize,
+    this.borderRadius,
     this.extraVersion = 0,
   });
 
@@ -151,6 +217,7 @@ class AppIdentityAvatar extends ConsumerWidget {
       radius: radius,
       iconSize: iconSize,
       isAssistant: true,
+      borderRadius: borderRadius,
       extraVersion: extraVersion,
     );
   }
@@ -162,6 +229,7 @@ class AppAssistantAvatar extends StatelessWidget {
   final String? emoji;
   final double radius;
   final double iconSize;
+  final BorderRadius? borderRadius;
   final int extraVersion;
 
   const AppAssistantAvatar({
@@ -170,6 +238,7 @@ class AppAssistantAvatar extends StatelessWidget {
     this.emoji,
     this.radius = AppConstants.avatarRadius,
     this.iconSize = AppConstants.avatarIconSize,
+    this.borderRadius,
     this.extraVersion = 0,
   });
 
@@ -181,6 +250,7 @@ class AppAssistantAvatar extends StatelessWidget {
       radius: radius,
       iconSize: iconSize,
       isAssistant: true,
+      borderRadius: borderRadius,
       extraVersion: extraVersion,
     );
   }

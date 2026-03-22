@@ -240,10 +240,7 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
 
     if (inactive.isNotEmpty) {
       if (active.isNotEmpty) {
-        widgets.add(const Padding(
-          padding: EdgeInsets.symmetric(vertical: 16),
-          child: Divider(color: AppColors.border),
-        ));
+        widgets.add(const SizedBox(height: 32));
         widgets.add(const Padding(
           padding: EdgeInsets.only(bottom: 12),
           child: AppSectionLabel('settings.api_keys.other_providers'),

@@ -27,7 +27,10 @@ class FolderItem extends StatelessWidget {
         InkWell(
           onTap: onToggle,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.sidebarPaddingHorizontal,
+              vertical: 12,
+            ),
             child: Row(
               children: [
                 Icon(

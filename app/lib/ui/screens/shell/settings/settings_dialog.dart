@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/constants.dart';
 import '../../../widgets/app_styles.dart';
+import '../../../widgets/settings_side_nav_tile.dart';
 import 'profile_tab.dart';
 import 'agents_tab.dart';
 import 'api_management_tab.dart';
 import 'integrations_tab.dart';
 import 'channels_tab.dart';
 import 'toolbox_tab.dart';
+import 'widgets/settings_sidebar.dart';
 
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
@@ -16,68 +18,65 @@ class SettingsDialog extends StatefulWidget {
   State<SettingsDialog> createState() => _SettingsDialogState();
 }
 
-class _SettingsDialogState extends State<SettingsDialog>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _SettingsDialogState extends State<SettingsDialog> {
+  int _selectedIndex = 0;
 
-  final List<String> _tabLabels = [
-    'settings.tabs.profile',
-    'settings.tabs.agents_profiles',
-    'settings.tabs.api_management',
-    'settings.integrations.tab',
-    'settings.channels.tab',
-    'settings.toolbox.tab',
+  final List<Map<String, dynamic>> _navItems = [
+    {'label': 'settings.tabs.profile', 'icon': Icons.person_outline_rounded},
+    {'label': 'settings.tabs.agents_profiles', 'icon': Icons.smart_toy_outlined},
+    {'label': 'settings.tabs.api_management', 'icon': Icons.vpn_key_outlined},
+    {'label': 'settings.integrations.tab', 'icon': Icons.extension_outlined},
+    {'label': 'settings.channels.tab', 'icon': Icons.hub_outlined},
+    {'label': 'settings.toolbox.tab', 'icon': Icons.construction_rounded},
   ];
 
   @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: _tabLabels.length, vsync: this);
-    _tabController.addListener(() {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // Watch context.locale to ensure rebuild on language change
     context.locale;
 
     return Dialog.fullscreen(
-      backgroundColor: AppColors.surface,
-      child: Column(
+      backgroundColor: AppColors.background,
+      child: Row(
         children: [
-          _buildHeader(),
+          SettingsSidebar(
+            selectedIndex: _selectedIndex,
+            navItems: _navItems,
+            onAction: (index) => setState(() => _selectedIndex = index),
+          ),
+          // MAIN CONTENT
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                ProfileTab(onNext: () => _tabController.animateTo(1)),
-                AgentsTab(
-                  onBack: () => _tabController.animateTo(0),
-                  onNext: () => _tabController.animateTo(2),
-                ),
-                ApiManagementTab(
-                  onBack: () => _tabController.animateTo(1),
-                  onNext: () => _tabController.animateTo(3),
-                ),
-                IntegrationsTab(
-                  onBack: () => _tabController.animateTo(2),
-                  onNext: () => _tabController.animateTo(4),
-                ),
-                ChannelsTab(
-                  onBack: () => _tabController.animateTo(3),
-                  onNext: () => _tabController.animateTo(5),
-                ),
-                ToolboxTab(onBack: () => _tabController.animateTo(4)),
-              ],
+            child: Container(
+              color: AppColors.background,
+              child: Column(
+                children: [
+                  _buildContentHeader(),
+                  Expanded(
+                    child: IndexedStack(
+                      index: _selectedIndex,
+                      children: [
+                        ProfileTab(onNext: () => setState(() => _selectedIndex = 1)),
+                        AgentsTab(
+                          onBack: () => setState(() => _selectedIndex = 0),
+                          onNext: () => setState(() => _selectedIndex = 2),
+                        ),
+                        ApiManagementTab(
+                          onBack: () => setState(() => _selectedIndex = 1),
+                          onNext: () => setState(() => _selectedIndex = 3),
+                        ),
+                        IntegrationsTab(
+                          onBack: () => setState(() => _selectedIndex = 2),
+                          onNext: () => setState(() => _selectedIndex = 4),
+                        ),
+                        ChannelsTab(
+                          onBack: () => setState(() => _selectedIndex = 3),
+                          onNext: () => setState(() => _selectedIndex = 5),
+                        ),
+                        ToolboxTab(onBack: () => setState(() => _selectedIndex = 4)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -85,39 +84,14 @@ class _SettingsDialogState extends State<SettingsDialog>
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildContentHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'settings.title'.tr(),
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
-              ),
-              AppCloseButton(
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          AppDropdownField<int>(
-            value: _tabController.index,
-            items: List.generate(_tabLabels.length, (index) => index),
-            onChanged: (index) {
-              if (index != null) {
-                _tabController.animateTo(index);
-              }
-            },
-            displayValue: (index) => _tabLabels[index].tr(),
+          AppCloseButton(
+            onPressed: () => Navigator.pop(context),
           ),
         ],
       ),

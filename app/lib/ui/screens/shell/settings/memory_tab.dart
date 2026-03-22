@@ -341,9 +341,10 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
+                activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
                 activeThumbColor: AppColors.primary,
-                title: Text('settings.memory.standard_enable'.tr()),
+                title: Text('settings.memory.standard_enable'.tr().toUpperCase(),
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
                 value: _standardEnabled,
                 onChanged: (val) async {
                   setState(() => _standardEnabled = val);
@@ -491,10 +492,9 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
     final hasConfig = _embeddingProvider.isNotEmpty && _embeddingModel.isNotEmpty;
 
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.zero,
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -639,19 +639,20 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
                     )
                   : const Icon(Icons.science, size: 18),
               label: Text(
-                _testingEmbedding
+                (_testingEmbedding
                     ? 'settings.memory.embedding_testing'.tr()
-                    : 'settings.memory.embedding_test_button'.tr(),
+                    : 'settings.memory.embedding_test_button'.tr()).toUpperCase(),
+                style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.0),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                foregroundColor: AppColors.primary,
-                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.background,
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
           ),

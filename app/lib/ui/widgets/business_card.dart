@@ -101,58 +101,38 @@ class _BusinessCardState extends State<BusinessCard> {
         curve: Curves.easeInOut,
         margin: const EdgeInsets.only(bottom: 24),
         decoration: BoxDecoration(
-          color: active
-              ? AppColors.primary.withValues(alpha: 0.1)
-              : AppColors.surface,
-          borderRadius: BorderRadius.circular(
-            AppConstants.buttonBorderRadius * 1.5,
-          ),
-          border: Border.all(
-            color: active ? AppColors.primary : AppColors.border,
-            width: active ? 1.5 : 1.0,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.black.withValues(alpha: 0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.zero, // Brutalist square
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildHeader(),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      widget.avatar,
+                      const SizedBox(width: 24),
+                      Expanded(
+                        child: _isEditing
+                            ? _buildEditFields()
+                            : _buildViewFields(),
+                      ),
+                    ],
+                  ),
+                  if (widget.bottom != null && (widget.maxViewFields == null || _isEditing)) ...[
+                    const SizedBox(height: 24),
+                    widget.bottom!(context, _isEditing),
+                  ],
+                ],
+              ),
             ),
           ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(
-            AppConstants.buttonBorderRadius * 1.5,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildHeader(),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        widget.avatar,
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: _isEditing
-                              ? _buildEditFields()
-                              : _buildViewFields(),
-                        ),
-                      ],
-                    ),
-                    if (widget.bottom != null && (widget.maxViewFields == null || _isEditing)) ...[
-                      const SizedBox(height: 16),
-                      widget.bottom!(context, _isEditing),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -160,24 +140,18 @@ class _BusinessCardState extends State<BusinessCard> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: _isEditing
-            ? AppColors.primary.withValues(alpha: 0.1)
-            : AppColors.surface.withValues(alpha: 0.5),
-        border: Border(
-          bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      color: _isEditing ? AppColors.surface : AppColors.background,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            widget.title.tr(),
-            style: TextStyle(
-              fontSize: AppConstants.fontSizeSubhead,
-              fontWeight: FontWeight.bold,
-              color: _isEditing ? AppColors.primary : AppColors.textMain,
+            widget.title.tr().toUpperCase(),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2.0,
+              color: AppColors.primary,
             ),
           ),
           Row(
@@ -303,11 +277,12 @@ class _BusinessCardState extends State<BusinessCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                field.label.tr(),
+                field.label.tr().toUpperCase(),
                 style: const TextStyle(
-                  fontSize: AppConstants.fontSizeCaption,
+                  fontSize: 9,
                   color: AppColors.textDim,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
                 ),
               ),
               const SizedBox(height: 2),

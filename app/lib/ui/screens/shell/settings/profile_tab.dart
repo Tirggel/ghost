@@ -6,6 +6,7 @@ import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../../providers/locale_provider.dart';
 import '../../../widgets/app_styles.dart';
+import '../../../widgets/settings_sub_nav_bar.dart';
 import '../../../widgets/app_avatar_picker.dart';
 import '../../../widgets/business_card.dart';
 
@@ -91,19 +92,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
     });
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-          child: AppDropdownField<int>(
-            value: _currentIndex,
-            items: List.generate(_subTabLabels.length, (index) => index),
-            onChanged: (index) {
-              if (index != null) {
-                setState(() => _currentIndex = index);
-              }
-            },
-            displayValue: (index) => _subTabLabels[index].tr(),
-          ),
+        SettingsSubNavBar(
+          items: _subTabLabels,
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
         ),
         Expanded(
           child: IndexedStack(

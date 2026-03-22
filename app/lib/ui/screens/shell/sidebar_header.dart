@@ -15,17 +15,61 @@ class SidebarHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.sidebarPaddingHorizontal,
+        vertical: AppConstants.sidebarPaddingVertical,
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            AppConstants.appName,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                padding: const EdgeInsets.all(4),
+                child: Image.asset(
+                  'assets/icons/logo/ghost-small-black.png',
+                  errorBuilder: (context, error, stackTrace) => const Center(
+                    child: Icon(
+                      Icons.terminal_rounded,
+                      color: AppColors.black,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppConstants.appName.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.0,
+                      color: AppColors.primary,
+                      height: 1.1,
+                    ),
+                  ),
+                  Text(
+                    AppConstants.appVersion,
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textDim.withValues(alpha: 0.8),
+                      letterSpacing: 0.5,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
@@ -45,6 +89,7 @@ class SidebarHeader extends StatelessWidget {
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
             ),
           ),
           const SizedBox(height: 12),

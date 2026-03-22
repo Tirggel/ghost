@@ -1,5 +1,17 @@
 # Ghost 👻
 
+<p align="center">
+  <img src="app/assets/icons/logo/ghost-large.png" width="300" alt="Ghost Logo">
+</p>
+
+> [!WARNING]
+> **Alpha Version & Security Notice**: This is an early alpha version of Ghost. The software is under active development and may contain critical bugs.
+>
+> *   **AI Risks**: AI models can "hallucinate" (presenting false information as facts).
+> *   **Security**: Prompt injection attacks are possible, where the AI might be manipulated into performing unintended actions through malicious inputs.
+> *   **Accounts & Data**: Use Ghost exclusively with **test accounts** for connected services (APIs, Google Workspace, etc.). Never use your primary or production accounts.
+> *   **Disclaimer**: Use at your own risk in a **safe, isolated environment**. No responsibility or liability is accepted for any damage, data loss, or unintended actions performed by the AI.
+
 [Developer Website](https://aquawitchcode.dev/) &nbsp; &bull; &nbsp; [Deutsch](README_de.md)
 
 **Ghost** is a lightweight, self-hosted personal AI assistant built with Google's [Dart](https://github.com/dart-lang) and [Flutter](https://github.com/flutter) technologies.
@@ -15,6 +27,10 @@ Ghost follows a modular client-server architecture:
 ---
 
 ## 🚀 Installation & Setup
+
+> 💡 **Tip**: If you just want to use Ghost, you can download the ready-to-run programs for your platform (Linux, Windows, Mac) here: **[ghost-releases](./ghost-releases)** 😊
+>
+> *The following installation guide is intended for **developers** who want to build or modify Ghost themselves.*
 
 To get started with Ghost, please follow our detailed installation guide:
 

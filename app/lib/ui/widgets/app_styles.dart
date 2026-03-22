@@ -25,7 +25,7 @@ class AppInputDecoration {
       labelText: label,
       floatingLabelBehavior: FloatingLabelBehavior.always,
       filled: true,
-      fillColor: AppColors.black,
+      fillColor: AppColors.background,
       labelStyle: const TextStyle(
         color: AppColors.textDim,
         fontSize: AppConstants.fontSizeBody,
@@ -54,7 +54,7 @@ class AppInputDecoration {
       ),
       isDense: true,
       filled: true,
-      fillColor: AppColors.black,
+      fillColor: AppColors.background,
       border: const OutlineInputBorder(),
       prefixIcon: prefixIcon,
       suffixIcon: suffixIcon,
@@ -79,10 +79,12 @@ class AppFormLabel extends StatelessWidget {
     context.locale;
 
     return Text(
-      text.isEmpty ? '' : text.tr(),
+      text.isEmpty ? '' : text.tr().toUpperCase(),
       style: const TextStyle(
         color: AppColors.textDim,
-        fontSize: AppConstants.fontSizeBody,
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.2,
       ),
     );
   }
@@ -289,17 +291,17 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: _hasFocus ? AppColors.primary : AppColors.white,
-                    width: _hasFocus ? 1.5 : 1.0,
+                    color: _hasFocus ? AppColors.primary : AppColors.border,
+                    width: _hasFocus ? 1.0 : 1.0,
                   ),
                   borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
-                  color: AppColors.black,
+                  color: AppColors.background,
                 ),
                 child: Row(
                   children: [
                     if (widget.prefixIcon != null) ...[
                       widget.prefixIcon!,
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                     ],
                     Expanded(child: activeChild),
                     const Icon(
@@ -415,7 +417,7 @@ class _AppDropdownDialogState<T> extends State<_AppDropdownDialog<T>> {
                     color: AppColors.textDim,
                     size: 18,
                   ),
-                  fillColor: AppColors.black,
+                  fillColor: AppColors.background,
                 ),
               ),
             ],
@@ -494,12 +496,11 @@ class AppSectionHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Text(
-        title.tr(),
+        title.tr().toUpperCase(),
         style: TextStyle(
-          fontSize: large
-              ? AppConstants.fontSizeTitle
-              : AppConstants.fontSizeSubhead,
-          fontWeight: FontWeight.bold,
+          fontSize: large ? 32 : 12,
+          fontWeight: FontWeight.w900,
+          letterSpacing: large ? -1.0 : 4.0,
           color: AppColors.primary,
         ),
       ),
@@ -634,13 +635,14 @@ class AppSaveButton extends StatelessWidget {
               ),
             )
           : Icon(icon, size: AppConstants.settingsIconSize),
-      label: Text(label.tr()),
+      label: Text(label.tr().toUpperCase(),
+        style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.0)),
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.black,
         minimumSize: const Size(64, 48),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
         ),
       ),
     );
@@ -681,48 +683,36 @@ class AppNavButton extends StatelessWidget {
       final style = ElevatedButton.styleFrom(
         backgroundColor: backgroundColor ?? AppColors.primary,
         foregroundColor: AppColors.black,
-        minimumSize: const Size(100, 48),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
+        minimumSize: const Size(120, 48),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
         ),
       );
 
-      if (icon != null) {
-        return ElevatedButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon, size: 18),
-          label: Text(label.tr()),
-          style: style,
-        );
-      }
-      return ElevatedButton(
+      return ElevatedButton.icon(
         onPressed: onPressed,
+        icon: icon != null ? Icon(icon, size: 18) : const SizedBox(),
+        label: Text(label.tr().toUpperCase(), 
+          style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.0)),
         style: style,
-        child: Text(label.tr()),
       );
     } else {
       final style = OutlinedButton.styleFrom(
-        backgroundColor: backgroundColor,
-        foregroundColor: AppColors.textDim,
-        side: const BorderSide(color: AppColors.border),
-        minimumSize: const Size(100, 48),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
+        backgroundColor: backgroundColor ?? AppColors.background,
+        foregroundColor: AppColors.primary,
+        side: const BorderSide(color: AppColors.primary, width: 1.2),
+        minimumSize: const Size(120, 48),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
         ),
       );
 
-      if (icon != null) {
-        return OutlinedButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon, size: 18),
-          label: Text(label.tr()),
-          style: style,
-        );
-      }
-      return OutlinedButton(
+      return OutlinedButton.icon(
         onPressed: onPressed,
+        icon: icon != null ? Icon(icon, size: 18) : const SizedBox(),
+        label: Text(label.tr().toUpperCase(),
+          style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.0)),
         style: style,
-        child: Text(label.tr()),
       );
     }
   }
@@ -774,15 +764,9 @@ class _AppHoverCardState extends State<AppHoverCard> {
           padding: const EdgeInsets.all(AppConstants.cardPadding),
           decoration: BoxDecoration(
             color: active
-                ? AppColors.primary.withValues(alpha: 0.10)
+                ? AppColors.surfaceLight // Etwas heller bei Hover
                 : AppColors.surface,
-            borderRadius: BorderRadius.circular(
-              AppConstants.buttonBorderRadius,
-            ),
-            border: Border.all(
-              color: active ? AppColors.primary : AppColors.border,
-              width: active ? 1.5 : 1.0,
-            ),
+            borderRadius: BorderRadius.zero,
           ),
           child: widget.child,
         ),
@@ -984,103 +968,6 @@ class AppSettingsTile extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// AppSkillTile — wizard-style skill selection card
-// ---------------------------------------------------------------------------
-
-/// A selectable skill card matching the wizard's look.
-class AppSkillTile extends StatelessWidget {
-  const AppSkillTile({
-    required this.name,
-    required this.description,
-    this.emoji,
-    required this.isGlobal,
-    required this.onGlobalChanged,
-    required this.onTap,
-    required this.onDelete,
-    super.key,
-  });
-
-  final String name;
-  final String description;
-  final String? emoji;
-  final bool isGlobal;
-  final ValueChanged<bool> onGlobalChanged;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    // Watch context.locale to ensure rebuild on language change
-    context.locale;
-
-    return AppSettingsTile(
-      title: name,
-      subtitle: description,
-      onTap: onTap,
-      leading: (emoji != null && emoji!.isNotEmpty)
-          ? Text(
-              emoji!,
-              style: const TextStyle(
-                fontSize: 24,
-                fontFamilyFallback: [
-                  'Apple Color Emoji',
-                  'Segoe UI Emoji',
-                  'Noto Color Emoji',
-                  'Android Emoji',
-                  'EmojiSymbols',
-                ],
-              ),
-            )
-          : const Icon(
-              Icons.psychology,
-              color: AppConstants.iconColorPrimary,
-              size: AppConstants.iconSizeLarge,
-            ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Global Switch
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'settings.skills.global'.tr().toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDim,
-                ),
-              ),
-              const SizedBox(height: 2),
-              SizedBox(
-                height: 24,
-                child: Switch(
-                  value: isGlobal,
-                  onChanged: onGlobalChanged,
-                  activeThumbColor: AppColors.primary,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 4),
-          // Delete Button
-          IconButton(
-            icon: const Icon(
-              Icons.delete_outline,
-              size: 20,
-              color: AppColors.error,
-            ),
-            onPressed: onDelete,
-            tooltip: 'common.delete'.tr(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
 // AppSettingsNavBar — consistent settings navigation with Save/Next/Back
 // ---------------------------------------------------------------------------
 
@@ -1111,10 +998,8 @@ class AppSettingsNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
+      padding: const EdgeInsets.all(24),
+      color: AppColors.background,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

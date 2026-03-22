@@ -102,228 +102,171 @@ class MessageBubble extends ConsumerWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 32),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Expanded(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                buildAvatar(isAssistant: isAssistant),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        (isAssistant ? identityName : userName).toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
+                          color: AppColors.textMain,
+                        ),
+                      ),
+                      if (isAssistant && modelName != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            '${(metadata?['provider'] as String? ?? modelName.split('/').first).toUpperCase()} • ${modelName.contains('/') ? modelName.split('/').last : modelName}',
+                            style: const TextStyle(
+                              fontSize: 9,
+                              color: AppColors.textDim,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (displayTime != null)
+                  Text(
+                    displayTime,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: AppColors.textDim,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.only(
+              left: isAssistant ? 16 : 48,
+              right: isAssistant ? 48 : 16,
+            ),
             child: Container(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isAssistant
-                    ? AppColors.surface
-                    : AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(
-                  AppConstants.borderRadiusLarge,
-                ),
-                border: Border.all(
-                  color: isAssistant
-                      ? AppColors.border
-                      : AppColors.primary.withValues(alpha: 0.3),
-                ),
+                color: isAssistant 
+                    ? AppColors.transparent 
+                    : AppColors.surface.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(AppConstants.borderRadiusDefault),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- Avatar + Name integrated inside bubble ---
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-                    child: Row(
-                      children: [
-                        buildAvatar(isAssistant: isAssistant),
-                        const SizedBox(width: 8),
-                        Text(
-                          isAssistant ? identityName : userName,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textMain,
-                          ),
-                        ),
-                        if (displayTime != null ||
-                            (isAssistant && modelName != null)) ...[
-                          const Spacer(),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              if (displayTime != null)
-                                Text(
-                                  displayTime,
-                                  style: const TextStyle(
-                                    fontSize: AppConstants.timestampFontSize,
-                                    color: AppConstants.iconColorPrimary,
-                                  ),
+                  if (attachments != null && attachments!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: attachments!.map((a) {
+                          final isImage = a.mimeType.startsWith('image/');
+                          if (isImage) {
+                            return ClipRRect(
+                              borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxHeight: 300),
+                                child: Image.memory(
+                                  base64Decode(a.data),
+                                  fit: BoxFit.contain,
                                 ),
-                              if (isAssistant &&
-                                  modelName != null) ...[
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (metadata?['provider'] != null ||
-                                          modelName.contains('/'))
-                                        Text(
-                                          (metadata?['provider'] as String? ??
-                                                  modelName.split('/').first)
-                                              .toUpperCase(),
-                                          style: const TextStyle(
-                                            fontSize: 9,
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      if (metadata?['provider'] != null ||
-                                          modelName.contains('/'))
-                                        const SizedBox(width: 4),
-                                      Text(
-                                        modelName.contains('/')
-                                            ? modelName.split('/').last
-                                            : modelName,
-                                        style: const TextStyle(
-                                          fontSize:
-                                              AppConstants.timestampFontSize,
-                                          color: AppConstants.iconColorPrimary,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  // Divider
-                  Container(
-                    height: 1,
-                    width: double.infinity,
-                    color: isAssistant
-                        ? AppColors.border
-                        : AppColors.primary.withValues(alpha: 0.3),
-                  ),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (attachments != null && attachments!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: attachments!.map((a) {
-                                final isImage =
-                                    a.mimeType.startsWith('image/');
-                                if (isImage) {
-                                  return ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: ConstrainedBox(
-                                      constraints: const BoxConstraints(maxHeight: 200),
-                                      child: Image.memory(
-                                        base64Decode(a.data),
-                                        fit: BoxFit.contain,
-                                      ),
-                                    ),
-                                  );
-                                }
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surface,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: AppColors.border),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        _getFileIcon(a.mimeType),
-                                        size: 16,
-                                        color: AppColors.textDim,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        a.name,
-                                        style: const TextStyle(
-                                            fontSize: 11,
-                                            color: AppColors.white),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
+                              ),
+                            );
+                          }
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+                              border: Border.all(color: AppColors.border),
                             ),
-                          ),
-                        MarkdownBody(
-                          data: content.isEmpty && isAssistant
-                              ? '_${'chat.thinking'.tr()}_'
-                              : content,
-                          styleSheet: MarkdownStyleSheet(
-                            p: TextStyle(
-                            color: role == 'assistant' && content.isEmpty
-                                ? AppConstants.iconColorDim
-                                : AppConstants.iconColorWhite,
-                              height: 1.5,
-                            ),
-                            code: const TextStyle(
-                              backgroundColor: AppColors.border,
-                              color: AppConstants.iconColorPrimary,
-                            ),
-                          ),
-                        ),
-                        if (isStreaming)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (activityLocal != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: Row(
-                                      children: [
-                                        const SizedBox(
-                                          width: 12,
-                                          height: 12,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 1.5,
-                                            valueColor: AlwaysStoppedAnimation(
-                                              AppConstants.iconColorPrimary,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            activityLocal,
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: AppConstants
-                                                  .iconColorPrimary
-                                                  .withValues(alpha: 0.8),
-                                              fontStyle: FontStyle.italic,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                const ThinkingLine(),
+                                Icon(_getFileIcon(a.mimeType), size: 16, color: AppColors.textDim),
+                                const SizedBox(width: 8),
+                                Text(a.name, style: const TextStyle(fontSize: 11, color: AppColors.textMain)),
                               ],
                             ),
-                          ),
-                      ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  MarkdownBody(
+                    data: content.isEmpty && isAssistant ? '_${'chat.thinking'.tr()}_' : content,
+                    styleSheet: MarkdownStyleSheet(
+                      p: TextStyle(
+                        color: role == 'assistant' && content.isEmpty ? AppColors.textDim : AppColors.textMain,
+                        height: 1.6,
+                        fontSize: 15,
+                      ),
+                      code: const TextStyle(
+                        backgroundColor: AppColors.surface,
+                        color: AppColors.primary,
+                        fontFamily: 'monospace',
+                      ),
+                      codeblockDecoration: BoxDecoration(
+                        color: AppColors.surface,
+                        border: Border.all(color: AppColors.border),
+                        borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+                      ),
                     ),
                   ),
+                  if (isStreaming)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (activityLocal != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                children: [
+                                  const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1.5,
+                                      valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      activityLocal.toUpperCase(),
+                                      style: const TextStyle(
+                                        fontSize: 9,
+                                        color: AppColors.textDim,
+                                        letterSpacing: 1.0,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          const ThinkingLine(),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),

@@ -19,6 +19,7 @@ import 'shell/session_item.dart';
 import 'shell/folder_item.dart';
 import 'shell/settings/settings_dialog.dart';
 import 'shell/widgets/new_chat_dialog.dart';
+import 'shell/widgets/main_sidebar.dart';
 
 class ShellScreen extends ConsumerStatefulWidget {
   const ShellScreen({super.key});
@@ -267,144 +268,105 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     return Scaffold(
       body: Row(
         children: [
-          Container(
-            width: 280,
-            decoration: const BoxDecoration(
-              border: Border(right: BorderSide(color: AppColors.border)),
-              color: AppColors.surface,
+          MainSidebar(
+            onNewChat: _newChat,
+            searchController: _searchController,
+            onShowSettings: () => _showSettings(context),
+            onConfirmDeleteFolder: (agentName, sessions) => _confirmDeleteFolder(agentName, sessions, showPendingNew),
+          ),
+            Expanded(
+              child: activeSessionId == null
+                  ? _buildEmptyState()
+                  : ChatScreen(key: ValueKey(activeSessionId), sessionId: activeSessionId),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SidebarHeader(onNewChat: _newChat, searchController: _searchController),
-                Expanded(
-                  child: ListView(
-                    children: groupedSessions.entries.map((entry) {
-                      final agentName = entry.key;
-                      final folderSessions = entry.value;
-                      final isCollapsed = collapsedFolders.contains(agentName);
-
-                      return FolderItem(
-                        agentName: agentName,
-                        isCollapsed: isCollapsed,
-                        onToggle: () => ref.read(shellProvider.notifier).toggleFolder(agentName),
-                        onDelete: () => _confirmDeleteFolder(agentName, folderSessions, showPendingNew),
-                        children: folderSessions.asMap().entries.map<Widget>((itemEntry) {
-                          final idx = itemEntry.key;
-                          final s = itemEntry.value;
-                          final id = s.id;
-                          final isPending = showPendingNew && id == activeSessionId;
-                          final isActive = activeSessionId == id;
-
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SessionItem(
-                                id: id,
-                                data: s.toJson(),
-                                isPending: isPending,
-                                isActive: isActive,
-                                onTap: () => ref.read(shellProvider.notifier).setActiveSession(id),
-                                onDeleted: () {
-                                  if (activeSessionId == id) {
-                                    ref.read(shellProvider.notifier).setActiveSession(null);
-                                  }
-                                },
-                              ),
-                              if (idx < folderSessions.length - 1)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16),
-                                  child: Divider(
-                                    height: 1,
-                                    thickness: 0.5,
-                                    color: AppColors.border,
-                                  ),
-                                ),
-                            ],
-                          );
-                        }).toList(),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                SidebarFooter(onShowSettings: () => _showSettings(context)),
-              ],
+          ],
+        ),
+      );
+    }
+  
+    Future<void> _confirmDeleteFolder(String agentName, List<ChatSession> folderSessions, bool showPendingNew) async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.background,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusDefault),
+            side: const BorderSide(color: AppColors.border),
+          ),
+          title: Text('sidebar.delete_folder_title'.tr(namedArgs: {'name': agentName})),
+          content: Text('sidebar.delete_folder_content'.tr(namedArgs: {'count': folderSessions.length.toString()})),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('common.delete'.tr(), style: const TextStyle(color: AppColors.errorDark)),
             ),
-          ),
-          Expanded(
-            child: activeSessionId == null
-                ? _buildEmptyState()
-                : ChatScreen(key: ValueKey(activeSessionId), sessionId: activeSessionId),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _confirmDeleteFolder(String agentName, List<ChatSession> folderSessions, bool showPendingNew) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('sidebar.delete_folder_title'.tr(namedArgs: {'name': agentName})),
-        content: Text('sidebar.delete_folder_content'.tr(namedArgs: {'count': folderSessions.length.toString()})),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('common.delete'.tr(), style: const TextStyle(color: AppColors.errorDark)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      final provider = ref.read(sessionsProvider.notifier);
-      final shellNotifier = ref.read(shellProvider.notifier);
-      final activeSessionId = ref.read(shellProvider).activeSessionId;
-      for (final s in folderSessions) {
-        final id = s.id;
-        final isPending = showPendingNew && id == activeSessionId;
-        if (!isPending) provider.deleteSession(id);
-        if (activeSessionId == id) shellNotifier.setActiveSession(null);
+          ],
+        ),
+      );
+  
+      if (confirmed == true) {
+        final provider = ref.read(sessionsProvider.notifier);
+        final shellNotifier = ref.read(shellProvider.notifier);
+        final activeSessionId = ref.read(shellProvider).activeSessionId;
+        for (final s in folderSessions) {
+          final id = s.id;
+          final isPending = showPendingNew && id == activeSessionId;
+          if (!isPending) provider.deleteSession(id);
+          if (activeSessionId == id) shellNotifier.setActiveSession(null);
+        }
       }
     }
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
-              color: AppColors.surface,
-              border: Border.all(color: AppColors.border),
-            ),
-            child: const Icon(Icons.auto_awesome, size: 40, color: AppConstants.iconColorPrimary),
+  
+    Widget _buildEmptyState() {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 48),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center, // Centered
+            children: [
+              Text(
+                'chat.welcome_headline'.tr().toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 56, // Editorial size
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -2.0,
+                  height: 0.9,
+                  color: AppColors.primary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'sidebar.start_conversation'.tr(),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w300,
+                  color: AppColors.textDim,
+                  letterSpacing: -0.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 48),
+              ElevatedButton(
+                onPressed: _newChat,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.background,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero), // Brutalist corner
+                ),
+                child: Text(
+                  'common.new_chat'.tr().toUpperCase(),
+                  style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
-          Text('sidebar.start_conversation'.tr(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.textDim)),
-          const SizedBox(height: 12),
-          Text('sidebar.empty_subtitle'.tr(), style: const TextStyle(color: AppColors.textDim, fontSize: 14)),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: _newChat,
-            icon: const Icon(Icons.add),
-            label: Text('common.new_chat'.tr()),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      );
+    }
 
   void _showSettings(BuildContext context) {
     showDialog(

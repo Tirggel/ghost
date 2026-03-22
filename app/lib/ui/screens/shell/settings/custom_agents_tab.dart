@@ -9,6 +9,7 @@ import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_avatar_picker.dart';
 import '../../../widgets/searchable_model_picker.dart';
 import '../../../widgets/business_card.dart';
+import '../../../widgets/skills_selector_widget.dart';
 
 class CustomAgentsTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -396,52 +397,15 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> {
   }
 
   Widget _buildSkillsSection(bool isEditing) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8.0),
-          child: AppSectionHeader('settings.agents.skills_section'),
-        ),
-        ref.watch(skillsProvider).when(
-          data: (skills) {
-            if (skills.isEmpty) {
-              return Text('settings.agents.no_skills'.tr(),
-                  style: const TextStyle(color: AppColors.textDim, fontSize: 12));
-            }
-            return Column(
-              children: skills.map((skill) {
-                final slug = skill['slug'] as String;
-                final isEnabled = _selectedSkills.contains(slug);
-                return CheckboxListTile(
-                  title: Text(skill['name'] ?? slug),
-                  contentPadding: EdgeInsets.zero,
-                  subtitle: Text(
-                    skill['description'] ?? '',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  value: isEnabled,
-                  activeColor: AppColors.primary,
-                  onChanged: isEditing 
-                    ? (val) {
-                        setState(() {
-                          if (val == true) {
-                            _selectedSkills.add(slug);
-                          } else {
-                            _selectedSkills.remove(slug);
-                          }
-                        });
-                      }
-                    : null,
-                );
-              }).toList(),
-            );
-          },
-          loading: () => const LinearProgressIndicator(),
-          error: (_, __) => Text('settings.skills.error_loading_generic'.tr()),
-        ),
-      ],
+    return SkillsSelector(
+      selectedSkills: _selectedSkills,
+      isEditing: isEditing,
+      onChanged: (next) {
+        setState(() {
+          _selectedSkills.clear();
+          _selectedSkills.addAll(next);
+        });
+      },
     );
   }
 
