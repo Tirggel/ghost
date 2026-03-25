@@ -10,6 +10,7 @@ import '../../../../providers/auth_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/avatar_widget.dart';
 import '../../../widgets/app_settings_input.dart';
+import '../../../widgets/app_dialogs.dart';
 
 class IntegrationsTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -214,23 +215,12 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
                   onEdit: () => setState(() => _editingOAuthField = 'google_workspace'),
                   onDelete: () async {
                     final label = 'settings.integrations.google_section'.tr();
-                    final confirmed = await showDialog<bool>(
+                    final confirmed = await AppAlertDialog.showConfirmation(
                       context: context,
-                      builder: (ctx) => AlertDialog(
-                        backgroundColor: AppColors.surface,
-                        title: Text('settings.api_keys.delete_key_title'.tr(namedArgs: {'label': label})),
-                        content: Text('settings.api_keys.delete_key_content'.tr(namedArgs: {'label': label})),
-                        actions: [
-                          OutlinedButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: Text('common.cancel'.tr()),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: Text('common.delete'.tr(), style: const TextStyle(color: AppColors.errorDark)),
-                          ),
-                        ],
-                      ),
+                      title: 'settings.api_keys.delete_key_title'.tr(namedArgs: {'label': label}),
+                      content: 'settings.api_keys.delete_key_content'.tr(namedArgs: {'label': label}),
+                      confirmLabel: 'common.delete'.tr(),
+                      isDestructive: true,
                     );
                     if (confirmed == true) {
                       try {

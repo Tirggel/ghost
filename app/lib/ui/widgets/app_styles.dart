@@ -376,9 +376,8 @@ class _AppDropdownDialogState<T> extends State<_AppDropdownDialog<T>> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: AppColors.background,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border),
+      shape: const RoundedRectangleBorder(
+        side: BorderSide(color: AppColors.border, width: 0.5),
       ),
       child: Container(
         width: 400,
@@ -1048,11 +1047,9 @@ class AppErrorDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppColors.surface,
-      surfaceTintColor: AppColors.errorDark,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
-        side: const BorderSide(color: AppColors.errorDark, width: 0.5),
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        side: BorderSide(color: AppColors.border, width: 0.5),
       ),
       title: Row(
         children: [

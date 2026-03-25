@@ -56,8 +56,15 @@ Future<void> saveConfig(GhostConfig config, String path) async {
   final file = File(path);
   await file.parent.create(recursive: true);
 
-  final json = const JsonEncoder.withIndent('  ')
-      .convert(config.toJson(includeAgent: false));
+  final json = const JsonEncoder.withIndent('  ').convert(config.toJson(
+    includeAgent: false,
+    includeCustomAgents: true,
+    includeChannels: true,
+    includeTools: true,
+    includeMemory: true,
+    includeSession: true,
+    includeIntegrations: true,
+  ));
   await file.writeAsString('$json\n');
   _log.info('Config saved to $path');
 }

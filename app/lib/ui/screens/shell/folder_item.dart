@@ -38,14 +38,14 @@ class FolderItem extends StatelessWidget {
                       ? Icons.folder_outlined
                       : Icons.folder_open_outlined,
                   size: 16,
-                  color: AppColors.textDim,
+                  color: isCollapsed ? AppColors.textDim : AppColors.white,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     agentName,
-                    style: const TextStyle(
-                      color: AppColors.textDim,
+                    style: TextStyle(
+                      color: isCollapsed ? AppColors.textDim : AppColors.white,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
@@ -55,8 +55,21 @@ class FolderItem extends StatelessWidget {
                 // Delete Folder Button
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded, size: 14),
-                  color: AppColors.error,
-                  padding: EdgeInsets.zero,
+                  style: IconButton.styleFrom(
+                    foregroundColor: AppColors.white,
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(24, 24),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    overlayColor: Colors.transparent,
+                  ).copyWith(
+                    foregroundColor:
+                        WidgetStateProperty.resolveWith<Color?>((states) {
+                          if (states.contains(WidgetState.hovered)) {
+                            return AppColors.error;
+                          }
+                          return AppColors.white;
+                        }),
+                  ),
                   constraints: const BoxConstraints(
                     minWidth: 24,
                     minHeight: 24,

@@ -7,6 +7,8 @@ class ChatSession {
   final String? agentName;
   final String? agentId;
   final DateTime? createdAt;
+  final DateTime? lastActiveAt;
+
 
   ChatSession({
     required this.id,
@@ -17,7 +19,9 @@ class ChatSession {
     this.agentName,
     this.agentId,
     this.createdAt,
+    this.lastActiveAt,
   });
+
 
   factory ChatSession.fromJson(Map<String, dynamic> json) {
     return ChatSession(
@@ -31,7 +35,11 @@ class ChatSession {
       createdAt: json['createdAt'] != null 
           ? DateTime.tryParse(json['createdAt'] as String) 
           : null,
+      lastActiveAt: json['lastActiveAt'] != null 
+          ? DateTime.tryParse(json['lastActiveAt'] as String) 
+          : null,
     );
+
   }
 
   Map<String, dynamic> toJson() {
@@ -44,7 +52,9 @@ class ChatSession {
       'agentName': agentName,
       'agentId': agentId,
       'createdAt': createdAt?.toIso8601String(),
+      'lastActiveAt': lastActiveAt?.toIso8601String(),
     };
+
   }
 
   dynamic operator [](String key) {
@@ -57,7 +67,9 @@ class ChatSession {
       case 'agentName': return agentName;
       case 'agentId': return agentId;
       case 'createdAt': return createdAt;
+      case 'lastActiveAt': return lastActiveAt;
       default: return null;
+
     }
   }
 }

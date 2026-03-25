@@ -12,6 +12,7 @@ import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/skills_selector_widget.dart';
+import '../../../widgets/app_dialogs.dart';
 
 class SkillsTab extends StatelessWidget {
   final VoidCallback? onBack;
@@ -50,8 +51,7 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
     final urlController = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+      builder: (ctx) => AppAlertDialog(
         title: Text('settings.skills.download_github_title'.tr()),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -59,7 +59,7 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
           children: [
             Text(
               'settings.skills.download_github_desc'.tr(),
-              style: const TextStyle(color: AppColors.textDim),
+              style: const TextStyle(color: AppColors.textDim, fontSize: 13),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -73,17 +73,13 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
           ],
         ),
         actions: [
-          OutlinedButton(
+          TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('common.cancel'.tr()),
+            child: Text('common.cancel'.tr(), style: const TextStyle(color: AppColors.textDim)),
           ),
-          ElevatedButton(
+          TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.black,
-            ),
-            child: Text('common.ok'.tr()),
+            child: Text('common.ok'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -379,32 +375,14 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
                   return;
                 }
 
-                final confirmed = await showDialog<bool>(
+                final confirmed = await AppAlertDialog.showConfirmation(
                   context: context,
-                  builder: (ctx) => AlertDialog(
-                    backgroundColor: AppColors.surface,
-                    title: Text('settings.skills.delete_title'.tr()),
-                    content: Text(
-                      'settings.skills.delete_content'.tr(
-                        namedArgs: {'name': skill['name'] ?? slug},
-                      ),
-                    ),
-                    actions: [
-                      OutlinedButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: Text('common.cancel'.tr()),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: Text(
-                          'common.delete'.tr(),
-                          style: const TextStyle(
-                            color: AppColors.errorDark,
-                          ),
-                        ),
-                      ),
-                    ],
+                  title: 'settings.skills.delete_title'.tr(),
+                  content: 'settings.skills.delete_content'.tr(
+                    namedArgs: {'name': skill['name'] ?? slug},
                   ),
+                  confirmLabel: 'common.delete'.tr(),
+                  isDestructive: true,
                 );
                 if (confirmed == true) {
                   await ref.read(configProvider.notifier).deleteSkill(slug);
@@ -450,8 +428,7 @@ class _SkillEditDialogState extends ConsumerState<_SkillEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: AppColors.surface,
+    return AppAlertDialog(
       title: Text(
         'settings.skills.edit_title'.tr(namedArgs: {'name': widget.name}),
       ),
@@ -466,9 +443,9 @@ class _SkillEditDialogState extends ConsumerState<_SkillEditDialog> {
               ),
       ),
       actions: [
-        OutlinedButton(
+        TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('common.cancel'.tr()),
+          child: Text('common.cancel'.tr(), style: const TextStyle(color: AppColors.textDim)),
         ),
         AppSaveButton(
           onPressed: () async {

@@ -20,6 +20,7 @@ import 'shell/folder_item.dart';
 import 'shell/settings/settings_dialog.dart';
 import 'shell/widgets/new_chat_dialog.dart';
 import 'shell/widgets/main_sidebar.dart';
+import '../widgets/app_dialogs.dart';
 
 class ShellScreen extends ConsumerStatefulWidget {
   const ShellScreen({super.key});
@@ -167,26 +168,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     final lines = errorMessage.split('\n');
     final formattedMessage = lines.take(2).join('\n');
 
-    showDialog(
+    AppAlertDialog.showError(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Row(
-          children: [
-            const Icon(Icons.error_outline, color: AppConstants.iconColorError),
-            const SizedBox(width: 8),
-            Text('common.error'.tr()),
-          ],
-        ),
-        content: Text(formattedMessage, style: const TextStyle(height: 1.4, fontSize: 14)),
-        actions: [
-          OutlinedButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('common.ok'.tr()),
-          ),
-        ],
-      ),
+      message: formattedMessage,
     );
   }
 
@@ -285,24 +269,12 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     }
   
     Future<void> _confirmDeleteFolder(String agentName, List<ChatSession> folderSessions, bool showPendingNew) async {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await AppAlertDialog.showConfirmation(
         context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.background,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppConstants.borderRadiusDefault),
-            side: const BorderSide(color: AppColors.border),
-          ),
-          title: Text('sidebar.delete_folder_title'.tr(namedArgs: {'name': agentName})),
-          content: Text('sidebar.delete_folder_content'.tr(namedArgs: {'count': folderSessions.length.toString()})),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('common.cancel'.tr())),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text('common.delete'.tr(), style: const TextStyle(color: AppColors.errorDark)),
-            ),
-          ],
-        ),
+        title: 'sidebar.delete_folder_title'.tr(namedArgs: {'name': agentName}),
+        content: 'sidebar.delete_folder_content'.tr(namedArgs: {'count': folderSessions.length.toString()}),
+        confirmLabel: 'common.delete'.tr(),
+        isDestructive: true,
       );
   
       if (confirmed == true) {

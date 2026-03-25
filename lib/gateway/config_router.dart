@@ -1275,6 +1275,7 @@ class ConfigRouter {
 
     // Push the full consolidated config to the manager
     await agentManager.updateConfig(consolidated);
+    agentManager.notifyConfigChanged();
     _log.info('AgentManager synchronized with consolidated configuration');
   }
 }

@@ -1,10 +1,13 @@
 // Ghost — Agent Manager
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:cron/cron.dart';
 import 'package:logging/logging.dart';
 
 import '../config/config.dart';
+import '../config/io.dart';
 import '../config/secure_storage.dart';
 import '../models/message.dart';
 import '../sessions/manager.dart';
@@ -35,6 +38,7 @@ class AgentManager {
     required this.storage,
     required this.workspaceDir,
     required this.stateDir,
+    this.configPath,
   }) {
     skillManager = SkillManager(stateDir: stateDir);
     memoryEngine = MemoryEngine(
@@ -56,6 +60,14 @@ class AgentManager {
   final SecureStorage storage;
   String workspaceDir;
   final String stateDir;
+  final String? configPath;
+
+  final _configChangedController = StreamController<void>.broadcast();
+  Stream<void> get onConfigChanged => _configChangedController.stream;
+  
+  void notifyConfigChanged() {
+    _configChangedController.add(null);
+  }
 
   /// Callbacks for notifications
   SessionUpdateCallback? onSessionUpdated;
@@ -281,6 +293,23 @@ class AgentManager {
       }
     }
     _log.info('Updated config, providers, and system prompts for all agents');
+  }
+  
+  /// Persist custom agents to secure storage and ghost.json
+  Future<void> saveCustomAgents(List<CustomAgentConfig> agents) async {
+    final jsonList = agents.map((a) => a.toJson()).toList();
+    await storage.set('custom_agents_config', jsonEncode(jsonList));
+    
+    if (configPath != null) {
+      final currentConfig = await loadConfig(configPath!);
+      await saveConfig(currentConfig.copyWith(customAgents: agents), configPath!);
+    }
+    
+    // Refresh local config and reload crons
+    config = config.copyWith(customAgents: agents);
+    await reloadCustomAgents(agents);
+    
+    notifyConfigChanged();
   }
 
   /// Get a specific agent, or the default one

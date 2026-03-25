@@ -8,6 +8,7 @@ import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/searchable_model_picker.dart';
+import '../../../widgets/app_dialogs.dart';
 
 class MemoryTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -272,24 +273,12 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
   }
 
   Future<void> _clearMemory(String type, String titleKey, String contentKey) async {
-    final confirm = await showDialog<bool>(
+    final confirm = await AppAlertDialog.showConfirmation(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text(titleKey.tr()),
-        content: Text(contentKey.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('common.cancel'.tr()),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text('common.delete'.tr()),
-          ),
-        ],
-      ),
+      title: titleKey.tr(),
+      content: contentKey.tr(),
+      confirmLabel: 'common.delete'.tr(),
+      isDestructive: true,
     );
 
     if (confirm == true) {
@@ -387,10 +376,35 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
                     icon: const Icon(Icons.delete_forever, size: 18),
                     label: Text('settings.memory.delete_all'.tr()),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.withValues(alpha: 0.1),
-                      foregroundColor: Colors.redAccent,
-                      side: BorderSide(color: Colors.red.withValues(alpha: 0.2)),
+                      backgroundColor: AppColors.border,
+                      foregroundColor: AppColors.textMain,
+                    ).copyWith(
+                      backgroundColor:
+                          WidgetStateProperty.resolveWith<Color?>((states) {
+                            if (states.contains(WidgetState.hovered)) {
+                              return Colors.red.withValues(alpha: 0.1);
+                            }
+                            return AppColors.border;
+                          }),
+                      foregroundColor:
+                          WidgetStateProperty.resolveWith<Color?>((states) {
+                            if (states.contains(WidgetState.hovered)) {
+                              return Colors.redAccent;
+                            }
+                            return AppColors.textMain;
+                          }),
+                      side: WidgetStateProperty.resolveWith<BorderSide?>(
+                        (states) {
+                          if (states.contains(WidgetState.hovered)) {
+                            return BorderSide(
+                              color: Colors.red.withValues(alpha: 0.2),
+                            );
+                          }
+                          return const BorderSide(color: Colors.transparent);
+                        },
+                      ),
                     ),
+
                   ),
                 ],
               ),
@@ -473,10 +487,35 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
                     icon: const Icon(Icons.delete_forever, size: 18),
                     label: Text('settings.memory.delete_all'.tr()),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.withValues(alpha: 0.1),
-                      foregroundColor: Colors.redAccent,
-                      side: BorderSide(color: Colors.red.withValues(alpha: 0.2)),
+                      backgroundColor: AppColors.border,
+                      foregroundColor: AppColors.textMain,
+                    ).copyWith(
+                      backgroundColor:
+                          WidgetStateProperty.resolveWith<Color?>((states) {
+                            if (states.contains(WidgetState.hovered)) {
+                              return Colors.red.withValues(alpha: 0.1);
+                            }
+                            return AppColors.border;
+                          }),
+                      foregroundColor:
+                          WidgetStateProperty.resolveWith<Color?>((states) {
+                            if (states.contains(WidgetState.hovered)) {
+                              return Colors.redAccent;
+                            }
+                            return AppColors.textMain;
+                          }),
+                      side: WidgetStateProperty.resolveWith<BorderSide?>(
+                        (states) {
+                          if (states.contains(WidgetState.hovered)) {
+                            return BorderSide(
+                              color: Colors.red.withValues(alpha: 0.2),
+                            );
+                          }
+                          return const BorderSide(color: Colors.transparent);
+                        },
+                      ),
                     ),
+
                   ),
                 ],
               ),
@@ -592,7 +631,16 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
             children: [
               Expanded(
                 child: _loadingModels
-                    ? const LinearProgressIndicator()
+                    ? const SizedBox(
+                        height: 40,
+                        child: Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      )
                     : SearchableModelPicker(
                         selectedModel: _selectedModel,
                         models: _availableModels,

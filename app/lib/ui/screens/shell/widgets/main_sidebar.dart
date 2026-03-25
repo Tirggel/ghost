@@ -53,7 +53,7 @@ class MainSidebar extends ConsumerWidget {
       }
     }
 
-    for (final s in sessions.reversed) {
+    for (final s in sessions) {
       final agentName = s.agentName ?? defaultAgentName;
       final title = (s.title ?? '').toLowerCase();
       final agentLower = agentName.toLowerCase();

@@ -267,11 +267,43 @@ class SkillManager {
       await skillDir.create(recursive: true);
     }
 
+    // Determine common root prefix to strip if all files share it
+    String commonPrefix = '';
+    final filenames =
+        archive.where((f) => f.isFile).map((f) => f.name).toList();
+    if (filenames.isNotEmpty) {
+      final firstParts = p.split(p.normalize(filenames.first));
+      if (firstParts.length > 1) {
+        final potentialRoot = firstParts.first;
+        bool allShareRoot = true;
+        for (final name in filenames) {
+          final parts = p.split(p.normalize(name));
+          if (parts.isEmpty || parts.first != potentialRoot) {
+            allShareRoot = false;
+            break;
+          }
+        }
+        if (allShareRoot) {
+          commonPrefix = '$potentialRoot/';
+          // On some systems p.normalize might use backslashes or other separators,
+          // but archive.name usually uses forward slashes. 
+          // Let's be safer and check both or use p.join-like logic.
+          // Actually p.split and p.join handle it.
+        }
+      }
+    }
+
     // Extract files
     for (final file in archive) {
       if (file.isFile) {
-        final relativePath = p.normalize(file.name);
+        var relativePath = p.normalize(file.name);
         if (relativePath.contains('..')) continue;
+
+        // Strip common root prefix if found
+        if (commonPrefix.isNotEmpty && relativePath.startsWith(commonPrefix)) {
+          relativePath = relativePath.substring(commonPrefix.length);
+        }
+        if (relativePath.isEmpty) continue;
 
         // outPath should be relative to skillDir
         final outPath = p.join(skillDir.path, relativePath);

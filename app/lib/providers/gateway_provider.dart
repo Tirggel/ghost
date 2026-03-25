@@ -174,7 +174,11 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
                 agentName: s.agentName,
                 agentId: s.agentId,
                 createdAt: s.createdAt,
+                lastActiveAt: s.lastActiveAt,
               );
+
+
+
             }
             return s;
           }).toList();
@@ -223,7 +227,15 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
       _pending.removeWhere((p) => serverSessions.any((s) => s.id == p.id));
 
       // Combine server + pending
-      state = [...serverSessions, ..._pending];
+      // Combine server + pending and sort by last active (newest first)
+      final combined = [...serverSessions, ..._pending];
+      combined.sort((a, b) {
+        final dateA = a.lastActiveAt ?? a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final dateB = b.lastActiveAt ?? b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return dateB.compareTo(dateA); // Newest first
+      });
+      state = combined;
+
     } catch (e) {
       // Refresh failed
     }
@@ -261,7 +273,10 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
         agentName: old.agentName,
         agentId: old.agentId,
         createdAt: old.createdAt,
+        lastActiveAt: old.lastActiveAt,
       );
+
+
     }
 
     try {
@@ -282,7 +297,9 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
             agentName: s.agentName,
             agentId: s.agentId,
             createdAt: s.createdAt,
+            lastActiveAt: s.lastActiveAt,
           );
+
         }
         return s;
       }).toList();
@@ -311,9 +328,10 @@ class ConfigNotifier extends Notifier<AppConfig> {
       Future.microtask(() => refresh());
     }
 
-    // Listen for remote skill changes (e.g. from an agent import)
+    // Listen for remote skill/config changes (e.g. from an agent import)
     final sub = ref.read(gatewayClientProvider).messages.listen((msg) {
-      if (msg['method'] == 'skills.changed') {
+      if (msg['method'] == 'skills.changed' ||
+          msg['method'] == 'config.changed') {
         refresh();
       }
     });

@@ -5,6 +5,7 @@ import '../../../core/constants.dart';
 import '../../../providers/gateway_provider.dart';
 import '../../widgets/app_styles.dart';
 import '../../widgets/searchable_model_picker.dart';
+import '../../widgets/app_dialogs.dart';
 
 class SessionModelDialog extends ConsumerStatefulWidget {
   final String sessionId;
@@ -90,8 +91,7 @@ class _SessionModelDialogState extends ConsumerState<SessionModelDialog> {
       return vaultKeys.contains(keyName);
     }).toList();
 
-    return AlertDialog(
-      backgroundColor: AppColors.surface,
+    return AppAlertDialog(
       title: Text('chat.change_model_title'.tr()),
       content: SizedBox(
         width: 400,
@@ -162,6 +162,7 @@ class _SessionModelDialogState extends ConsumerState<SessionModelDialog> {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: AppColors.black,
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           ),
           child: Text('common.apply'.tr()),
         ),

@@ -40,6 +40,7 @@ class SkillsSelector extends ConsumerWidget {
             child: AppSectionHeader(title ?? 'settings.agents.skills_section'),
           ),
         ref.watch(skillsProvider).when(
+          skipLoadingOnReload: true,
           data: (skills) {
             if (skills.isEmpty) {
               return Padding(
@@ -50,17 +51,17 @@ class SkillsSelector extends ConsumerWidget {
                 ),
               );
             }
-            
+
             // Filter non-global skills for manual selection
             // Actually, keep them all but show global status?
             // The request just said "list of skills", so I'll keep the current behavior.
-            
+
             return Column(
               children: skills.map((skill) {
                 final slug = skill['slug'] as String;
                 final isEnabled = selectedSkills.contains(slug);
                 final isGlobal = skill['isGlobal'] as bool? ?? false;
-                
+
                 return _SkillItem(
                   slug: slug,
                   name: skill['name'] ?? slug,
@@ -89,8 +90,14 @@ class SkillsSelector extends ConsumerWidget {
             );
           },
           loading: () => const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: LinearProgressIndicator(),
+            padding: EdgeInsets.symmetric(vertical: 40),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
           ),
           error: (_, __) => Text('settings.skills.error_loading_generic'.tr()),
         ),
@@ -242,11 +249,22 @@ class _SkillItem extends StatelessWidget {
                 icon: const Icon(
                   Icons.delete_outline,
                   size: 20,
-                  color: AppColors.error,
+                ),
+                style: IconButton.styleFrom(
+                  foregroundColor: AppColors.white,
+                ).copyWith(
+                  foregroundColor:
+                      WidgetStateProperty.resolveWith<Color?>((states) {
+                        if (states.contains(WidgetState.hovered)) {
+                          return AppColors.error;
+                        }
+                        return AppColors.white;
+                      }),
                 ),
                 onPressed: onDelete,
                 tooltip: 'common.delete'.tr(),
               ),
+
             ] else
               Checkbox(
                 value: isEnabled,

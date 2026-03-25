@@ -86,7 +86,17 @@ class AppSettingsInput extends StatelessWidget {
               icon: const Icon(
                 Icons.delete_outline,
                 size: AppConstants.settingsIconSize,
-                color: AppColors.error,
+              ),
+              style: IconButton.styleFrom(
+                foregroundColor: AppColors.white,
+              ).copyWith(
+                foregroundColor:
+                    WidgetStateProperty.resolveWith<Color?>((states) {
+                      if (states.contains(WidgetState.hovered)) {
+                        return AppColors.error;
+                      }
+                      return AppColors.white;
+                    }),
               ),
               onPressed: onDelete,
               tooltip: deleteTooltip?.tr(),

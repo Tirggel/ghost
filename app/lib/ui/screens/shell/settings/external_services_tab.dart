@@ -5,6 +5,7 @@ import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_settings_input.dart';
+import '../../../widgets/app_dialogs.dart';
 
 class ExternalServicesTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -77,36 +78,12 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
   }
 
   Future<void> _deleteApiKey(String serviceId, String originalName) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await AppAlertDialog.showConfirmation(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text(
-          'settings.external_services.delete_key_title'.tr(namedArgs: {'label': originalName}),
-        ),
-        content: Text(
-          'settings.external_services.delete_key_content'.tr(
-            namedArgs: {'label': originalName},
-          ),
-        ),
-        actions: [
-          OutlinedButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.textDim,
-              side: const BorderSide(color: AppColors.border),
-            ),
-            child: Text('common.cancel'.tr()),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              'common.delete'.tr(),
-              style: const TextStyle(color: AppColors.errorDark),
-            ),
-          ),
-        ],
-      ),
+      title: 'settings.external_services.delete_key_title'.tr(namedArgs: {'label': originalName}),
+      content: 'settings.external_services.delete_key_content'.tr(namedArgs: {'label': originalName}),
+      confirmLabel: 'common.delete'.tr(),
+      isDestructive: true,
     );
 
     if (confirmed == true) {

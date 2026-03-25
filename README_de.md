@@ -71,6 +71,9 @@ Um mit Ghost zu starten, folge bitte unserer detaillierten Installationsanleitun
     - **Telegram Bot**: Steuere deinen Agenten sicher von unterwegs.
       - **Sprachnachrichten**: Der Agent unterstützt den Empfang und den Versand von Sprachnachrichten.
     - **Google Chat**: Integration als App in Google Chat Räumen.
+- **Automatisierte Agenten-Zeitpläne**:
+    - **Cron-basierte Automatisierung**: Erstelle eigene Agenten mit spezialisierten Skills und plane deren Ausführung mittels Unix-Cron-Ausdrücken (z.B. alle 5 Minuten).
+    - **Echtzeit-UI-Synchronisierung**: Neue Agenten und Konfigurationsänderungen werden sofort an das UI übertragen für ein nahtloses Erlebnis.
 - **Privacy & Security**:
     - **Sicherer Tresor**: API-Schlüssel, Agenten-Konfigurationen und Memory-Einstellungen sind mit AES-256-GCM verschlüsselt und nur auf deinem Rechner gespeichert.
     - **Verschlüsselte Datenbank**: Chat-Sitzungen und Avatare werden in einer lokalen Hive-Datenbank mit zusätzlicher Verschlüsselung gespeichert.

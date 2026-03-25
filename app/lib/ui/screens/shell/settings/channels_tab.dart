@@ -5,6 +5,7 @@ import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_settings_input.dart';
+import '../../../widgets/app_dialogs.dart';
 
 class ChannelsTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -85,38 +86,12 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
   }
 
   Future<void> _deleteTelegramConfig() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await AppAlertDialog.showConfirmation(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text(
-          'settings.api_keys.delete_key_title'.tr(
-            namedArgs: {'label': 'Telegram'},
-          ),
-        ),
-        content: Text(
-          'settings.api_keys.delete_key_content'.tr(
-            namedArgs: {'label': 'Telegram'},
-          ),
-        ),
-        actions: [
-          OutlinedButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.textDim,
-              side: const BorderSide(color: AppColors.border),
-            ),
-            child: Text('common.cancel'.tr()),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              'common.delete'.tr(),
-              style: const TextStyle(color: AppColors.errorDark),
-            ),
-          ),
-        ],
-      ),
+      title: 'settings.api_keys.delete_key_title'.tr(namedArgs: {'label': 'Telegram'}),
+      content: 'settings.api_keys.delete_key_content'.tr(namedArgs: {'label': 'Telegram'}),
+      confirmLabel: 'common.delete'.tr(),
+      isDestructive: true,
     );
 
     if (confirmed == true) {
@@ -131,23 +106,12 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
 
   Future<void> _deleteGChatConfig() async {
     final label = 'settings.channels.gchat_section'.tr();
-    final confirmed = await showDialog<bool>(
+    final confirmed = await AppAlertDialog.showConfirmation(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('settings.api_keys.delete_key_title'.tr(namedArgs: {'label': label})),
-        content: Text('settings.api_keys.delete_key_content'.tr(namedArgs: {'label': label})),
-        actions: [
-          OutlinedButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('common.cancel'.tr()),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('common.delete'.tr(), style: const TextStyle(color: AppColors.errorDark)),
-          ),
-        ],
-      ),
+      title: 'settings.api_keys.delete_key_title'.tr(namedArgs: {'label': label}),
+      content: 'settings.api_keys.delete_key_content'.tr(namedArgs: {'label': label}),
+      confirmLabel: 'common.delete'.tr(),
+      isDestructive: true,
     );
 
     if (confirmed == true) {

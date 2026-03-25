@@ -5,6 +5,7 @@ import '../../../core/constants.dart';
 import '../../../providers/gateway_provider.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../widgets/settings_side_nav_tile.dart';
+import '../../widgets/app_dialogs.dart';
 
 class SidebarFooter extends ConsumerWidget {
   final VoidCallback onShowSettings;
@@ -94,32 +95,12 @@ class SidebarFooter extends ConsumerWidget {
               ),
               _HoverLogoutButton(
                 onTap: () async {
-                  final confirmed = await showDialog<bool>(
+                  final confirmed = await AppAlertDialog.showConfirmation(
                     context: context,
-                    builder: (ctx) => AlertDialog(
-                      backgroundColor: AppColors.background,
-                      title: Text(
-                        'sidebar.logout_title'.tr().toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      content: Text('sidebar.logout_content'.tr()),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: Text('common.cancel'.tr().toUpperCase()),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: Text(
-                            'common.logout'.tr().toUpperCase(),
-                            style: const TextStyle(color: AppColors.errorDark),
-                          ),
-                        ),
-                      ],
-                    ),
+                    title: 'sidebar.logout_title'.tr(),
+                    content: 'sidebar.logout_content'.tr(),
+                    confirmLabel: 'common.logout'.tr(),
+                    isDestructive: true,
                   );
                   if (confirmed == true) {
                     await ref.read(authTokenProvider.notifier).logout();

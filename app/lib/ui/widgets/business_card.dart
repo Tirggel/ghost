@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/app_styles.dart';
 import '../../core/constants.dart';
+import '../widgets/app_dialogs.dart';
 
 class BusinessCardField {
   final String label;
@@ -194,34 +195,26 @@ class _BusinessCardState extends State<BusinessCard> {
                 IconButton(
                   icon: const Icon(
                     Icons.delete_outline,
-                    color: AppColors.error,
                     size: 20,
                   ),
+                  style: IconButton.styleFrom(
+                    foregroundColor: AppColors.white,
+                  ).copyWith(
+                    foregroundColor:
+                        WidgetStateProperty.resolveWith<Color?>((states) {
+                          if (states.contains(WidgetState.hovered)) {
+                            return AppColors.error;
+                          }
+                          return AppColors.white;
+                        }),
+                  ),
                   onPressed: () async {
-                    final confirmed = await showDialog<bool>(
+                    final confirmed = await AppAlertDialog.showConfirmation(
                       context: context,
-                      builder: (ctx) => AlertDialog(
-                        backgroundColor: AppColors.surface,
-                        title: Text('common.delete'.tr()),
-                        content: Text(
-                          'settings.agents.delete_content'.tr(
-                            namedArgs: {'name': ''},
-                          ),
-                        ),
-                        actions: [
-                          OutlinedButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: Text('common.cancel'.tr()),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: Text(
-                              'common.delete'.tr(),
-                              style: const TextStyle(color: AppColors.error),
-                            ),
-                          ),
-                        ],
-                      ),
+                      title: 'common.delete'.tr(),
+                      content: 'settings.agents.delete_content'.tr(namedArgs: {'name': ''}),
+                      confirmLabel: 'common.delete'.tr(),
+                      isDestructive: true,
                     );
                     if (confirmed == true) {
                       await widget.onDelete!();

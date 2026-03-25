@@ -72,6 +72,20 @@ Sichert oder stellt die RAG-Datenbank (Vektoren) wieder her.
 
 ---
 
+## 🛠️ Agenten-Management
+
+### `config.addCustomAgent`
+Erstellt einen neuen Custom Agent.
+**Parameter:**
+- `agent`: (Object) { `name`, `systemPrompt`, `skills`, `cronSchedule`, `cronMessage`, ... }
+
+### `config.deleteCustomAgent`
+Löscht einen Custom Agent.
+**Parameter:**
+- `id`: (String) Die Agenten-ID.
+
+---
+
 ## 📡 Events (Server-zu-Client)
 
 Das Gateway sendet Ereignisse (Broadcasts) an alle authentifizierten Clients.
@@ -93,3 +107,8 @@ Gesendet, wenn der Agent seine finale Antwort abgeschlossen hat.
 ```json
 { "sessionId": "...", "message": { ... } }
 ```
+### `config.changed`
+Wird gesendet (Broadcast), wenn sich die globale oder eine Agenten-Konfiguration geändert hat. Clients sollten ihren lokalen Zustand aktualisieren.
+
+### `skills.changed`
+Wird gesendet, wenn ein neuer Skill installiert oder gelöscht wurde.

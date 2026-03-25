@@ -54,9 +54,19 @@ class _SearchableModelPickerState extends State<SearchableModelPicker> {
         if (widget.loading)
           const Padding(
             padding: EdgeInsets.only(bottom: 8),
-            child: LinearProgressIndicator(
-              backgroundColor: AppColors.border,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            child: SizedBox(
+              height: 2,
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 2,
+                  child: LinearProgressIndicator(
+                    backgroundColor: Colors.transparent,
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  ),
+                ),
+              ),
             ),
           ),
         Focus(

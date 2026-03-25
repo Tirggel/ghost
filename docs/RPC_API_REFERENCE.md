@@ -72,6 +72,20 @@ Back up or restore the RAG (Vector) Memory database.
 
 ---
 
+## 🛠️ Agent Management
+
+### `config.addCustomAgent`
+Creates a new custom agent.
+**Params:**
+- `agent`: (Object) { `name`, `systemPrompt`, `skills`, `cronSchedule`, `cronMessage`, ... }
+
+### `config.deleteCustomAgent`
+Deletes a custom agent.
+**Params:**
+- `id`: (String) The agent ID.
+
+---
+
 ## 📡 Events (Server-to-Client)
 
 The gateway broadcasts events to all authenticated clients.
@@ -93,3 +107,8 @@ Sent when the agent has finished its final response.
 ```json
 { "sessionId": "...", "message": { ... } }
 ```
+### `config.changed`
+Broadcasted when the global or agent configuration has been updated. Clients should refresh their local state.
+
+### `skills.changed`
+Broadcasted when a new skill is installed or deleted.

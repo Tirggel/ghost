@@ -5,6 +5,7 @@ import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/searchable_model_picker.dart';
+import '../../../widgets/app_dialogs.dart';
 
 class NewChatDialog extends ConsumerStatefulWidget {
   const NewChatDialog({super.key});
@@ -83,8 +84,7 @@ class _NewChatDialogState extends ConsumerState<NewChatDialog> {
       return vaultKeys.contains(keyName);
     }).toList();
 
-    return AlertDialog(
-      backgroundColor: AppColors.surface,
+    return AppAlertDialog(
       title: Text('settings.new_chat.title'.tr()),
       content: SizedBox(
         width: 400,
@@ -155,9 +155,9 @@ class _NewChatDialogState extends ConsumerState<NewChatDialog> {
         ),
       ),
       actions: [
-        OutlinedButton(
+        TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('common.cancel'.tr()),
+          child: Text('common.cancel'.tr(), style: const TextStyle(color: AppColors.textDim)),
         ),
         ElevatedButton(
           onPressed: (_selectedProvider != null && _selectedModel != null)
@@ -169,6 +169,7 @@ class _NewChatDialogState extends ConsumerState<NewChatDialog> {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: AppColors.black,
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           ),
           child: Text('settings.new_chat.start_chat'.tr()),
         ),

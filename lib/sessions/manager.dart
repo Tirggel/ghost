@@ -75,7 +75,10 @@ class SessionManager {
             title: sessionTitle,
             type: groupId != null ? SessionType.group : SessionType.main,
             history: messages,
+            createdAt: messages.first.timestamp,
+            lastActiveAt: messages.last.timestamp,
           );
+
 
           final key = groupId != null
               ? '$channelType:$groupId'
@@ -179,7 +182,10 @@ class SessionManager {
             title: sessionTitle,
             type: groupId != null ? SessionType.group : SessionType.main,
             history: transcript,
+            createdAt: transcript.first.timestamp,
+            lastActiveAt: transcript.last.timestamp,
           );
+
           _sessions[key] = restored;
           _log.fine('Restored session $existingId for $key');
           return restored;
@@ -235,8 +241,11 @@ class SessionManager {
 
   /// List all active sessions.
   List<Map<String, dynamic>> listSessions() {
-    return _sessions.values.map((s) => s.toSummary()).toList();
+    final sorted = _sessions.values.toList()
+      ..sort((a, b) => a.lastActiveAt.compareTo(b.lastActiveAt));
+    return sorted.map((s) => s.toSummary()).toList();
   }
+
 
   /// Get session history.
   Future<List<Message>> getHistory(String sessionId, {int? maxMessages}) async {

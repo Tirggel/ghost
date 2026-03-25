@@ -36,44 +36,59 @@ class _SettingsSideNavTileState extends State<SettingsSideNavTile> {
           onTap: widget.onTap,
           splashColor: AppColors.primary.withValues(alpha: 0.1),
           highlightColor: Colors.transparent,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            height: 48,
-            decoration: BoxDecoration(
-              color: highlight ? AppColors.surface : Colors.transparent,
-              borderRadius: BorderRadius.circular(
-                AppConstants.buttonBorderRadius,
+        child: Stack(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              height: 48,
+              decoration: BoxDecoration(
+                color: highlight ? AppColors.surface : Colors.transparent,
+                borderRadius: BorderRadius.circular(
+                  AppConstants.buttonBorderRadius,
+                ),
               ),
-              border: highlight
-                  ? Border.all(color: AppColors.border, width: 1)
-                  : Border.all(color: Colors.transparent, width: 1),
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.sidebarPaddingHorizontal,
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  widget.icon,
-                  color: widget.isActive ? AppColors.primary : AppColors.textDim,
-                  size: 16,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    widget.label,
-                    style: TextStyle(
-                      color: widget.isActive ? AppColors.primary : AppColors.textDim,
-                      fontSize: 12,
-                      fontWeight: widget.isActive ? FontWeight.w900 : FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.sidebarPaddingHorizontal,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    widget.icon,
+                    color:
+                        widget.isActive ? AppColors.primary : AppColors.textDim,
+                    size: 16,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.label,
+                      style: TextStyle(
+                        color: widget.isActive
+                            ? AppColors.primary
+                            : AppColors.textDim,
+                        fontSize: 12,
+                        fontWeight:
+                            widget.isActive ? FontWeight.w900 : FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+            if (highlight)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 2,
+                  color: AppColors.primary,
+                ),
+              ),
+          ],
+        ),
         ),
       ),
     );

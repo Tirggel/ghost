@@ -22,6 +22,7 @@ import 'package:ghost/channels/google_chat.dart';
 import 'package:ghost/tools/memory.dart';
 import 'package:ghost/tools/browser.dart';
 import 'package:ghost/tools/skills.dart';
+import 'package:ghost/tools/agents.dart';
 
 Future<void> main(List<String> arguments) async {
   print(r'''
@@ -277,9 +278,11 @@ class GatewayCommand extends Command<void> {
       storage: storage,
       workspaceDir: workspaceDir,
       stateDir: stateDir,
+      configPath: configPath,
     );
     MemoryTools.registerAll(toolRegistry, agentManager.memorySystem);
     SkillsTools.registerAll(toolRegistry, agentManager.skillManager);
+    AgentsTools.registerAll(toolRegistry, agentManager);
 
     agentManager.onSessionUpdated = (sessionId, message) {
       server.broadcast('agent.response', {
@@ -296,6 +299,10 @@ class GatewayCommand extends Command<void> {
 
     agentManager.skillManager.onSkillsChanged.listen((_) {
       server.broadcast('skills.changed');
+    });
+
+    agentManager.onConfigChanged.listen((_) {
+      server.broadcast('config.changed');
     });
 
     // 7. Initialize Agent Router
