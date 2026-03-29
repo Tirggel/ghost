@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'gateway_provider.dart';
 import '../core/models/chat_message.dart';
@@ -110,6 +111,88 @@ class ChatNotifier extends Notifier<Map<String, ChatState>> {
           msg['params']['sessionId'] == sessionId) {
         // Refresh history to get the system message for rename
         _loadHistory(sessionId);
+      } else if (msg['method'] == 'agent.error' &&
+          msg['params']['sessionId'] == sessionId) {
+        final current = _getState(sessionId);
+        final rawError = msg['params']['error'] as String?;
+        String displayError = rawError ?? 'Unknown error';
+
+        // Cleanup provider errors (e.g. OpenAI/OpenRouter rate limits)
+        // Cleanup provider errors (e.g. OpenAI/OpenRouter rate limits)
+        if (displayError.contains('OpenAI API error') ||
+            displayError.contains('ProviderError')) {
+          try {
+            // Extract the JSON part if it exists
+            final startIdx = displayError.indexOf('{');
+            final endIdx = displayError.lastIndexOf('}');
+            if (startIdx != -1 && endIdx != -1 && endIdx > startIdx) {
+              final jsonStr = displayError.substring(startIdx, endIdx + 1);
+              final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
+              
+              bool isRateLimit = false;
+
+              // Check for status 429 in various formats
+              if (decoded['status'] == 429 || 
+                  decoded['error']?['code'] == '429' ||
+                  displayError.contains('(429)')) {
+                isRateLimit = true;
+              }
+
+              if (decoded['error'] != null &&
+                  decoded['error']['message'] != null) {
+                displayError = decoded['error']['message'] as String;
+              } else if (decoded['title'] != null) {
+                displayError = decoded['title'] as String;
+              }
+
+              if (isRateLimit || 
+                  displayError.toLowerCase().contains('rate limit') ||
+                  displayError.contains('429')) {
+                displayError = 'Rate limit exceeded: $displayError';
+                displayError +=
+                    '\n\n💡 Tipp: Versuche einen anderen Provider oder ein anderes Modell zu wählen.';
+                
+                // If this is a cron job session, pause the agent to prevent repeated failures
+                if (sessionId.startsWith('cron_')) {
+                  final agentId = sessionId.replaceFirst('cron_', '');
+                  final config = ref.read(configProvider);
+                  final agent = config.customAgents.firstWhere(
+                    (a) => a['id'] == agentId,
+                    orElse: () => null,
+                  );
+                  
+                  if (agent != null && (agent['enabled'] ?? true)) {
+                    // Update server-side to pause the agent
+                    ref.read(configProvider.notifier).updateCustomAgent({
+                      'id': agentId,
+                      'enabled': false,
+                    });
+                    
+                    displayError += '\n\n🚦 Agent wurde automatisch pausiert, um wiederholte Fehler zu vermeiden.';
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            // Fallback to raw if parsing fails
+          }
+        }
+
+        state = {
+          ...state,
+          sessionId: current.copyWith(
+            isProcessing: false,
+            clearActivity: true,
+            messages: [
+              ...current.messages,
+              ChatMessage(
+                role: 'error',
+                content: '⚠️ $displayError',
+                timestamp: DateTime.now().toIso8601String(),
+              ),
+            ],
+          ),
+        };
       }
     });
   }

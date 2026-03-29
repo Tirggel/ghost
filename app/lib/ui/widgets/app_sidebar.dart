@@ -25,9 +25,9 @@ class AppSidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (header != null) header!,
+          ?header,
           Expanded(child: body),
-          if (footer != null) footer!,
+          ?footer,
         ],
       ),
     );

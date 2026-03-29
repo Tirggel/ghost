@@ -11,6 +11,7 @@ import '../widgets/connection_status.dart';
 import '../widgets/model_info_badge.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/chat_input_field.dart';
+import '../widgets/app_dialogs.dart';
 import '../../core/models/chat_message.dart';
 import '../../core/models/chat_session.dart';
 import '../../core/models/config_models.dart';
@@ -27,6 +28,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  bool _isIconHovered = false;
 
   @override
   void initState() {
@@ -132,6 +134,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ref.read(chatProvider.notifier).stop(widget.sessionId);
   }
 
+  Future<void> _editTitle(String currentTitle) async {
+    final newTitle = await AppAlertDialog.showTextInput(
+      context: context,
+      title: 'chat.edit_title'.tr(),
+      initialValue: currentTitle,
+      hintText: 'chat.edit_title_hint'.tr(),
+    );
+
+    if (newTitle != null &&
+        newTitle.trim().isNotEmpty &&
+        newTitle != currentTitle) {
+      await ref
+          .read(sessionsProvider.notifier)
+          .setSessionTitle(widget.sessionId, newTitle.trim());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final allChatStates = ref.watch(chatProvider);
@@ -169,33 +188,57 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.smart_toy_outlined,
-                      color: AppColors.white,
-                      size: AppConstants.settingsIconSize,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                child: MouseRegion(
+                  onEnter: (_) => setState(() => _isIconHovered = true),
+                  onExit: (_) => setState(() => _isIconHovered = false),
+                  cursor: SystemMouseCursors.click,
+                  child: InkWell(
+                    onTap: () => _editTitle(currentSession?.title ?? ''),
+                    borderRadius: BorderRadius.circular(4),
+                    hoverColor: Colors.transparent,
+                    splashColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 8,
+                      ), // Added padding for better hit target
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            currentSession?.title ??
-                                '${'chat.session_label'.tr()} ${widget.sessionId.substring(0, 8)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                            overflow: TextOverflow.ellipsis,
+                          Icon(
+                            Icons.edit_outlined,
+                            color: _isIconHovered
+                                ? AppColors.primary
+                                : AppColors.textDim,
+                            size: AppConstants.settingsIconSize,
                           ),
-                          const ConnectionStatusWidget(),
+                          const SizedBox(width: 12),
+                          Flexible(
+                            child: Text(
+                              currentSession?.title ??
+                                  '${'chat.session_label'.tr()} ${widget.sessionId.substring(0, 8)}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
-              ModelInfoBadge(sessionId: widget.sessionId),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ModelInfoBadge(sessionId: widget.sessionId),
+                  const SizedBox(height: 4),
+                  const ConnectionStatusWidget(),
+                ],
+              ),
             ],
           ),
         ),
@@ -224,6 +267,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ref.read(configProvider).agent.provider,
                       },
                       activity: chatState.activity,
+                      sessionId: widget.sessionId,
                     );
                   }
                   final m = visibleMessages[index];
@@ -233,6 +277,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     metadata: m.metadata,
                     timestamp: m.timestamp,
                     attachments: m.attachments,
+                    sessionId: widget.sessionId,
                   );
                 },
               ),

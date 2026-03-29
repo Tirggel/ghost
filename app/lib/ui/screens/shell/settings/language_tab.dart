@@ -18,7 +18,12 @@ class LanguageTab extends ConsumerWidget {
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.fromLTRB(
+              AppConstants.settingsPagePadding,
+              AppConstants.settingsTopPadding,
+              AppConstants.settingsPagePadding,
+              AppConstants.settingsPagePadding,
+            ),
             children: [
               const AppSectionHeader('settings.language.section', large: true),
               ...context.supportedLocales.map((locale) {

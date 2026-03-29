@@ -6,6 +6,7 @@ import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_settings_input.dart';
 import '../../../widgets/app_dialogs.dart';
+import '../../../widgets/app_snackbar.dart';
 
 class ChannelsTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -52,11 +53,11 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
 
       if (validation['status'] != 'ok') {
         if (mounted) {
-          _showSnackBar(
+          AppSnackBar.showError(
+            context,
             'settings.channels.tg_failed_save'.tr(
               namedArgs: {'error': validation['message'] ?? 'Invalid token'},
             ),
-            isError: true,
           );
         }
         return;
@@ -70,16 +71,16 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
         },
       });
       if (mounted) {
-        _showSnackBar('settings.channels.tg_connected_snack'.tr());
+        AppSnackBar.showSuccess(context, 'settings.channels.tg_connected_snack'.tr());
         _controllers['tg_token']?.clear();
         setState(() => _editingTelegram = false);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _verifyingTelegram = false);
-        _showSnackBar(
+        AppSnackBar.showError(
+          context,
           'settings.channels.tg_failed_save'.tr(namedArgs: {'error': e.toString()}),
-          isError: true,
         );
       }
     }
@@ -99,7 +100,7 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
         'telegram': {'enabled': false, 'settings': {}},
       });
       if (mounted) {
-        _showSnackBar('settings.channels.tg_disconnected_snack'.tr());
+        AppSnackBar.showSuccess(context, 'settings.channels.tg_disconnected_snack'.tr());
       }
     }
   }
@@ -119,7 +120,7 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
         'googleChat': {'enabled': false, 'settings': {}},
       });
       if (mounted) {
-        _showSnackBar('settings.channels.tg_disconnected_snack'.tr()); // Reuse snackbar if appropriate or add new key
+        AppSnackBar.showSuccess(context, 'settings.channels.tg_disconnected_snack'.tr()); // Reuse snackbar if appropriate or add new key
       }
     }
   }
@@ -135,17 +136,9 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
       'googleChat': {'enabled': enabled, 'settings': settings},
     });
     setState(() => _editingGChat = false);
-    if (mounted) _showSnackBar('settings.channels.tg_connected_snack'.tr()); // Reuse snackbar
+    if (mounted) AppSnackBar.showSuccess(context, 'settings.channels.tg_connected_snack'.tr()); // Reuse snackbar
   }
 
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? AppColors.errorDark : AppColors.surface,
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -162,7 +155,12 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.fromLTRB(
+              AppConstants.settingsPagePadding,
+              AppConstants.settingsTopPadding,
+              AppConstants.settingsPagePadding,
+              AppConstants.settingsPagePadding,
+            ),
             children: [
               const AppSectionHeader('settings.channels.gchat_section', large: true),
               Text('settings.channels.gchat_desc'.tr(), style: const TextStyle(color: AppColors.textDim, fontSize: AppConstants.fontSizeBody)),

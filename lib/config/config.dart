@@ -447,6 +447,7 @@ class CustomAgentConfig {
     this.skills = const [],
     this.enabled = true,
     this.avatar,
+    this.shouldSendChatHistory = true,
   });
 
   factory CustomAgentConfig.fromJson(Map<String, dynamic> json) {
@@ -464,6 +465,7 @@ class CustomAgentConfig {
           const [],
       enabled: json['enabled'] as bool? ?? true,
       avatar: json['avatar'] as String?,
+      shouldSendChatHistory: json['shouldSendChatHistory'] as bool? ?? true,
     );
   }
 
@@ -477,6 +479,7 @@ class CustomAgentConfig {
   final List<String> skills;
   final bool enabled;
   final String? avatar;
+  final bool shouldSendChatHistory;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -489,6 +492,7 @@ class CustomAgentConfig {
         'skills': skills,
         'enabled': enabled,
         if (avatar != null) 'avatar': avatar,
+        'shouldSendChatHistory': shouldSendChatHistory,
       };
 
   CustomAgentConfig copyWith({
@@ -502,6 +506,7 @@ class CustomAgentConfig {
     List<String>? skills,
     bool? enabled,
     String? avatar,
+    bool? shouldSendChatHistory,
   }) {
     return CustomAgentConfig(
       id: id ?? this.id,
@@ -514,6 +519,8 @@ class CustomAgentConfig {
       skills: skills ?? this.skills,
       enabled: enabled ?? this.enabled,
       avatar: avatar ?? this.avatar,
+      shouldSendChatHistory:
+          shouldSendChatHistory ?? this.shouldSendChatHistory,
     );
   }
 }

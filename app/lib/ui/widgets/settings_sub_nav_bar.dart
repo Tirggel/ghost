@@ -17,7 +17,10 @@ class SettingsSubNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppConstants.settingsPagePadding,
+        vertical: AppConstants.settingsTopPadding,
+      ),
       child: Row(
         children: items.asMap().entries.map((entry) {
           final index = entry.key;
@@ -68,16 +71,26 @@ class _SubNavItemState extends State<_SubNavItem> {
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           onTap: widget.onTap,
-          child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 150),
-            style: TextStyle(
-              color: highlight ? AppColors.white : AppColors.textDim,
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2.0,
-              fontFamily: 'FiraCode', // Brutalist font if available, fallback to default
+          child: Container(
+            padding: const EdgeInsets.only(bottom: 4),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: highlight ? AppColors.white : AppColors.transparent,
+                  width: 1,
+                ),
+              ),
             ),
-            child: Text(widget.label.toUpperCase()),
+            child: Text(
+              widget.label.toUpperCase(),
+              style: TextStyle(
+                color: highlight ? AppColors.white : AppColors.textDim,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.0,
+                fontFamily: 'FiraCode',
+              ),
+            ),
           ),
         ),
       ),

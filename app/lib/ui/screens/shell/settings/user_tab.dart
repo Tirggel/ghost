@@ -7,6 +7,7 @@ import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_avatar_picker.dart';
 import '../../../widgets/business_card.dart';
+import '../../../widgets/app_snackbar.dart';
 
 class UserTab extends ConsumerStatefulWidget {
   final VoidCallback? onNext;
@@ -60,9 +61,7 @@ class _UserTabState extends ConsumerState<UserTab> {
     };
     await ref.read(configProvider.notifier).updateUser(config);
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('settings.user.saved'.tr())));
+      AppSnackBar.showSuccess(context, 'settings.user.saved'.tr());
     }
   }
 
@@ -71,14 +70,18 @@ class _UserTabState extends ConsumerState<UserTab> {
     ref.listen(configProvider, (prev, next) {
       final user = next.user;
       if (user.name.isNotEmpty) {
-        if (_controllers['name']!.text.isEmpty)
+        if (_controllers['name']!.text.isEmpty) {
           _controllers['name']!.text = user.name;
-        if (_controllers['callSign']!.text.isEmpty)
+        }
+        if (_controllers['callSign']!.text.isEmpty) {
           _controllers['callSign']!.text = user.callSign ?? '';
-        if (_controllers['notes']!.text.isEmpty)
+        }
+        if (_controllers['notes']!.text.isEmpty) {
           _controllers['notes']!.text = user.notes ?? '';
-        if (_controllers['avatar']!.text.isEmpty)
+        }
+        if (_controllers['avatar']!.text.isEmpty) {
           _controllers['avatar']!.text = user.avatar ?? '';
+        }
       }
     });
 
@@ -86,7 +89,12 @@ class _UserTabState extends ConsumerState<UserTab> {
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.fromLTRB(
+              AppConstants.settingsPagePadding,
+              AppConstants.settingsTopPadding,
+              AppConstants.settingsPagePadding,
+              AppConstants.settingsPagePadding,
+            ),
             children: [
               BusinessCard(
                 title: 'settings.user.section',
@@ -227,13 +235,9 @@ class _UserTabState extends ConsumerState<UserTab> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'file_picker.pick_error'.tr(namedArgs: {'error': e.toString()}),
-            ),
-            backgroundColor: AppColors.errorDark,
-          ),
+        AppSnackBar.showError(
+          context,
+          'file_picker.pick_error'.tr(namedArgs: {'error': e.toString()}),
         );
       }
     }

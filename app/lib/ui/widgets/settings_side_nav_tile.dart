@@ -26,7 +26,7 @@ class _SettingsSideNavTileState extends State<SettingsSideNavTile> {
   Widget build(BuildContext context) {
     // Show white indicator and tonal shift on active OR hover
     final bool highlight = widget.isActive || _isHovered;
-    
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -36,59 +36,60 @@ class _SettingsSideNavTileState extends State<SettingsSideNavTile> {
           onTap: widget.onTap,
           splashColor: AppColors.primary.withValues(alpha: 0.1),
           highlightColor: Colors.transparent,
-        child: Stack(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              height: 48,
-              decoration: BoxDecoration(
-                color: highlight ? AppColors.surface : Colors.transparent,
-                borderRadius: BorderRadius.circular(
-                  AppConstants.buttonBorderRadius,
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppConstants.sidebarPaddingHorizontal,
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    widget.icon,
-                    color:
-                        widget.isActive ? AppColors.primary : AppColors.textDim,
-                    size: 16,
+          child: Stack(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                height: 48,
+                decoration: BoxDecoration(
+                  color: highlight ? AppColors.surface : Colors.transparent,
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.buttonBorderRadius,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      widget.label,
-                      style: TextStyle(
-                        color: widget.isActive
-                            ? AppColors.primary
-                            : AppColors.textDim,
-                        fontSize: 12,
-                        fontWeight:
-                            widget.isActive ? FontWeight.w900 : FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.sidebarPaddingHorizontal,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      widget.icon,
+                      color: widget.isActive
+                          ? AppColors.primary
+                          : (_isHovered ? AppColors.white : AppColors.textDim),
+                      size: 16,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            if (highlight)
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                child: Container(
-                  width: 2,
-                  color: AppColors.primary,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        widget.label,
+                        style: TextStyle(
+                          color: widget.isActive
+                              ? AppColors.primary
+                              : (_isHovered
+                                    ? AppColors.white
+                                    : AppColors.textDim),
+                          fontSize: AppConstants.fontSizeSidebarLabel,
+                          fontWeight: widget.isActive
+                              ? FontWeight.w900
+                              : FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-          ],
-        ),
+              if (highlight)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(width: 2, color: AppColors.primary),
+                ),
+            ],
+          ),
         ),
       ),
     );

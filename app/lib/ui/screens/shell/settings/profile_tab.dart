@@ -5,8 +5,9 @@ import 'package:file_picker/file_picker.dart';
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../../providers/locale_provider.dart';
+import '../../../../providers/shell_provider.dart';
 import '../../../widgets/app_styles.dart';
-import '../../../widgets/settings_sub_nav_bar.dart';
+import '../../../widgets/app_snackbar.dart';
 import '../../../widgets/app_avatar_picker.dart';
 import '../../../widgets/business_card.dart';
 
@@ -22,7 +23,6 @@ class ProfileTab extends ConsumerStatefulWidget {
 class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProviderStateMixin {
   final _controllers = <String, TextEditingController>{};
   int _avatarNonce = 0;
-  int _currentIndex = 0;
 
   final List<String> _subTabLabels = [
     'settings.user.tab',
@@ -71,15 +71,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
     
     await ref.read(configProvider.notifier).updateUser(config);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('settings.user.saved'.tr())),
-      );
+      AppSnackBar.showSuccess(context, 'settings.user.saved'.tr());
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final flags = ref.watch(localeFlagsProvider);
+    final currentIndex = ref.watch(shellProvider.select((s) => s.settingsSubTabIndices[0] ?? 0));
     
     ref.listen(configProvider, (prev, next) {
       final user = next.user;
@@ -91,146 +90,132 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
       }
     });
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SettingsSubNavBar(
-          items: _subTabLabels,
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-        ),
-        Expanded(
-          child: IndexedStack(
-            index: _currentIndex,
-            children: [
-              _buildUserTab(),
-              _buildLanguageTab(flags),
-            ],
-          ),
-        ),
-      ],
+    return AppSettingsPage(
+      subTabLabels: _subTabLabels,
+      currentSubTabIndex: currentIndex,
+      onSubTabChanged: (index) => ref.read(shellProvider.notifier).setSettingsSubTabIndex(0, index),
+      onBack: currentIndex == 0 ? widget.onBack : () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(0, 0),
+      onNext: currentIndex == 0 ? () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(0, 1) : widget.onNext,
+      onSave: _save,
+      body: IndexedStack(
+        index: currentIndex,
+        children: [
+          _buildUserTabContent(),
+          _buildLanguageTabContent(flags),
+        ],
+      ),
     );
   }
 
-  Widget _buildUserTab() {
-    return Column(
+  Widget _buildUserTabContent() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppConstants.settingsPagePadding,
+        0,
+        AppConstants.settingsPagePadding,
+        AppConstants.settingsPagePadding,
+      ),
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              BusinessCard(
-                title: 'settings.user.section',
-                avatar: ListenableBuilder(
-                  listenable: _controllers['avatar']!,
-                  builder: (context, _) => GestureDetector(
-                    onTap: _onPickAvatar,
-                    child: Stack(
-                      children: [
-                        AppUserAvatar(
-                          path: _controllers['avatar']!.text,
-                          radius: 46,
-                          iconSize: 32,
-                          extraVersion: _avatarNonce,
+        BusinessCard(
+          title: 'settings.user.section',
+          avatar: ListenableBuilder(
+            listenable: _controllers['avatar']!,
+            builder: (context, _) => GestureDetector(
+              onTap: _onPickAvatar,
+              child: Stack(
+                children: [
+                  AppUserAvatar(
+                    path: _controllers['avatar']!.text,
+                    radius: 46,
+                    iconSize: 32,
+                    extraVersion: _avatarNonce,
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.surface,
+                          width: 2,
                         ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.surface,
-                                width: 2,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt_outlined,
-                              size: 14,
-                              color: AppColors.black,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_outlined,
+                        size: 14,
+                        color: AppColors.black,
+                      ),
                     ),
                   ),
-                ),
-                fields: [
-                  BusinessCardField(
-                    label: 'settings.user.name_label',
-                    hint: 'settings.user.name_hint',
-                    controller: _controllers['name']!,
-                  ),
-                  BusinessCardField(
-                    label: 'settings.user.call_sign_label',
-                    hint: 'settings.user.call_sign_hint',
-                    controller: _controllers['callSign']!,
-                  ),
-                  BusinessCardField(
-                    label: 'settings.user.pronouns_label',
-                    hint: 'settings.user.pronouns_hint',
-                    controller: _controllers['pronouns']!,
-                    value: _getPronounsDisplay(_controllers['pronouns']!.text),
-                    customEditWidget: _buildPronounsDropdown(),
-                  ),
-                  BusinessCardField(
-                    label: 'settings.user.notes_label',
-                    hint: 'settings.user.notes_hint',
-                    controller: _controllers['notes']!,
-                    maxLines: 3,
-                  ),
                 ],
-                maxViewFields: 3,
-                onSave: _save,
               ),
-            ],
+            ),
           ),
-        ),
-        _buildNavButtons(
-          onBack: widget.onBack,
-          onNext: () => setState(() => _currentIndex = 1),
+          fields: [
+            BusinessCardField(
+              label: 'settings.user.name_label',
+              hint: 'settings.user.name_hint',
+              controller: _controllers['name']!,
+            ),
+            BusinessCardField(
+              label: 'settings.user.call_sign_label',
+              hint: 'settings.user.call_sign_hint',
+              controller: _controllers['callSign']!,
+            ),
+            BusinessCardField(
+              label: 'settings.user.pronouns_label',
+              hint: 'settings.user.pronouns_hint',
+              controller: _controllers['pronouns']!,
+              value: _getPronounsDisplay(_controllers['pronouns']!.text),
+              customEditWidget: _buildPronounsDropdown(),
+            ),
+            BusinessCardField(
+              label: 'settings.user.notes_label',
+              hint: 'settings.user.notes_hint',
+              controller: _controllers['notes']!,
+              maxLines: 3,
+            ),
+          ],
+          maxViewFields: 3,
+          onSave: _save,
         ),
       ],
     );
   }
 
-  Widget _buildLanguageTab(Map<String, String> flags) {
-    return Column(
+  Widget _buildLanguageTabContent(Map<String, String> flags) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppConstants.settingsPagePadding,
+        0,
+        AppConstants.settingsPagePadding,
+        AppConstants.settingsPagePadding,
+      ),
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              const AppSectionHeader('settings.language.section', large: true),
-              const SizedBox(height: 12),
-              ...context.supportedLocales.map((locale) {
-                final langCode = locale.languageCode;
-                final label = 'settings.language.$langCode'.tr();
-                final sublabel = 'settings.language.${langCode}_native'.tr();
-                final flag = flags[langCode] ?? AppConstants.defaultFlags[langCode] ?? '🌐';
-                final isSelected = context.locale == locale;
+        const AppSectionHeader('settings.language.section', large: true),
+        const SizedBox(height: 12),
+        ...context.supportedLocales.map((locale) {
+          final langCode = locale.languageCode;
+          final label = 'settings.language.$langCode'.tr();
+          final sublabel = 'settings.language.${langCode}_native'.tr();
+          final flag = flags[langCode] ?? AppConstants.defaultFlags[langCode] ?? '🌐';
+          final isSelected = context.locale == locale;
 
-                return AppLanguageTile(
-                  label: label,
-                  sublabel: sublabel,
-                  flag: flag,
-                  isSelected: isSelected,
-                  onTap: () async {
-                    if (!isSelected) {
-                      await context.setLocale(locale);
-                    }
-                  },
-                );
-              }),
-            ],
-          ),
-        ),
-        _buildNavButtons(
-          onBack: () => setState(() => _currentIndex = 0),
-          onNext: widget.onNext,
-        ),
+          return AppLanguageTile(
+            label: label,
+            sublabel: sublabel,
+            flag: flag,
+            isSelected: isSelected,
+            onTap: () async {
+              if (!isSelected) {
+                await context.setLocale(locale);
+              }
+            },
+          );
+        }),
       ],
     );
   }
@@ -288,21 +273,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('file_picker.pick_error'.tr(namedArgs: {'error': e.toString()})),
-            backgroundColor: AppColors.errorDark,
-          ),
+        AppSnackBar.showError(
+          context,
+          'file_picker.pick_error'.tr(namedArgs: {'error': e.toString()}),
         );
       }
     }
   }
 
-  Widget _buildNavButtons({VoidCallback? onBack, VoidCallback? onNext}) {
-    return AppSettingsNavBar(
-      onBack: onBack,
-      onSave: _save,
-      onNext: onNext,
-    );
-  }
 }

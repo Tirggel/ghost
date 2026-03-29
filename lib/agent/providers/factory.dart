@@ -216,15 +216,6 @@ class ProviderFactory {
           providerId: 'xai',
         );
 
-      case 'perplexity':
-        final apiKey = await storage.get('perplexity_api_key') ?? '';
-        return OpenAIProvider(
-          apiKey: apiKey,
-          model: model.replaceFirst('perplexity/', ''),
-          baseUrl: 'https://api.perplexity.ai',
-          displayName: 'Perplexity',
-          providerId: 'perplexity',
-        );
 
       case 'qwen':
         final apiKey = await storage.get('qwen_api_key') ?? '';
@@ -326,17 +317,6 @@ class ProviderFactory {
           baseUrl: 'https://api.minimax.io/anthropic/v1/messages',
           providerId: 'minimax',
           displayName: 'MiniMax',
-        );
-
-      case 'qwen':
-        // Qwen/DashScope uses OpenAI-compatible API (international endpoint)
-        final apiKey = await storage.get('qwen_api_key') ?? '';
-        return OpenAIProvider(
-          apiKey: apiKey,
-          model: model.replaceFirst('qwen/', ''),
-          baseUrl: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
-          displayName: 'Qwen (Alibaba)',
-          providerId: 'qwen',
         );
 
       case 'xiaomi':

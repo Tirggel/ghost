@@ -11,6 +11,8 @@ import '../models/message.dart';
 import '../sessions/manager.dart';
 import '../sessions/session.dart';
 import '../config/config.dart';
+import '../agent/providers/factory.dart';
+import '../models/provider.dart';
 
 final _log = Logger('Ghost.AgentRouter');
 
@@ -160,6 +162,32 @@ class AgentRouter {
       return {'status': 'ok', 'sessionId': sessionId, 'model': model};
     });
 
+    // 5b. Set title for a specific session
+    gateway.rpcRegistry.register('agent.setSessionTitle',
+        (params, context) async {
+      final sessionId = params?['sessionId'] as String?;
+      final title = params?['title'] as String?;
+      if (sessionId == null || title == null) {
+        throw ProtocolError('Missing required parameter: sessionId or title');
+      }
+      final session = sessionManager.getSession(sessionId);
+      if (session != null) {
+        session.title = title;
+        await sessionManager.addMessage(
+          sessionId: sessionId,
+          role: 'system',
+          content: 'session_rename',
+          metadata: {'title': title},
+        );
+        // Broadcast update
+        gateway.broadcast('agent.session_updated', {
+          'sessionId': sessionId,
+          'title': title,
+        });
+      }
+      return {'status': 'ok', 'sessionId': sessionId, 'title': title};
+    });
+
     // 6. Stop/Interrupt processing for a session
     gateway.rpcRegistry.register('agent.stop', (params, context) async {
       final sessionId = params?['sessionId'] as String?;
@@ -226,9 +254,13 @@ class AgentRouter {
         },
       );
 
-      // Auto-rename if this is the first interaction (user + assistant)
-      if (session != null && session.history.length == 2) {
-        unawaited(_autoRenameSession(session, agent));
+      // Auto-rename if this is a new session with no title yet
+      if (session != null && session.title == null) {
+        final hasAssistantResponse = session.history.any((m) => m.role == 'assistant');
+        // Only rename on the first few messages to avoid unnecessary API calls
+        if (hasAssistantResponse && session.history.length <= 3) {
+          unawaited(_autoRenameSession(session, agent));
+        }
       }
 
       // Notify completion
@@ -252,6 +284,16 @@ class AgentRouter {
     try {
       _log.info('Auto-renaming session ${session.id}...');
 
+      // Resolve the session-specific provider
+      AIModelProvider activeProvider = agent.provider;
+      if (session.model != null || session.provider != null) {
+        activeProvider = await ProviderFactory.create(
+          model: session.model ?? agent.provider.modelId,
+          provider: session.provider ?? agent.provider.providerId,
+          storage: agent.storage,
+        );
+      }
+
       // Create a prompt for summarization
       final mainPrompt = agent.systemPrompt;
       final summaryPrompt = '''
@@ -262,14 +304,21 @@ Conversation context:
 $mainPrompt
 ''';
 
-      final messages = List<Message>.from(session.history);
+      // Strip metadata from history to avoid passing incompatible tool_calls
+      // back to the provider (which causes 400 Bad Request on some APIs).
+      final messages = session.history.map((m) => Message(
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp,
+      )).toList();
+
       messages.add(Message(
         role: 'user',
         content: summaryPrompt,
         timestamp: DateTime.now(),
       ));
 
-      final response = await agent.provider.chat(
+      final response = await activeProvider.chat(
         messages: messages,
         systemPrompt:
             'You are a session titling assistant. Be extremely concise.',
@@ -296,6 +345,42 @@ $mainPrompt
       }
     } catch (e) {
       _log.warning('Auto-rename failed for session ${session.id}: $e');
+      
+      // Fallback to first user message if LLM generation fails
+      try {
+        if (session.title == null && session.history.isNotEmpty) {
+          final firstUserMsg = session.history.firstWhere(
+            (m) => m.role == 'user',
+            orElse: () => session.history.first,
+          );
+          
+          String fallbackTitle = firstUserMsg.content.trim();
+          // Remove newlines if any
+          fallbackTitle = fallbackTitle.replaceAll('\n', ' ');
+          if (fallbackTitle.length > 30) {
+            fallbackTitle = '${fallbackTitle.substring(0, 30)}...';
+          }
+          
+          if (fallbackTitle.isNotEmpty) {
+            session.title = fallbackTitle;
+            _log.info('Session ${session.id} renamed to fallback: $fallbackTitle');
+
+            await sessionManager.addMessage(
+              sessionId: session.id,
+              role: 'system',
+              content: 'session_rename',
+              metadata: {'title': fallbackTitle},
+            );
+
+            gateway.broadcast('agent.session_updated', {
+              'sessionId': session.id,
+              'title': fallbackTitle,
+            });
+          }
+        }
+      } catch (fallbackError) {
+        _log.warning('Fallback auto-rename also failed: $fallbackError');
+      }
     }
   }
 }

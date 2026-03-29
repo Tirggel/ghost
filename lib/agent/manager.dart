@@ -2,7 +2,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:cron/cron.dart';
 import 'package:logging/logging.dart';
 
@@ -160,6 +159,7 @@ class AgentManager {
           workspaceDir: workspaceDir,
           stateDir: stateDir,
           browserHeadless: config.tools.browserHeadless,
+          shouldSendChatHistory: agentConfig.shouldSendChatHistory,
         );
 
         _customAgents[agentConfig.id] = agent;
@@ -237,6 +237,42 @@ class AgentManager {
       }
     } catch (e) {
       _log.severe('Error running cron task for ${agentConfig.name}: $e');
+      
+      final errorStr = e.toString().toLowerCase();
+      String errorMessage = '⚠️ Agent failed: $e';
+      
+      if (errorStr.contains('429') || errorStr.contains('too many requests') || errorStr.contains('rate limit')) {
+        errorMessage = '⚠️ Rate limit exceeded: $e\n\n💡 Tipp: Versuche einen anderen Provider oder ein anderes Modell zu wählen.\n\n🚦 Agent wurde automatisch pausiert, um wiederholte Fehler zu vermeiden.';
+        
+        // Auto-pause the custom agent
+        final agentsList = List<CustomAgentConfig>.from(config.customAgents);
+        final index = agentsList.indexWhere((a) => a.id == agentConfig.id);
+        if (index != -1) {
+          agentsList[index] = agentConfig.copyWith(enabled: false);
+          // Fire and forget save so we don't block
+          unawaited(saveCustomAgents(agentsList));
+          _log.info('Auto-paused custom agent ${agentConfig.name} due to rate limits.');
+        }
+      }
+
+      try {
+        final sessionId = 'cron_${agentConfig.id}';
+        await sessionManager.addMessage(
+          sessionId: sessionId,
+          role: 'error',
+          content: errorMessage,
+          metadata: {
+            'is_error': true,
+          },
+        );
+        
+        final session = sessionManager.getSession(sessionId);
+        if (onSessionUpdated != null && session != null && session.history.isNotEmpty) {
+          onSessionUpdated!(sessionId, session.history.last);
+        }
+      } catch (innerErr) {
+        _log.severe('Failed to log cron error to session: $innerErr');
+      }
     }
   }
 
@@ -290,6 +326,7 @@ class AgentManager {
             ? '${agentConfig.systemPrompt}\n\n$finalPrompt'
             : finalPrompt;
         agent.browserHeadless = config.tools.browserHeadless;
+        agent.shouldSendChatHistory = agentConfig.shouldSendChatHistory;
       }
     }
     _log.info('Updated config, providers, and system prompts for all agents');

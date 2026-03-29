@@ -32,12 +32,16 @@ class DuckDuckGoSearchTool extends Tool {
 
   @override
   String getLogSummary(Map<String, dynamic> input) =>
-      'Searching for "${input['query']}"...';
+      'Searching for "${input['query'] ?? 'unknown'}"...';
 
   @override
   Future<ToolResult> execute(
       Map<String, dynamic> input, ToolContext context) async {
-    final query = input['query'] as String;
+    final query = input['query']?.toString();
+
+    if (query == null || query.isEmpty) {
+      return const ToolResult.error('Search query is missing or empty.');
+    }
 
     final ddgs = DDGS();
     try {

@@ -21,12 +21,8 @@ class SidebarFooter extends ConsumerWidget {
     final emoji = identity.emoji ?? '🫥';
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: 24,
-      ),
-      decoration: const BoxDecoration(
-        color: AppColors.pureBlack,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      decoration: const BoxDecoration(color: AppColors.pureBlack),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -44,76 +40,74 @@ class SidebarFooter extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
           // IDENTITY SECTION
-          Padding (
+          Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppConstants.sidebarPaddingHorizontal,
             ),
             child: Row(
               children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: AppIdentityAvatar(
+                    path: avatarPath,
+                    emoji: emoji,
+                    borderRadius: BorderRadius.circular(4),
+                    radius: 16,
+                    iconSize: 16,
+                  ),
                 ),
-                child: AppIdentityAvatar(
-                  path: avatarPath,
-                  emoji: emoji,
-                  borderRadius: BorderRadius.circular(4),
-                  radius: 16,
-                  iconSize: 16,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2.0,
-                        color: AppColors.textMain,
-                        height: 1.1,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2.0,
+                          color: AppColors.textMain,
+                          height: 1.1,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const Text(
-                      'Haupt-Agent',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDim,
-                        letterSpacing: 0.5,
-                        fontFamily: 'monospace',
+                      const Text(
+                        'Haupt-Agent',
+                        style: TextStyle(
+                          fontSize: AppConstants.fontSizeLabelTiny,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textDim,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              _HoverLogoutButton(
-                onTap: () async {
-                  final confirmed = await AppAlertDialog.showConfirmation(
-                    context: context,
-                    title: 'sidebar.logout_title'.tr(),
-                    content: 'sidebar.logout_content'.tr(),
-                    confirmLabel: 'common.logout'.tr(),
-                    isDestructive: true,
-                  );
-                  if (confirmed == true) {
-                    await ref.read(authTokenProvider.notifier).logout();
-                  }
-                },
-              ),
-            ],
+                _HoverLogoutButton(
+                  onTap: () async {
+                    final confirmed = await AppAlertDialog.showConfirmation(
+                      context: context,
+                      title: 'sidebar.logout_title'.tr(),
+                      content: 'sidebar.logout_content'.tr(),
+                      confirmLabel: 'common.logout'.tr(),
+                      isDestructive: true,
+                    );
+                    if (confirmed == true) {
+                      await ref.read(authTokenProvider.notifier).logout();
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 }
 
 class _HoverLogoutButton extends StatefulWidget {

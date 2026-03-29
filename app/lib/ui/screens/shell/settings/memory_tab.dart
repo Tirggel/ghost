@@ -9,16 +9,13 @@ import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/searchable_model_picker.dart';
 import '../../../widgets/app_dialogs.dart';
+import '../../../widgets/app_snackbar.dart';
 
 class MemoryTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
   final VoidCallback? onNext;
 
-  const MemoryTab({
-    super.key,
-    this.onBack,
-    this.onNext,
-  });
+  const MemoryTab({super.key, this.onBack, this.onNext});
 
   @override
   ConsumerState<MemoryTab> createState() => _MemoryTabState();
@@ -50,7 +47,9 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       _ragEnabled = config.memory.ragEnabled;
       _embeddingProvider = config.memory.embeddingProvider;
       _embeddingModel = config.memory.embeddingModel;
-      _selectedProvider = _embeddingProvider.isNotEmpty ? _embeddingProvider : null;
+      _selectedProvider = _embeddingProvider.isNotEmpty
+          ? _embeddingProvider
+          : null;
       _selectedModel = _embeddingModel.isNotEmpty ? _embeddingModel : null;
       _isInit = true;
     }
@@ -68,9 +67,12 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       // Skip non-AI providers
       if (service == 'telegram') continue;
 
-      final isLocal = service == 'ollama' || service == 'vllm' || service == 'litellm';
+      final isLocal =
+          service == 'ollama' || service == 'vllm' || service == 'litellm';
       final storageKey = isLocal ? '${service}_base_url' : '${service}_api_key';
-      final isDetected = config.detectedLocalProviders.any((dp) => dp['id'] == service);
+      final isDetected = config.detectedLocalProviders.any(
+        (dp) => dp['id'] == service,
+      );
 
       if (vaultKeys.contains(storageKey) || isDetected) {
         active.add(p);
@@ -99,12 +101,14 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       'embeddingModel': '',
     });
 
-    final models = await ref.read(configProvider.notifier).listModels(provider, null);
+    final models = await ref
+        .read(configProvider.notifier)
+        .listModels(provider, null);
     setState(() {
       _availableModels = models;
       _loadingModels = false;
       _embeddingProvider = provider;
-      
+
       if (_embeddingModel.isNotEmpty && models.contains(_embeddingModel)) {
         _selectedModel = _embeddingModel;
       } else {
@@ -152,8 +156,9 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
         'embeddingModel': model,
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('settings.memory.embedding_success'.tr())),
+        AppSnackBar.showSuccess(
+          context,
+          'settings.memory.embedding_success'.tr(),
         );
       }
     } else {
@@ -179,8 +184,9 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       if (path != null) {
         await File(path).writeAsString(data);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('settings.memory.backup_success'.tr())),
+          AppSnackBar.showSuccess(
+            context,
+            'settings.memory.backup_success'.tr(),
           );
         }
       }
@@ -188,7 +194,9 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       if (mounted) {
         showAppErrorDialog(
           context,
-          'settings.memory.backup_failed'.tr(namedArgs: {'error': e.toString()}),
+          'settings.memory.backup_failed'.tr(
+            namedArgs: {'error': e.toString()},
+          ),
         );
       }
     }
@@ -202,10 +210,13 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       );
       if (result != null && result.files.single.path != null) {
         final data = await File(result.files.single.path!).readAsString();
-        await ref.read(gatewayClientProvider).call('memory.restore', {'data': data});
+        await ref.read(gatewayClientProvider).call('memory.restore', {
+          'data': data,
+        });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('settings.memory.restore_success'.tr())),
+          AppSnackBar.showSuccess(
+            context,
+            'settings.memory.restore_success'.tr(),
           );
         }
       }
@@ -213,7 +224,9 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       if (mounted) {
         showAppErrorDialog(
           context,
-          'settings.memory.restore_failed'.tr(namedArgs: {'error': e.toString()}),
+          'settings.memory.restore_failed'.tr(
+            namedArgs: {'error': e.toString()},
+          ),
         );
       }
     }
@@ -221,7 +234,9 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
 
   Future<void> _backupRag() async {
     try {
-      final res = await ref.read(gatewayClientProvider).call('memory.rag.backup');
+      final res = await ref
+          .read(gatewayClientProvider)
+          .call('memory.rag.backup');
       final data = res['data'] as String?;
       if (data == null) return;
 
@@ -232,8 +247,9 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       if (path != null) {
         await File(path).writeAsString(data);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('settings.memory.rag_backup_success'.tr())),
+          AppSnackBar.showSuccess(
+            context,
+            'settings.memory.rag_backup_success'.tr(),
           );
         }
       }
@@ -241,7 +257,9 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       if (mounted) {
         showAppErrorDialog(
           context,
-          'settings.memory.rag_backup_failed'.tr(namedArgs: {'error': e.toString()}),
+          'settings.memory.rag_backup_failed'.tr(
+            namedArgs: {'error': e.toString()},
+          ),
         );
       }
     }
@@ -255,10 +273,13 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       );
       if (result != null && result.files.single.path != null) {
         final data = await File(result.files.single.path!).readAsString();
-        await ref.read(gatewayClientProvider).call('memory.rag.restore', {'data': data});
+        await ref.read(gatewayClientProvider).call('memory.rag.restore', {
+          'data': data,
+        });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('settings.memory.rag_restore_success'.tr())),
+          AppSnackBar.showSuccess(
+            context,
+            'settings.memory.rag_restore_success'.tr(),
           );
         }
       }
@@ -266,13 +287,19 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       if (mounted) {
         showAppErrorDialog(
           context,
-          'settings.memory.rag_restore_failed'.tr(namedArgs: {'error': e.toString()}),
+          'settings.memory.rag_restore_failed'.tr(
+            namedArgs: {'error': e.toString()},
+          ),
         );
       }
     }
   }
 
-  Future<void> _clearMemory(String type, String titleKey, String contentKey) async {
+  Future<void> _clearMemory(
+    String type,
+    String titleKey,
+    String contentKey,
+  ) async {
     final confirm = await AppAlertDialog.showConfirmation(
       context: context,
       title: titleKey.tr(),
@@ -283,17 +310,22 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
 
     if (confirm == true) {
       try {
-        await ref.read(gatewayClientProvider).call('config.clearMemory', {'type': type});
+        await ref.read(gatewayClientProvider).call('config.clearMemory', {
+          'type': type,
+        });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('settings.memory.clear_success'.tr())),
+          AppSnackBar.showSuccess(
+            context,
+            'settings.memory.clear_success'.tr(),
           );
         }
       } catch (e) {
         if (mounted) {
           showAppErrorDialog(
             context,
-            'settings.memory.clear_failed'.tr(namedArgs: {'error': e.toString()}),
+            'settings.memory.clear_failed'.tr(
+              namedArgs: {'error': e.toString()},
+            ),
           );
         }
       }
@@ -314,221 +346,248 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       }
     });
 
-    return Column(
+    return AppSettingsPage(
+      onBack: widget.onBack,
+      onNext: widget.onNext,
+      onSave: () async {
+        await ref.read(configProvider.notifier).updateMemory({
+          'enabled': _standardEnabled,
+          'ragEnabled': _ragEnabled,
+          'embeddingProvider': _embeddingProvider,
+          'embeddingModel': _embeddingModel,
+        });
+        if (mounted) {
+          AppSnackBar.showSuccess(context, 'settings.memory.saved'.tr());
+        }
+      },
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              const AppSectionHeader('settings.memory.standard_section'),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: Text(
-                  'settings.memory.standard_desc'.tr(),
-                  style: const TextStyle(color: AppColors.textDim),
-                ),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
-                activeThumbColor: AppColors.primary,
-                title: Text('settings.memory.standard_enable'.tr().toUpperCase(),
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                value: _standardEnabled,
-                onChanged: (val) async {
-                  setState(() => _standardEnabled = val);
-                  await ref.read(configProvider.notifier).updateMemory({
-                    'enabled': val,
-                    'ragEnabled': _ragEnabled,
-                  });
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('settings.memory.saved'.tr())),
-                    );
-                  }
-                },
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _standardEnabled ? _backupStandard : null,
-                    icon: const Icon(Icons.download, size: 18),
-                    label: Text('settings.memory.backup'.tr()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.border,
-                      foregroundColor: AppColors.textMain,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton.icon(
-                    onPressed: _standardEnabled ? _restoreStandard : null,
-                    icon: const Icon(Icons.upload, size: 18),
-                    label: Text('settings.memory.restore'.tr()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.border,
-                      foregroundColor: AppColors.textMain,
-                    ),
-                  ),
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: _standardEnabled ? () => _clearMemory('standard', 'settings.memory.delete_standard_title', 'settings.memory.delete_standard_content') : null,
-                    icon: const Icon(Icons.delete_forever, size: 18),
-                    label: Text('settings.memory.delete_all'.tr()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.border,
-                      foregroundColor: AppColors.textMain,
-                    ).copyWith(
-                      backgroundColor:
-                          WidgetStateProperty.resolveWith<Color?>((states) {
-                            if (states.contains(WidgetState.hovered)) {
-                              return Colors.red.withValues(alpha: 0.1);
-                            }
-                            return AppColors.border;
-                          }),
-                      foregroundColor:
-                          WidgetStateProperty.resolveWith<Color?>((states) {
-                            if (states.contains(WidgetState.hovered)) {
-                              return Colors.redAccent;
-                            }
-                            return AppColors.textMain;
-                          }),
-                      side: WidgetStateProperty.resolveWith<BorderSide?>(
-                        (states) {
-                          if (states.contains(WidgetState.hovered)) {
-                            return BorderSide(
-                              color: Colors.red.withValues(alpha: 0.2),
-                            );
-                          }
-                          return const BorderSide(color: Colors.transparent);
-                        },
-                      ),
-                    ),
-
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 40),
-
-              const AppSectionHeader('settings.memory.rag_section'),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Text(
-                  'settings.memory.rag_desc'.tr(),
-                  style: const TextStyle(color: AppColors.textDim),
-                ),
-              ),
-
-              // ── Embedding model selector ─────────────────────────────────
-              _buildEmbeddingSelector(),
-
-              const SizedBox(height: 12),
-
-              // RAG on/off switch (disabled until a model is configured)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
-                activeThumbColor: AppColors.primary,
-                title: Text('settings.memory.rag_enable'.tr()),
-                subtitle: (_embeddingProvider.isEmpty || _embeddingModel.isEmpty)
-                    ? Text(
-                        'settings.memory.embedding_no_provider'.tr(),
-                        style: const TextStyle(
-                          color: AppColors.textDim,
-                          fontSize: 12,
-                        ),
-                      )
-                    : null,
-                value: _ragEnabled,
-                onChanged: (_embeddingProvider.isEmpty || _embeddingModel.isEmpty || !_ragEnabled)
-                    ? null // can't enable without a model OR if it was disabled (must test first)
-                    : (val) async {
-                        setState(() => _ragEnabled = val);
-                        await ref.read(configProvider.notifier).updateMemory({
-                          'enabled': _standardEnabled,
-                          'ragEnabled': val,
-                          'embeddingProvider': _embeddingProvider,
-                          'embeddingModel': _embeddingModel,
-                        });
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('settings.memory.saved'.tr())),
-                          );
-                        }
-                      },
-              ),
-
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _ragEnabled ? _backupRag : null,
-                    icon: const Icon(Icons.download, size: 18),
-                    label: Text('settings.memory.backup'.tr()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.border,
-                      foregroundColor: AppColors.textMain,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton.icon(
-                    onPressed: _ragEnabled ? _restoreRag : null,
-                    icon: const Icon(Icons.upload, size: 18),
-                    label: Text('settings.memory.restore'.tr()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.border,
-                      foregroundColor: AppColors.textMain,
-                    ),
-                  ),
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: _ragEnabled ? () => _clearMemory('rag', 'settings.memory.delete_rag_title', 'settings.memory.delete_rag_content') : null,
-                    icon: const Icon(Icons.delete_forever, size: 18),
-                    label: Text('settings.memory.delete_all'.tr()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.border,
-                      foregroundColor: AppColors.textMain,
-                    ).copyWith(
-                      backgroundColor:
-                          WidgetStateProperty.resolveWith<Color?>((states) {
-                            if (states.contains(WidgetState.hovered)) {
-                              return Colors.red.withValues(alpha: 0.1);
-                            }
-                            return AppColors.border;
-                          }),
-                      foregroundColor:
-                          WidgetStateProperty.resolveWith<Color?>((states) {
-                            if (states.contains(WidgetState.hovered)) {
-                              return Colors.redAccent;
-                            }
-                            return AppColors.textMain;
-                          }),
-                      side: WidgetStateProperty.resolveWith<BorderSide?>(
-                        (states) {
-                          if (states.contains(WidgetState.hovered)) {
-                            return BorderSide(
-                              color: Colors.red.withValues(alpha: 0.2),
-                            );
-                          }
-                          return const BorderSide(color: Colors.transparent);
-                        },
-                      ),
-                    ),
-
-                  ),
-                ],
-              ),
-            ],
+        const AppSectionHeader('settings.memory.standard_section', large: true),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Text(
+            'settings.memory.standard_desc'.tr(),
+            style: const TextStyle(color: AppColors.textDim),
           ),
         ),
-        _buildNavButtons(context),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
+          activeThumbColor: AppColors.primary,
+          title: Text(
+            'settings.memory.standard_enable'.tr().toUpperCase(),
+            style: const TextStyle(
+              fontSize: AppConstants.fontSizeLabelTiny,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          value: _standardEnabled,
+          onChanged: (val) async {
+            setState(() => _standardEnabled = val);
+            await ref.read(configProvider.notifier).updateMemory({
+              'enabled': val,
+              'ragEnabled': _ragEnabled,
+            });
+            if (!context.mounted) return;
+            AppSnackBar.showSuccess(
+              context,
+              'settings.memory.saved'.tr(),
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            ElevatedButton.icon(
+              onPressed: _standardEnabled ? _backupStandard : null,
+              icon: const Icon(Icons.download, size: 18),
+              label: Text('settings.memory.backup'.tr()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.border,
+                foregroundColor: AppColors.textMain,
+              ),
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton.icon(
+              onPressed: _standardEnabled ? _restoreStandard : null,
+              icon: const Icon(Icons.upload, size: 18),
+              label: Text('settings.memory.restore'.tr()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.border,
+                foregroundColor: AppColors.textMain,
+              ),
+            ),
+            const Spacer(),
+            ElevatedButton.icon(
+              onPressed: _standardEnabled
+                  ? () => _clearMemory(
+                      'standard',
+                      'settings.memory.delete_standard_title',
+                      'settings.memory.delete_standard_content',
+                    )
+                  : null,
+              icon: const Icon(Icons.delete_forever, size: 18),
+              label: Text('settings.memory.delete_all'.tr()),
+              style:
+                  ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.border,
+                    foregroundColor: AppColors.textMain,
+                  ).copyWith(
+                    backgroundColor:
+                        WidgetStateProperty.resolveWith<Color?>((states) {
+                          if (states.contains(WidgetState.hovered)) {
+                            return Colors.red.withValues(alpha: 0.1);
+                          }
+                          return AppColors.border;
+                        }),
+                    foregroundColor:
+                        WidgetStateProperty.resolveWith<Color?>((states) {
+                          if (states.contains(WidgetState.hovered)) {
+                            return Colors.redAccent;
+                          }
+                          return AppColors.textMain;
+                        }),
+                    side: WidgetStateProperty.resolveWith<BorderSide?>((
+                      states,
+                    ) {
+                      if (states.contains(WidgetState.hovered)) {
+                        return BorderSide(
+                          color: Colors.red.withValues(alpha: 0.2),
+                        );
+                      }
+                      return const BorderSide(color: Colors.transparent);
+                    }),
+                  ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 40),
+
+        const AppSectionHeader('settings.memory.rag_section', large: true),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Text(
+            'settings.memory.rag_desc'.tr(),
+            style: const TextStyle(color: AppColors.textDim),
+          ),
+        ),
+
+        // ── Embedding model selector ─────────────────────────────────
+        _buildEmbeddingSelector(),
+
+        const SizedBox(height: 12),
+
+        // RAG on/off switch (disabled until a model is configured)
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
+          activeThumbColor: AppColors.primary,
+          title: Text('settings.memory.rag_enable'.tr()),
+          subtitle:
+              (_embeddingProvider.isEmpty || _embeddingModel.isEmpty)
+              ? Text(
+                  'settings.memory.embedding_no_provider'.tr(),
+                  style: const TextStyle(
+                    color: AppColors.textDim,
+                    fontSize: 12,
+                  ),
+                )
+              : null,
+          value: _ragEnabled,
+          onChanged:
+              (_embeddingProvider.isEmpty ||
+                  _embeddingModel.isEmpty ||
+                  !_ragEnabled)
+              ? null // can't enable without a model OR if it was disabled (must test first)
+              : (val) async {
+                  setState(() => _ragEnabled = val);
+                  await ref.read(configProvider.notifier).updateMemory({
+                    'enabled': _standardEnabled,
+                    'ragEnabled': val,
+                    'embeddingProvider': _embeddingProvider,
+                    'embeddingModel': _embeddingModel,
+                  });
+                  if (!context.mounted) return;
+                  AppSnackBar.showSuccess(
+                    context,
+                    'settings.memory.saved'.tr(),
+                  );
+                },
+        ),
+
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            ElevatedButton.icon(
+              onPressed: _ragEnabled ? _backupRag : null,
+              icon: const Icon(Icons.download, size: 18),
+              label: Text('settings.memory.backup'.tr()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.border,
+                foregroundColor: AppColors.textMain,
+              ),
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton.icon(
+              onPressed: _ragEnabled ? _restoreRag : null,
+              icon: const Icon(Icons.upload, size: 18),
+              label: Text('settings.memory.restore'.tr()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.border,
+                foregroundColor: AppColors.textMain,
+              ),
+            ),
+            const Spacer(),
+            ElevatedButton.icon(
+              onPressed: _ragEnabled
+                  ? () => _clearMemory(
+                      'rag',
+                      'settings.memory.delete_rag_title',
+                      'settings.memory.delete_rag_content',
+                    )
+                  : null,
+              icon: const Icon(Icons.delete_forever, size: 18),
+              label: Text('settings.memory.delete_all'.tr()),
+              style:
+                  ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.border,
+                    foregroundColor: AppColors.textMain,
+                  ).copyWith(
+                    backgroundColor:
+                        WidgetStateProperty.resolveWith<Color?>((states) {
+                          if (states.contains(WidgetState.hovered)) {
+                            return Colors.red.withValues(alpha: 0.1);
+                          }
+                          return AppColors.border;
+                        }),
+                    foregroundColor:
+                        WidgetStateProperty.resolveWith<Color?>((states) {
+                          if (states.contains(WidgetState.hovered)) {
+                            return Colors.redAccent;
+                          }
+                          return AppColors.textMain;
+                        }),
+                    side: WidgetStateProperty.resolveWith<BorderSide?>((
+                      states,
+                    ) {
+                      if (states.contains(WidgetState.hovered)) {
+                        return BorderSide(
+                          color: Colors.red.withValues(alpha: 0.2),
+                        );
+                      }
+                      return const BorderSide(color: Colors.transparent);
+                    }),
+                  ),
+            ),
+          ],
+        ),
       ],
     );
   }
 
   Widget _buildEmbeddingSelector() {
-    final hasConfig = _embeddingProvider.isNotEmpty && _embeddingModel.isNotEmpty;
+    final hasConfig =
+        _embeddingProvider.isNotEmpty && _embeddingModel.isNotEmpty;
 
     return Container(
       decoration: const BoxDecoration(
@@ -555,18 +614,20 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
               // Show current config badge
               if (hasConfig)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Text(
                     '$_embeddingProvider / ${_embeddingModel.contains('/') ? _embeddingModel.split('/').last : _embeddingModel}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.primary,
-                    ),
+                    style: TextStyle(fontSize: 11, color: AppColors.primary),
                   ),
                 ),
             ],
@@ -578,7 +639,8 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
             children: [
               Expanded(
                 child: AppDropdownField<String>(
-                  value: _activeProviders.any((p) => p['id'] == _selectedProvider)
+                  value:
+                      _activeProviders.any((p) => p['id'] == _selectedProvider)
                       ? _selectedProvider
                       : null,
                   label: 'settings.memory.embedding_provider_label',
@@ -595,7 +657,8 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
                             AppConstants.getProviderIcon(p['id']!),
                             width: 16,
                             height: 16,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.psychology, size: 16),
+                            errorBuilder: (_, _, _) =>
+                                const Icon(Icons.psychology, size: 16),
                           ),
                           const SizedBox(width: 8),
                           Text('providers.${p['id']}'.tr()),
@@ -611,14 +674,17 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
                           AppConstants.getProviderIcon(p['id']!),
                           width: 16,
                           height: 16,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.psychology, size: 16),
+                          errorBuilder: (_, _, _) =>
+                              const Icon(Icons.psychology, size: 16),
                         ),
                         const SizedBox(width: 8),
                         Text('providers.${p['id']}'.tr()),
                       ],
                     );
                   },
-                  onChanged: _activeProviders.isEmpty ? (_) {} : _onProviderChanged,
+                  onChanged: _activeProviders.isEmpty
+                      ? (_) {}
+                      : _onProviderChanged,
                 ),
               ),
             ],
@@ -650,23 +716,26 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
                               _selectedModel = val;
                               _embeddingProvider = _selectedProvider ?? '';
                               _embeddingModel = val;
-                              _ragEnabled = false; // Disable RAG on model change
+                              _ragEnabled =
+                                  false; // Disable RAG on model change
                             });
                             // Update backend to disable RAG
-                            await ref.read(configProvider.notifier).updateMemory({
-                              'enabled': _standardEnabled,
-                              'ragEnabled': false,
-                              'embeddingProvider': _embeddingProvider,
-                              'embeddingModel': val,
-                            });
+                            await ref
+                                .read(configProvider.notifier)
+                                .updateMemory({
+                                  'enabled': _standardEnabled,
+                                  'ragEnabled': false,
+                                  'embeddingProvider': _embeddingProvider,
+                                  'embeddingModel': val,
+                                });
                           }
                         },
                         label: 'settings.memory.embedding_model_label',
                         hint: _selectedProvider == null
                             ? 'settings.memory.embedding_choose_provider_first'
                             : _availableModels.isEmpty
-                                ? 'settings.memory.embedding_no_models'
-                                : 'settings.memory.embedding_model_label',
+                            ? 'settings.memory.embedding_no_models'
+                            : 'settings.memory.embedding_model_label',
                       ),
               ),
             ],
@@ -678,7 +747,8 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: (_selectedProvider == null ||
+              onPressed:
+                  (_selectedProvider == null ||
                       _selectedModel == null ||
                       _testingEmbedding)
                   ? null
@@ -687,19 +757,28 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
                     )
                   : const Icon(Icons.science, size: 18),
               label: Text(
                 (_testingEmbedding
-                    ? 'settings.memory.embedding_testing'.tr()
-                    : 'settings.memory.embedding_test_button'.tr()).toUpperCase(),
-                style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                        ? 'settings.memory.embedding_testing'.tr()
+                        : 'settings.memory.embedding_test_button'.tr())
+                    .toUpperCase(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: AppColors.background,
-                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero,
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
@@ -709,18 +788,4 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
     );
   }
 
-  Widget _buildNavButtons(BuildContext context) {
-    return AppSettingsNavBar(
-      onBack: widget.onBack,
-      onSave: () async {
-        await ref.read(configProvider.notifier).updateMemory({
-          'enabled': _standardEnabled,
-          'ragEnabled': _ragEnabled,
-          'embeddingProvider': _embeddingProvider,
-          'embeddingModel': _embeddingModel,
-        });
-      },
-      onNext: widget.onNext,
-    );
-  }
 }

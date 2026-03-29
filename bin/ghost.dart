@@ -1,6 +1,7 @@
 // Ghost — CLI entry point.
 
 import 'dart:async';
+// ignore_for_file: avoid_print
 import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -335,6 +336,13 @@ class GatewayCommand extends Command<void> {
     // Start server ASAP so the Flutter app can connect and fetch its token
     await server.start();
 
+    // 8. Watch for config changes
+    watchConfig(configPath, (newConfig) {
+      _log.info('Configuration file changed, reloading...');
+      server.updateConfig(newConfig.gateway);
+      agentManager.updateConfig(newConfig);
+    });
+
     // Always use the bound server port in the active config for this run
     if (server.port != config.gateway.port) {
       _log.warning('Updating config file with new bound port: ${server.port}');
@@ -358,7 +366,6 @@ class GatewayCommand extends Command<void> {
                 'GhostBot',
           ));
         } else {
-          // ignore: avoid_print
           print(
               '⚠️  Telegram enabled but token is missing. Set TELEGRAM_BOT_TOKEN or use config set-key.');
         }
@@ -381,38 +388,30 @@ class GatewayCommand extends Command<void> {
             subscriptionId: googleChatSubscriptionId,
           ));
         } else {
-          // ignore: avoid_print
           print(
               '⚠️  Google Chat enabled but missing required settings (serviceAccountJsonPath, projectId, subscriptionId).');
         }
       }
 
-      // ignore: avoid_print
       print('👻 Ghost Gateway running on '
           'ws://${config.gateway.bindAddress}:${server.port}');
-      // ignore: avoid_print
       print('📂 Workspace: $workspaceDir');
       if (provider.modelId.isNotEmpty) {
-        // ignore: avoid_print
-        print('🧠 Model: ${provider.displayName} (${provider.modelId})');
+          print('🧠 Model: ${provider.displayName} (${provider.modelId})');
       }
 
       final channelsStatus = channelManager.getStatus();
       if (channelsStatus.isNotEmpty) {
-        // ignore: avoid_print
-        print(
+          print(
             '📱 Active Channels: ${channelsStatus.map((c) => c['type']).join(', ')}');
       }
-      // ignore: avoid_print
       print('   Press Ctrl+C to stop');
     }).catchError((Object e) {
-      // ignore: avoid_print
       print('❌ Background initialization failed: $e');
     }));
 
     // Handle SIGINT
     ProcessSignal.sigint.watch().listen((_) async {
-      // ignore: avoid_print
       print('\n🛑 Shutting down...');
       await server.stop();
       for (final chan in channelManager.getStatus()) {
@@ -461,7 +460,6 @@ class ConfigShowCommand extends Command<void> {
   Future<void> run() async {
     final configPath = argResults!.option('config')!;
     final config = await loadConfig(configPath);
-    // ignore: avoid_print
     print(config.toString());
   }
 }
@@ -484,14 +482,11 @@ class ConfigValidateCommand extends Command<void> {
     final errors = validateConfig(config);
 
     if (errors.isEmpty) {
-      // ignore: avoid_print
       print('✅ Configuration is valid');
     } else {
-      // ignore: avoid_print
       print('❌ Configuration errors:');
       for (final error in errors) {
-        // ignore: avoid_print
-        print('  - $error');
+          print('  - $error');
       }
       exit(1);
     }
@@ -527,13 +522,9 @@ class ConfigSetTokenCommand extends Command<void> {
 
     await saveConfig(config, configPath);
 
-    // ignore: avoid_print
     print('🔑 New auth token generated:');
-    // ignore: avoid_print
     print('   ${authToken.raw}');
-    // ignore: avoid_print
     print('');
-    // ignore: avoid_print
     print('Token hash saved to $configPath');
   }
 }
@@ -562,7 +553,6 @@ class ConfigSetKeyCommand extends Command<void> {
     final key = results.option('key');
 
     if (service == null || key == null) {
-      // ignore: avoid_print
       print('Usage: ghost config set-key --service <service> --key <key>');
       exit(64);
     }
@@ -587,7 +577,6 @@ class ConfigSetKeyCommand extends Command<void> {
         service == 'telegram' ? 'telegram_bot_token' : '${service}_api_key';
 
     await storage.set(storageKey, key);
-    // ignore: avoid_print
     print('✅ Securely stored $service key in vault');
   }
 }
@@ -609,37 +598,30 @@ class DoctorCommand extends Command<void> {
 
   @override
   Future<void> run() async {
-    // ignore: avoid_print
     print('🩺 Ghost Doctor\n');
 
     // Check Dart version
-    // ignore: avoid_print
     print('✅ Dart ${Platform.version.split(' ').first}');
 
     // Check config
     final configPath = argResults!.option('config')!;
     final configFile = File(configPath);
     if (await configFile.exists()) {
-      // ignore: avoid_print
       print('✅ Config found: $configPath');
 
       try {
         final config = await loadConfig(configPath);
         final errors = validateConfig(config);
         if (errors.isEmpty) {
-          // ignore: avoid_print
           print('✅ Config validates OK');
         } else {
-          // ignore: avoid_print
           print('⚠️  Config has ${errors.length} issue(s):');
           for (final error in errors) {
-            // ignore: avoid_print
-            print('   - $error');
+              print('   - $error');
           }
         }
       } catch (e) {
-        // ignore: avoid_print
-        print('❌ Config error: $e');
+          print('❌ Config error: $e');
       }
     }
 
@@ -648,20 +630,16 @@ class DoctorCommand extends Command<void> {
       p.join(Platform.environment['HOME'] ?? '.', '.ghost'),
     );
     if (await stateDir.exists()) {
-      // ignore: avoid_print
       print('✅ State directory: ${stateDir.path}');
 
       final vaultFile = File(p.join(stateDir.path, 'vault.enc'));
       if (await vaultFile.exists()) {
-        // ignore: avoid_print
-        print('✅ Secure vault found');
+          print('✅ Secure vault found');
       } else {
-        // ignore: avoid_print
-        print('ℹ️  Secure vault not initialized');
+          print('ℹ️  Secure vault not initialized');
       }
     }
 
-    // ignore: avoid_print
     print('\n👻 Doctor check complete');
   }
 }
@@ -695,14 +673,12 @@ class ResetCommand extends Command<void> {
     final configPath = results.option('config')!;
 
     if (!force) {
-      // ignore: avoid_print
       print(
           '⚠️  WARNING: This will delete ALL configuration, your secure vault, and your local database (sessions, avatars).');
       stdout.write('Are you sure you want to continue? (y/N): ');
       final response = stdin.readLineSync();
       if (response == null || response.trim().toLowerCase() != 'y') {
-        // ignore: avoid_print
-        print('Reset cancelled.');
+          print('Reset cancelled.');
         return;
       }
     }
@@ -746,8 +722,7 @@ class ResetCommand extends Command<void> {
                 savedSecrets[key] = val;
               }
             }
-            // ignore: avoid_print
-            print('✅ All vault secrets (${keys.length}) backed up.');
+              print('✅ All vault secrets (${keys.length}) backed up.');
           }
 
           // Also back up avatar bytes from Hive
@@ -760,30 +735,24 @@ class ResetCommand extends Command<void> {
             savedUserAvatar = avatarsBox.get('user_avatar');
             savedIdentityAvatar = avatarsBox.get('identity_avatar');
             if (savedUserAvatar != null) {
-              // ignore: avoid_print
-              print('✅ User avatar backed up from database.');
+                  print('✅ User avatar backed up from database.');
             }
             if (savedIdentityAvatar != null) {
-              // ignore: avoid_print
-              print('✅ Identity avatar backed up from database.');
+                  print('✅ Identity avatar backed up from database.');
             }
           } catch (e) {
-            // ignore: avoid_print
-            print('ℹ️  Could not read avatars from database: $e');
+              print('ℹ️  Could not read avatars from database: $e');
           }
 
           if (savedSecrets != null ||
               savedUserAvatar != null ||
               savedIdentityAvatar != null) {
-            // ignore: avoid_print
-            print('✅ Successfully captured configuration for restoration.');
+              print('✅ Successfully captured configuration for restoration.');
           } else {
-            // ignore: avoid_print
-            print('ℹ️  No data found to backup. Backup skipped.');
+              print('ℹ️  No data found to backup. Backup skipped.');
             backupData = false;
           }
         } catch (e) {
-          // ignore: avoid_print
           print('ℹ️  Could not read vault. Backup skipped.');
           backupData = false;
         }
@@ -802,7 +771,6 @@ class ResetCommand extends Command<void> {
     // Close Hive before deletion to avoid file locks
     await Hive.close();
 
-    // ignore: avoid_print
     print('\n🗑️  Starting factory reset...');
 
     // Delete state dir
@@ -811,14 +779,11 @@ class ResetCommand extends Command<void> {
     if (await stateDir.exists()) {
       try {
         await stateDir.delete(recursive: true);
-        // ignore: avoid_print
-        print('✅ Deleted state directory (${stateDir.path})');
+          print('✅ Deleted state directory (${stateDir.path})');
       } catch (e) {
-        // ignore: avoid_print
-        print('❌ Failed to delete state directory: $e');
+          print('❌ Failed to delete state directory: $e');
       }
     } else {
-      // ignore: avoid_print
       print('ℹ️  State directory did not exist.');
     }
 
@@ -827,16 +792,13 @@ class ResetCommand extends Command<void> {
     if (await configFile.exists()) {
       try {
         await configFile.delete();
-        // ignore: avoid_print
-        print('✅ Deleted configuration file ($configPath)');
+          print('✅ Deleted configuration file ($configPath)');
       } catch (e) {
-        // ignore: avoid_print
-        print('❌ Failed to delete configuration file: $e');
+          print('❌ Failed to delete configuration file: $e');
       }
     }
 
     // Recreate config and token
-    // ignore: avoid_print
     print('\n✨ Generating new default configuration and token...');
     final config = await loadConfig(configPath);
 
@@ -846,14 +808,12 @@ class ResetCommand extends Command<void> {
     if (backupData && providedToken != null) {
       try {
         tokenHash = GatewayAuth.hashToken(providedToken);
-        // ignore: avoid_print
-        print('✅ Preserved explicit gateway auth token.');
+          print('✅ Preserved explicit gateway auth token.');
       } catch (e) {
         // Fallback to new if parsing fails somehow
         authToken = GatewayAuth.generateAuthToken();
         tokenHash = authToken.hash;
-        // ignore: avoid_print
-        print('⚠️  Failed to parse/hash provided token, generated a new one.');
+          print('⚠️  Failed to parse/hash provided token, generated a new one.');
       }
     } else {
       authToken = GatewayAuth.generateAuthToken();
@@ -903,11 +863,9 @@ class ResetCommand extends Command<void> {
         }
 
         if (filteredKeys.isNotEmpty) {
-          // ignore: avoid_print
           print('✅ Restored vault keys: ${filteredKeys.join(', ')}');
         }
-        // ignore: avoid_print
-        print('ℹ️  Excluded agent config and API keys to allow Setup Wizard.');
+          print('ℹ️  Excluded agent config and API keys to allow Setup Wizard.');
       }
 
       // Restore avatar bytes back into the new Hive database
@@ -924,33 +882,25 @@ class ResetCommand extends Command<void> {
           if (savedIdentityAvatar != null) {
             await avatarsBox.put('identity_avatar', savedIdentityAvatar);
           }
-          // ignore: avoid_print
           print('✅ Restored avatars to new database.');
         } catch (e) {
-          // ignore: avoid_print
           print('⚠️  Could not restore avatars to database: $e');
         }
       }
     }
 
-    // ignore: avoid_print
     print('');
     if (authToken != null) {
-      // ignore: avoid_print
       print('🔑 NEW GATEWAY AUTH TOKEN:');
-      // ignore: avoid_print
       print('   ${authToken.raw}');
     } else {
-      // ignore: avoid_print
       print('🔑 GATEWAY AUTH TOKEN HAS BEEN PRESERVED.');
     }
-    // ignore: avoid_print
     print('');
 
     stdout.write('🚀 Do you want to start the gateway now? (y/N): ');
     final startResponse = stdin.readLineSync();
     if (startResponse != null && startResponse.trim().toLowerCase() == 'y') {
-      // ignore: avoid_print
       print('\nStarting gateway...\n');
 
       // Dispatch immediately to gateway command
@@ -961,7 +911,6 @@ class ResetCommand extends Command<void> {
       // We pass the config path to ensure we load what we just saved.
       await runner.run(['gateway', '--config', configPath]);
     } else {
-      // ignore: avoid_print
       print('\nReady! Run `dart bin/ghost.dart gateway` to start.');
     }
   }

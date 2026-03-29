@@ -1,7 +1,6 @@
 // Ghost — Agent runtime.
 
 import 'dart:async';
-import 'dart:convert';
 import 'package:logging/logging.dart';
 
 import '../models/message.dart';
@@ -9,7 +8,6 @@ import '../models/provider.dart';
 import '../sessions/manager.dart';
 import '../tools/registry.dart';
 import '../config/secure_storage.dart';
-import '../infra/errors.dart';
 import 'providers/factory.dart';
 import 'memory_system.dart';
 
@@ -32,6 +30,7 @@ class Agent {
     this.workspaceDir = '.',
     this.stateDir = '.ghost',
     this.browserHeadless = true,
+    this.shouldSendChatHistory = true,
   });
 
   final String id;
@@ -45,6 +44,7 @@ class Agent {
   String workspaceDir;
   final String stateDir;
   bool browserHeadless;
+  bool shouldSendChatHistory;
   final Set<String> _stoppedSessions = {};
 
   AgentState _state = AgentState.idle;
@@ -67,8 +67,9 @@ class Agent {
 
     try {
       // 1. Resolve session history
-      final messages =
-          await sessionManager.getHistory(sessionId, maxMessages: 20);
+      final messages = shouldSendChatHistory
+          ? await sessionManager.getHistory(sessionId, maxMessages: 20)
+          : <Message>[];
 
       // 2. Start the turn loop (to handle multiple tool calls)
       int iterations = 0;
@@ -100,10 +101,13 @@ class Agent {
         memoryContext =
             await memory.query(content, activeProvider: activeProvider);
         if (memoryContext.isNotEmpty) {
-          _log.info(
-              'Found ${memoryContext.length} relevant memory chunks automatically.');
+          _log.info('Found ${memoryContext.length} relevant memory chunks:');
+          for (var i = 0; i < memoryContext.length; i++) {
+            _log.info('  Memory [$i]: ${memoryContext[i]}');
+          }
           onActivityUpdate?.call('Memory: Found context');
         } else {
+          _log.info('No relevant facts found in memory for query: "$content"');
           onActivityUpdate?.call('Memory: No relevant facts');
         }
       } catch (e) {
@@ -113,6 +117,10 @@ class Agent {
 
       // Wait a tiny bit so the user can see the memory status
       await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      final List<Map<String, dynamic>> executedToolSummaries = [];
+      final contentBuffer = StringBuffer();
+      Map<String, dynamic>? finalUsage;
 
       while (iterations < maxToolIterations) {
         if (_stoppedSessions.contains(sessionId)) {
@@ -124,19 +132,11 @@ class Agent {
         _log.fine('Iteration $iterations for session $sessionId');
 
         onActivityUpdate?.call('AI: Processing turn $iterations...');
-        // 3. Call model
+        
+        // --- Model Execution ---
         final now = DateTime.now();
-        final days = [
-          'Monday',
-          'Tuesday',
-          'Wednesday',
-          'Thursday',
-          'Friday',
-          'Saturday',
-          'Sunday'
-        ];
-        final timeStr =
-            '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
+        final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        final timeStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
             '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} '
             '(${days[now.weekday - 1]})';
 
@@ -149,8 +149,7 @@ class Agent {
             'When you use "memory_add" for personal facts, use the category "user_profile".\n'
             'After adding a memory, use the tool output to see if related facts already exist, and acknowledge them in your response to the user.';
 
-        final dynamicSystemPrompt =
-            '$systemPrompt\n\n[SYSTEM: The current date and time is $timeStr]$contextString$memoryInstruction\n';
+        final dynamicSystemPrompt = '$systemPrompt\n\n[SYSTEM: The current date and time is $timeStr]$contextString$memoryInstruction\n';
 
         final activeTools = toolRegistry
             .getToolDefinitions()
@@ -162,128 +161,81 @@ class Agent {
             .where((t) => t.name.isNotEmpty)
             .toList();
 
+        final totalChars = turnMessages.fold<int>(0, (sum, m) => sum + m.content.length) + dynamicSystemPrompt.length;
+        _log.info('AI Turn $iterations: Sending request with ${turnMessages.length} messages (~$totalChars chars)');
+        
         onActivityUpdate?.call('AI: Waiting for provider...');
-        var response = await activeProvider.chat(
-          messages: turnMessages,
-          systemPrompt: dynamicSystemPrompt,
-          tools: activeTools,
-        );
-        onActivityUpdate?.call('');
-
-        // 4. Handle text content
+        AIResponse response;
+        try {
+          response = await activeProvider.chat(
+            messages: turnMessages,
+            systemPrompt: dynamicSystemPrompt,
+            tools: activeTools,
+          );
+        } catch (e) {
+          final errorStr = e.toString().toLowerCase();
+          if (errorStr.contains('context_length_exceeded') ||
+              errorStr.contains('maximum context length') ||
+              errorStr.contains('400')) {
+            _log.warning('Context length exceeded. Pruning history and retrying...');
+            if (turnMessages.length > 2) {
+              turnMessages.removeAt(0);
+              iterations--;
+              continue;
+            }
+          }
+          rethrow;
+        }
+        
         if (response.content.isNotEmpty) {
-          final preview = response.content.length > 100
-              ? '${response.content.substring(0, 100)}...'
-              : response.content;
-          _log.fine('Model responded ($preview)');
+          contentBuffer.write(response.content);
           if (onPartialResponse != null) {
             onPartialResponse(response.content);
           }
         }
-
-        // 5. Check for raw tool calls if native parsing failed
-        bool hasToolCalls = response.hasToolCalls;
-        List<ToolCall> toolCalls = response.toolCalls;
-
-        if (!hasToolCalls && response.content.contains('{"name"')) {
-          onActivityUpdate?.call('AI: Parsing tool calls...');
-          _log.fine('Attempting to parse raw JSON tool calls from content...');
-          try {
-            final regex = RegExp(r'\[\s*\{.*"name".*\}\s*\]', dotAll: true);
-            final match = regex.firstMatch(response.content);
-            if (match != null) {
-              final jsonStr = match.group(0)!;
-              final parsed = jsonDecode(jsonStr) as List<dynamic>;
-              final parsedCalls = <ToolCall>[];
-              for (final item in parsed) {
-                if (item is Map<String, dynamic> && item.containsKey('name')) {
-                  final name = item['name'] as String;
-                  if (!activeTools.any((t) => t.name == name)) {
-                    _log.info(
-                        'Skipping raw tool call "$name" because it is filtered/unavailable.');
-                    continue;
-                  }
-                  parsedCalls.add(ToolCall(
-                    id: 'call_${DateTime.now().millisecondsSinceEpoch}_${parsedCalls.length}',
-                    name: name,
-                    arguments:
-                        (item['arguments'] as Map<String, dynamic>?) ?? {},
-                  ));
-                }
-              }
-              if (parsedCalls.isNotEmpty) {
-                hasToolCalls = true;
-                toolCalls = parsedCalls;
-                // Clean the raw JSON out of the user-facing content
-                response = response.copyWith(
-                  content: response.content.replaceFirst(jsonStr, '').trim(),
-                  toolCalls: toolCalls,
-                );
-                _log.info(
-                    'Successfully parsed ${toolCalls.length} raw tool calls.');
-              }
-            }
-          } catch (e) {
-            _log.warning('Failed to parse raw tool calls from content: $e');
-          }
+        
+        if (response.usage != null) {
+          finalUsage = {
+            'input': response.usage!.inputTokens,
+            'output': response.usage!.outputTokens,
+          };
         }
 
-        // 5b. Final Check
-        if (!hasToolCalls) {
-          // Final response achieved
-          if (response.content.isNotEmpty) {
-            await sessionManager.addMessage(
-              sessionId: sessionId,
-              role: 'assistant',
-              content: response.content,
-              metadata: {
-                ...metadata,
-                'agentId': id,
-                'provider': activeProvider.providerId,
-                'model': activeProvider.modelId,
-                'usage': response.usage?.inputTokens != null
-                    ? {
-                        'input': response.usage!.inputTokens,
-                        'output': response.usage!.outputTokens,
-                      }
-                    : null,
-              },
-            );
-          }
+        // --- Handle Tool Calls ---
+        if (!response.hasToolCalls) {
+          _log.info('Agent achieved final response on iteration $iterations');
           break;
         }
 
-        // 6. Execute tools
         _state = AgentState.executingTools;
-        final toolNames = response.toolCalls.map((tc) => tc.name).join(', ');
-        _log.info(
-            'Executing ${response.toolCalls.length} tool calls: $toolNames');
-
-        // Add the assistant response (containing tool calls) to history
-        final assistantMsg = Message(
+        
+        // Add assistant turn to history
+        turnMessages.add(Message(
           role: 'assistant',
           content: response.content,
           timestamp: DateTime.now(),
           metadata: {
             'tool_calls': response.toolCalls.map((tc) => tc.toJson()).toList(),
           },
-        );
-        turnMessages.add(assistantMsg);
+        ));
 
         for (var i = 0; i < response.toolCalls.length; i++) {
           final call = response.toolCalls[i];
-          final progress = response.toolCalls.length > 1
-              ? ' [${i + 1}/${response.toolCalls.length}]'
-              : '';
+          final progress = response.toolCalls.length > 1 ? ' [${i + 1}/${response.toolCalls.length}]' : '';
+          
           try {
             final tool = toolRegistry.getTool(call.name);
             final summary = tool?.getLogSummary(call.arguments);
             final label = tool?.label ?? call.name;
 
-            final activity = summary != null && summary.isNotEmpty
-                ? '$label: $summary$progress'
-                : '$label$progress';
-            onActivityUpdate?.call(activity);
+            onActivityUpdate?.call('${summary != null ? '$label: $summary' : label}$progress');
+
+            executedToolSummaries.add({
+              'name': call.name,
+              'label': label,
+              'summary': summary,
+              'arguments': call.arguments,
+            });
 
             final result = await toolRegistry.execute(
               call.name,
@@ -298,10 +250,14 @@ class Agent {
               ),
             );
 
-            // Add tool result to context
+            String output = result.output;
+            if (output.length > 40000) {
+              output = '${output.substring(0, 40000)}\n\n(--- OUTPUT TRUNCATED ---)';
+            }
+
             turnMessages.add(Message(
               role: 'tool',
-              content: result.output,
+              content: output,
               timestamp: DateTime.now(),
               metadata: {
                 'tool_call_id': call.id,
@@ -311,43 +267,39 @@ class Agent {
               },
             ));
           } catch (e) {
-            _log.warning('Tool ${call.name} failed: $e');
-
-            // For critical errors (e.g. memory unavailable), break the loop
-            // and surface the error directly to the user as an assistant message.
-            if (e is ToolError) {
-              final errorMsg = e.message;
-              await sessionManager.addMessage(
-                sessionId: sessionId,
-                role: 'assistant',
-                content: '⚠️ $errorMsg',
-                metadata: {'agentId': id, 'is_error': true},
-              );
-              // Signal upstream via rethrow so the process stops cleanly.
-              rethrow;
-            }
-
+            _log.warning('Tool execution failed: $e');
             turnMessages.add(Message(
               role: 'tool',
               content: 'Error: $e',
               timestamp: DateTime.now(),
-              metadata: {
-                'tool_call_id': call.id,
-                'tool_name': call.name,
-                'is_error': true,
-              },
+              metadata: {'tool_call_id': call.id, 'tool_name': call.name, 'is_error': true},
             ));
           }
         }
 
         _state = AgentState.thinking;
         onActivityUpdate?.call('AI: Integrating results...');
-        await Future<void>.delayed(const Duration(milliseconds: 500));
-        onActivityUpdate?.call('');
+        await Future<void>.delayed(const Duration(milliseconds: 400));
       }
 
-      if (iterations >= maxToolIterations) {
-        _log.warning('Max tool iterations reached ($maxToolIterations)');
+      _state = AgentState.idle;
+      onActivityUpdate?.call('');
+
+      // --- Final Save ---
+      if (contentBuffer.isNotEmpty) {
+        await sessionManager.addMessage(
+          sessionId: sessionId,
+          role: 'assistant',
+          content: contentBuffer.toString(),
+          metadata: {
+            ...metadata,
+            'agentId': id,
+            'provider': activeProvider.providerId,
+            'model': activeProvider.modelId,
+            'usage': finalUsage,
+            'tool_calls': executedToolSummaries,
+          },
+        );
       }
     } catch (e) {
       _log.severe('Agent processing failed: $e');

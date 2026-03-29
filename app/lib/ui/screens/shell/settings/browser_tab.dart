@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
+import '../../../widgets/app_snackbar.dart';
 
 class BrowserTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -28,9 +29,7 @@ class _BrowserTabState extends ConsumerState<BrowserTab> {
       'browserHeadless': _browserHeadless,
     });
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('common.saved'.tr())),
-      );
+      AppSnackBar.showSuccess(context, 'common.saved'.tr());
     }
   }
 
@@ -40,7 +39,12 @@ class _BrowserTabState extends ConsumerState<BrowserTab> {
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.fromLTRB(
+              AppConstants.settingsPagePadding,
+              AppConstants.settingsTopPadding,
+              AppConstants.settingsPagePadding,
+              AppConstants.settingsPagePadding,
+            ),
             children: [
               const AppSectionHeader('settings.browser.section', large: true),
               Text(

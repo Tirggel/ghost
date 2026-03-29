@@ -4,17 +4,23 @@ class ShellState {
   final String? activeSessionId;
   final String searchQuery;
   final Set<String> collapsedFolders;
+  final int settingsTabIndex;
+  final Map<int, int> settingsSubTabIndices;
 
   ShellState({
     this.activeSessionId,
     this.searchQuery = '',
     this.collapsedFolders = const {},
+    this.settingsTabIndex = 0,
+    this.settingsSubTabIndices = const {},
   });
 
   ShellState copyWith({
     String? activeSessionId,
     String? searchQuery,
     Set<String>? collapsedFolders,
+    int? settingsTabIndex,
+    Map<int, int>? settingsSubTabIndices,
     bool clearActiveSession = false,
   }) {
     return ShellState(
@@ -23,6 +29,8 @@ class ShellState {
           : (activeSessionId ?? this.activeSessionId),
       searchQuery: searchQuery ?? this.searchQuery,
       collapsedFolders: collapsedFolders ?? this.collapsedFolders,
+      settingsTabIndex: settingsTabIndex ?? this.settingsTabIndex,
+      settingsSubTabIndices: settingsSubTabIndices ?? this.settingsSubTabIndices,
     );
   }
 }
@@ -56,5 +64,15 @@ class ShellNotifier extends Notifier<ShellState> {
       newCollapsed.add(folder);
     }
     state = state.copyWith(collapsedFolders: newCollapsed);
+  }
+
+  void setSettingsTabIndex(int index) {
+    state = state.copyWith(settingsTabIndex: index);
+  }
+
+  void setSettingsSubTabIndex(int mainTabIndex, int subTabIndex) {
+    final updatedSubTabs = Map<int, int>.from(state.settingsSubTabIndices);
+    updatedSubTabs[mainTabIndex] = subTabIndex;
+    state = state.copyWith(settingsSubTabIndices: updatedSubTabs);
   }
 }

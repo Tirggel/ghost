@@ -9,6 +9,7 @@ import '../../../widgets/app_avatar_picker.dart';
 import '../../../widgets/searchable_model_picker.dart';
 import '../../../widgets/business_card.dart';
 import '../../../widgets/skills_selector_widget.dart';
+import '../../../widgets/app_snackbar.dart';
 
 class IdentityTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -119,9 +120,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> {
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('settings.identity.saved'.tr())));
+      AppSnackBar.showSuccess(context, 'settings.identity.saved'.tr());
     }
   }
 
@@ -165,129 +164,124 @@ class _IdentityTabState extends ConsumerState<IdentityTab> {
         .map((p) => p['id']!)
         .toList();
 
-    return Column(
+    return AppSettingsPage(
+      onBack: widget.onBack,
+      onNext: widget.onNext,
+      onSave: _save,
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              BusinessCard(
-                title: 'settings.identity.section',
-                avatar: ListenableBuilder(
-                  listenable: _controllers['avatar']!,
-                  builder: (context, _) => ListenableBuilder(
-                    listenable: _controllers['emoji']!,
-                    builder: (context, _) => GestureDetector(
-                      onTap: _onPickAvatar,
-                      child: Stack(
-                        children: [
-                          AppIdentityAvatar(
-                            path: _controllers['avatar']!.text,
-                            emoji: _controllers['emoji']!.text,
-                            radius: 46,
-                            iconSize: 32,
-                            extraVersion: _avatarNonce,
+        BusinessCard(
+          title: 'settings.identity.section',
+          avatar: ListenableBuilder(
+            listenable: _controllers['avatar']!,
+            builder: (context, _) => ListenableBuilder(
+              listenable: _controllers['emoji']!,
+              builder: (context, _) => GestureDetector(
+                onTap: _onPickAvatar,
+                child: Stack(
+                  children: [
+                    AppIdentityAvatar(
+                      path: _controllers['avatar']!.text,
+                      emoji: _controllers['emoji']!.text,
+                      radius: 46,
+                      iconSize: 32,
+                      extraVersion: _avatarNonce,
+                    ),
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.surface,
+                            width: 2,
                           ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.surface,
-                                  width: 2,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.camera_alt_outlined,
-                                size: 14,
-                                color: AppColors.black,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_outlined,
+                          size: 14,
+                          color: AppColors.black,
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-                fields: [
-                  BusinessCardField(
-                    label: 'settings.user.name_label',
-                    hint: 'settings.identity.name_hint',
-                    controller: _controllers['name']!,
-                  ),
-                  BusinessCardField(
-                    label: 'settings.identity.creature_label',
-                    hint: 'settings.identity.creature_hint',
-                    controller: _controllers['creature']!,
-                  ),
-                  BusinessCardField(
-                    label: 'settings.identity.vibe_label',
-                    hint: 'settings.identity.vibe_hint',
-                    controller: _controllers['vibe']!,
-                  ),
-                  BusinessCardField(
-                    label: 'settings.identity.emoji_label',
-                    hint: 'settings.identity.emoji_label',
-                    controller: _controllers['emoji']!,
-                    customEditWidget: _emojiInput(_controllers['emoji']!),
-                  ),
-                  BusinessCardField(
-                    label: 'settings.user.notes_label',
-                    hint: 'settings.identity.notes_hint',
-                    controller: _controllers['notes']!,
-                    maxLines: 3,
-                  ),
-                  BusinessCardField(
-                    label: 'settings.identity.provider_label',
-                    hint: 'settings.identity.choose_provider',
-                    controller: TextEditingController(
-                      text: _selectedProvider ?? '',
-                    ),
-                    value: _selectedProvider != null
-                        ? availableProviders.firstWhere(
-                            (p) => p['id'] == _selectedProvider,
-                            orElse: () => <String, String>{
-                              'id': _selectedProvider!,
-                              'label': _selectedProvider!,
-                            },
-                          )['label']
-                        : null,
-                    customEditWidget: _buildProviderDropdown(
-                      availableProviders,
-                      availableProviderIds,
-                    ),
-                  ),
-                  BusinessCardField(
-                    label: 'settings.identity.model_label',
-                    hint: 'settings.identity.choose_model',
-                    controller: TextEditingController(
-                      text: _selectedModel ?? '',
-                    ),
-                    value: _selectedModel,
-                    customEditWidget: SearchableModelPicker(
-                      selectedModel: _selectedModel,
-                      models: _availableModels,
-                      label: 'settings.identity.model_label',
-                      hint: 'settings.identity.choose_model',
-                      onSelected: (val) {
-                        setState(() => _selectedModel = val);
-                      },
-                    ),
-                  ),
-                ],
-                maxViewFields: 3,
-                onSave: _save,
-                bottom: (context, isEditing) => _buildSkillsSection(isEditing),
               ),
-              const SizedBox(height: 20),
-            ],
+            ),
           ),
+          fields: [
+            BusinessCardField(
+              label: 'settings.user.name_label',
+              hint: 'settings.identity.name_hint',
+              controller: _controllers['name']!,
+            ),
+            BusinessCardField(
+              label: 'settings.identity.creature_label',
+              hint: 'settings.identity.creature_hint',
+              controller: _controllers['creature']!,
+            ),
+            BusinessCardField(
+              label: 'settings.identity.vibe_label',
+              hint: 'settings.identity.vibe_hint',
+              controller: _controllers['vibe']!,
+            ),
+            BusinessCardField(
+              label: 'settings.identity.emoji_label',
+              hint: 'settings.identity.emoji_label',
+              controller: _controllers['emoji']!,
+              customEditWidget: _emojiInput(_controllers['emoji']!),
+            ),
+            BusinessCardField(
+              label: 'settings.user.notes_label',
+              hint: 'settings.identity.notes_hint',
+              controller: _controllers['notes']!,
+              maxLines: 3,
+            ),
+            BusinessCardField(
+              label: 'settings.identity.provider_label',
+              hint: 'settings.identity.choose_provider',
+              controller: TextEditingController(
+                text: _selectedProvider ?? '',
+              ),
+              value: _selectedProvider != null
+                  ? availableProviders.firstWhere(
+                      (p) => p['id'] == _selectedProvider,
+                      orElse: () => <String, String>{
+                        'id': _selectedProvider!,
+                        'label': _selectedProvider!,
+                      },
+                    )['label']
+                  : null,
+              customEditWidget: _buildProviderDropdown(
+                availableProviders,
+                availableProviderIds,
+              ),
+            ),
+            BusinessCardField(
+              label: 'settings.identity.model_label',
+              hint: 'settings.identity.choose_model',
+              controller: TextEditingController(
+                text: _selectedModel ?? '',
+              ),
+              value: _selectedModel,
+              customEditWidget: SearchableModelPicker(
+                selectedModel: _selectedModel,
+                models: _availableModels,
+                label: 'settings.identity.model_label',
+                hint: 'settings.identity.choose_model',
+                onSelected: (val) {
+                  setState(() => _selectedModel = val);
+                },
+              ),
+            ),
+          ],
+          maxViewFields: 3,
+          onSave: _save,
+          bottom: (context, isEditing) => _buildSkillsSection(isEditing),
         ),
-        _buildNavButtons(),
+        const SizedBox(height: 20),
       ],
     );
   }
@@ -333,13 +327,9 @@ class _IdentityTabState extends ConsumerState<IdentityTab> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'file_picker.pick_error'.tr(namedArgs: {'error': e.toString()}),
-            ),
-            backgroundColor: AppColors.errorDark,
-          ),
+        AppSnackBar.showError(
+          context,
+          'file_picker.pick_error'.tr(namedArgs: {'error': e.toString()}),
         );
       }
     }
@@ -446,11 +436,4 @@ class _IdentityTabState extends ConsumerState<IdentityTab> {
     );
   }
 
-  Widget _buildNavButtons() {
-    return AppSettingsNavBar(
-      onBack: widget.onBack,
-      onSave: _save,
-      onNext: widget.onNext,
-    );
-  }
 }

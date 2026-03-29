@@ -43,15 +43,25 @@ class MainApp extends ConsumerWidget {
     final isInitializing =
         savedTokenAsync.isLoading || gatewayUrlAsync.isLoading;
 
-    // Auto-connect if we have a token but are disconnected
+    // Auto-connect if we have a token but are disconnected or in error state
     if (!isInitializing &&
         savedToken != null &&
-        authStatus.value == ConnectionStatus.disconnected) {
+        (authStatus.value == ConnectionStatus.disconnected ||
+            authStatus.value == ConnectionStatus.error)) {
       Future.microtask(() async {
+        // If it was an error, wait a bit before retrying to avoid spamming
+        if (authStatus.value == ConnectionStatus.error) {
+          await Future<void>.delayed(const Duration(seconds: 2));
+        }
+
         final client = ref.read(gatewayClientProvider);
         try {
           await client.connect();
-          await client.login(savedToken);
+          final success = await client.login(savedToken);
+          if (!success) {
+            // Auto-login failed (e.g., token was reset) — clear it to drop to AuthScreen
+            await ref.read(authTokenProvider.notifier).logout();
+          }
         } catch (_) {}
       });
     }
@@ -90,25 +100,77 @@ class MainApp extends ConsumerWidget {
         if (s == ConnectionStatus.authenticated) {
           return const ShellScreen();
         }
-        // If an explicit error occurred, show the auth screen
+        
+        // If we've been trying to connect for a while and failed, show the error with an escape hatch
         if (s == ConnectionStatus.error) {
-          return const AuthScreen();
+           return LoadingScreen(
+            status: s,
+            onAction: () => ref.read(authTokenProvider.notifier).logout(),
+            actionLabel: 'auth.back_to_login'.tr(),
+          );
         }
-        // If we have a token but aren't authenticated yet (e.g. connecting or disconnected),
+
+        // If we have a token but aren't authenticated yet (e.g. connecting, disconnected),
         // show a loading state instead of flashing the login screen.
-        return const LoadingScreen();
+        return LoadingScreen(status: s);
       },
       loading: () => const LoadingScreen(),
-      error: (e, _) => const AuthScreen(), // Show auth if stream error
+      error: (e, _) => LoadingScreen(
+        error: e.toString(),
+        onAction: () => ref.read(authTokenProvider.notifier).logout(),
+        actionLabel: 'auth.back_to_login'.tr(),
+      ),
     );
   }
 }
 
 class LoadingScreen extends StatelessWidget {
-  const LoadingScreen({super.key});
+  const LoadingScreen({
+    super.key,
+    this.status,
+    this.error,
+    this.onAction,
+    this.actionLabel,
+  });
+
+  final ConnectionStatus? status;
+  final String? error;
+  final VoidCallback? onAction;
+  final String? actionLabel;
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 32),
+            if (status != null)
+              Text(
+                '${'common.status'.tr()}: ${status!.name}',
+                style: const TextStyle(color: AppColors.textDim),
+              ),
+            if (error != null)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  error!,
+                  style: const TextStyle(color: AppColors.error),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            if (onAction != null) ...[
+              const SizedBox(height: 24),
+              TextButton(
+                onPressed: onAction,
+                child: Text(actionLabel ?? 'common.cancel'.tr()),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }

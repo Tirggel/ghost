@@ -29,6 +29,9 @@ class MockProvider implements AIModelProvider {
   String get displayName => 'Mock Provider';
 
   @override
+  ModelCapabilities get capabilities => ModelCapabilities.all();
+
+  @override
   bool get supportsChat => true;
 
   @override

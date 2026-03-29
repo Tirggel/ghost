@@ -48,12 +48,6 @@ class ModelCapabilities {
     this.supportsPdf = false,
   });
 
-  final bool supportsText;
-  final bool supportsImage;
-  final bool supportsVideo;
-  final bool supportsAudio;
-  final bool supportsPdf;
-
   factory ModelCapabilities.textOnly() => const ModelCapabilities();
 
   factory ModelCapabilities.all() => const ModelCapabilities(
@@ -62,14 +56,6 @@ class ModelCapabilities {
         supportsAudio: true,
         supportsPdf: true,
       );
-
-  Map<String, bool> toJson() => {
-        'text': supportsText,
-        'image': supportsImage,
-        'video': supportsVideo,
-        'audio': supportsAudio,
-        'pdf': supportsPdf,
-      };
 
   factory ModelCapabilities.fromJson(Map<String, dynamic> json) {
     return ModelCapabilities(
@@ -80,6 +66,20 @@ class ModelCapabilities {
       supportsPdf: json['pdf'] as bool? ?? false,
     );
   }
+
+  final bool supportsText;
+  final bool supportsImage;
+  final bool supportsVideo;
+  final bool supportsAudio;
+  final bool supportsPdf;
+
+  Map<String, bool> toJson() => {
+        'text': supportsText,
+        'image': supportsImage,
+        'video': supportsVideo,
+        'audio': supportsAudio,
+        'pdf': supportsPdf,
+      };
 }
 
 /// Response from an AI model.

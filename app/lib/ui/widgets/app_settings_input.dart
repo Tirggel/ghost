@@ -39,6 +39,8 @@ class AppSettingsInput extends StatelessWidget {
   final String? editTooltip;
   final String? addTooltip;
   final String? verifySaveTooltip;
+  final String? importTooltip;
+  final VoidCallback? onImport;
   final bool translateTitle;
 
   const AppSettingsInput({
@@ -62,6 +64,8 @@ class AppSettingsInput extends StatelessWidget {
     this.editTooltip,
     this.addTooltip,
     this.verifySaveTooltip,
+    this.importTooltip,
+    this.onImport,
     this.translateTitle = true,
   });
 
@@ -113,6 +117,13 @@ class AppSettingsInput extends StatelessWidget {
               tooltip: (editTooltip ?? verifySaveTooltip)?.tr(),
             ),
           ],
+          if (onImport != null && !isEditing)
+            IconButton(
+              icon: const Icon(Icons.file_upload_outlined,
+                  size: AppConstants.settingsIconSize),
+              onPressed: onImport,
+              tooltip: importTooltip?.tr(),
+            ),
         ],
       ),
       child: isEditing

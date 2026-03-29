@@ -6,19 +6,17 @@ import 'package:file_selector/file_selector.dart' as fs;
 import '../../../core/constants.dart';
 import '../../../providers/setup_wizard_provider.dart';
 import '../app_styles.dart';
+import '../app_snackbar.dart';
 import 'wizard_step_base.dart';
 import 'wizard_utils.dart';
 
 class WizardStepWorkspace extends ConsumerWidget {
   final SetupWizardState state;
   final TextEditingController workspaceController;
-  final void Function(String, {bool isError}) showSnackBar;
-
   const WizardStepWorkspace({
     super.key,
     required this.state,
     required this.workspaceController,
-    required this.showSnackBar,
   });
 
   @override
@@ -71,12 +69,12 @@ class WizardStepWorkspace extends ConsumerWidget {
                         notifier.updateWorkspace(result);
                       }
                     } catch (e) {
-                      showSnackBar(
-                        'file_picker.pick_error'.tr(
-                          namedArgs: {'error': e.toString()},
-                        ),
-                        isError: true,
-                      );
+                        AppSnackBar.showError(
+                          context,
+                          'file_picker.pick_error'.tr(
+                            namedArgs: {'error': e.toString()},
+                          ),
+                        );
                     }
                   },
                   icon: const Icon(

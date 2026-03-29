@@ -126,7 +126,7 @@ class _SessionItemState extends ConsumerState<SessionItem> {
                             Text(
                               displayTitle,
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: AppConstants.fontSizeSidebarLabel,
                                 fontWeight:
                                     widget.isActive
                                         ? FontWeight.bold

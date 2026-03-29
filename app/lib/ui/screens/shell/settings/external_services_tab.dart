@@ -6,6 +6,7 @@ import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_settings_input.dart';
 import '../../../widgets/app_dialogs.dart';
+import '../../../widgets/app_snackbar.dart';
 
 class ExternalServicesTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -60,12 +61,9 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
         _verifyingKey[serviceId] = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'settings.external_services.key_saved'.tr(namedArgs: {'label': service}),
-            ),
-          ),
+        AppSnackBar.showSuccess(
+          context,
+          'settings.external_services.key_saved'.tr(namedArgs: {'label': service}),
         );
       }
     } catch (e) {
@@ -90,12 +88,9 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
       try {
         await ref.read(configProvider.notifier).setKey(serviceId, '');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'settings.external_services.key_removed'.tr(namedArgs: {'label': originalName}),
-              ),
-            ),
+          AppSnackBar.showSuccess(
+            context,
+            'settings.external_services.key_removed'.tr(namedArgs: {'label': originalName}),
           );
         }
       } catch (e) {
@@ -112,26 +107,20 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
     final config = ref.watch(configProvider);
     final vaultKeys = config.vaultKeys.toSet();
 
-    return Column(
+    return AppSettingsPage(
+      onBack: widget.onBack,
+      onNext: widget.onNext,
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              const AppSectionHeader('settings.external_services.section', large: true),
-              Text(
-                'settings.external_services.desc'.tr(),
-                style: const TextStyle(
-                  fontSize: AppConstants.fontSizeBody,
-                  color: AppColors.textDim,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ..._buildServiceSections(vaultKeys),
-            ],
+        const AppSectionHeader('settings.external_services.section', large: true),
+        Text(
+          'settings.external_services.desc'.tr(),
+          style: const TextStyle(
+            fontSize: AppConstants.fontSizeBody,
+            color: AppColors.textDim,
           ),
         ),
-        _buildNavButtons(),
+        const SizedBox(height: 16),
+        ..._buildServiceSections(vaultKeys),
       ],
     );
   }
@@ -247,10 +236,4 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
     );
   }
 
-  Widget _buildNavButtons() {
-    return AppSettingsNavBar(
-      onBack: widget.onBack,
-      onNext: widget.onNext,
-    );
-  }
 }

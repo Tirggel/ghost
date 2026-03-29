@@ -38,6 +38,7 @@ class ChatMessage {
   bool get isAssistant => role == 'assistant';
   bool get isUser => role == 'user';
   bool get isSystem => role == 'system';
+  bool get isError => role == 'error';
 }
 
 class ChatAttachment {

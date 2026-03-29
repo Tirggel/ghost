@@ -10,6 +10,7 @@ import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/constants.dart';
+import 'settings_sub_nav_bar.dart';
 
 // ---------------------------------------------------------------------------
 // AppInputDecoration
@@ -82,9 +83,8 @@ class AppFormLabel extends StatelessWidget {
       text.isEmpty ? '' : text.tr().toUpperCase(),
       style: const TextStyle(
         color: AppColors.textDim,
-        fontSize: 10,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 1.2,
+        fontSize: AppConstants.fontSizeLabelTiny,
+        fontWeight: FontWeight.w900,
       ),
     );
   }
@@ -263,16 +263,14 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
     if (activeChild == null && widget.itemBuilder != null && widget.value != null) {
       activeChild = widget.itemBuilder!(widget.value as T);
     }
-    if (activeChild == null) {
-      activeChild = Text(
-        displayStr,
-        style: TextStyle(
-          color: widget.value != null ? AppColors.white : AppColors.textDim,
-          fontSize: AppConstants.fontSizeBody,
-        ),
-        overflow: TextOverflow.ellipsis,
-      );
-    }
+    activeChild ??= Text(
+      displayStr,
+      style: TextStyle(
+        color: widget.value != null ? AppColors.white : AppColors.textDim,
+        fontSize: AppConstants.fontSizeBody,
+      ),
+      overflow: TextOverflow.ellipsis,
+    );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -493,13 +491,14 @@ class AppSectionHeader extends StatelessWidget {
     context.locale;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: AppConstants.settingsHeaderBottomPadding),
       child: Text(
         title.tr().toUpperCase(),
         style: TextStyle(
-          fontSize: large ? 32 : 12,
+          fontSize: large
+              ? AppConstants.fontSizeTitle
+              : AppConstants.fontSizeSubhead,
           fontWeight: FontWeight.w900,
-          letterSpacing: large ? -1.0 : 4.0,
           color: AppColors.primary,
         ),
       ),
@@ -588,9 +587,8 @@ class AppSectionLabel extends StatelessWidget {
         title.tr().toUpperCase(),
         style: const TextStyle(
           color: AppColors.primary,
-          fontSize: AppConstants.fontSizeCaption,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.2,
+          fontSize: AppConstants.fontSizeLabelTiny,
+          fontWeight: FontWeight.w900,
         ),
       ),
     );
@@ -635,7 +633,7 @@ class AppSaveButton extends StatelessWidget {
             )
           : Icon(icon, size: AppConstants.settingsIconSize),
       label: Text(label.tr().toUpperCase(),
-        style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+        style: const TextStyle(fontWeight: FontWeight.w900)),
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.black,
@@ -692,7 +690,7 @@ class AppNavButton extends StatelessWidget {
         onPressed: onPressed,
         icon: icon != null ? Icon(icon, size: 18) : const SizedBox(),
         label: Text(label.tr().toUpperCase(), 
-          style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+          style: const TextStyle(fontWeight: FontWeight.w900)),
         style: style,
       );
     } else {
@@ -710,7 +708,7 @@ class AppNavButton extends StatelessWidget {
         onPressed: onPressed,
         icon: icon != null ? Icon(icon, size: 18) : const SizedBox(),
         label: Text(label.tr().toUpperCase(),
-          style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+          style: const TextStyle(fontWeight: FontWeight.w900)),
         style: style,
       );
     }
@@ -1119,4 +1117,78 @@ void showAppErrorDialog(BuildContext context, String message) {
     context: context,
     builder: (ctx) => AppErrorDialog(message: message),
   );
+}
+
+// ---------------------------------------------------------------------------
+// AppSettingsPage — unified layout for settings tabs
+// ---------------------------------------------------------------------------
+
+class AppSettingsPage extends StatelessWidget {
+  const AppSettingsPage({
+    super.key,
+    this.subTabLabels,
+    this.currentSubTabIndex,
+    this.onSubTabChanged,
+    this.children,
+    this.body,
+    this.onBack,
+    this.onNext,
+    this.onSave,
+    this.saveLabel,
+    this.isSaveLoading = false,
+    this.saveIcon = Icons.save,
+  }) : assert(children != null || body != null, 'Either children or body must be provided');
+
+  final List<String>? subTabLabels;
+  final int? currentSubTabIndex;
+  final ValueChanged<int>? onSubTabChanged;
+  final List<Widget>? children;
+  final Widget? body;
+  final VoidCallback? onBack;
+  final VoidCallback? onNext;
+  final VoidCallback? onSave;
+  final String? saveLabel;
+  final bool isSaveLoading;
+  final IconData saveIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasSubNav = subTabLabels != null && 
+                          currentSubTabIndex != null && 
+                          onSubTabChanged != null;
+
+    final Widget content = body ?? ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppConstants.settingsPagePadding,
+        0, // Top padding is handled by Nav or SizedBox
+        AppConstants.settingsPagePadding,
+        AppConstants.settingsPagePadding,
+      ),
+      children: children!,
+    );
+
+    return Column(
+      children: [
+        if (hasSubNav)
+          SettingsSubNavBar(
+            items: subTabLabels!,
+            currentIndex: currentSubTabIndex!,
+            onTap: onSubTabChanged!,
+          )
+        else
+          const SizedBox(height: AppConstants.settingsTopPadding),
+          
+        Expanded(child: content),
+        
+        AppSettingsNavBar(
+          onBack: onBack,
+          onNext: onNext,
+          onSave: onSave,
+          saveLabel: saveLabel,
+          isSaveLoading: isSaveLoading,
+          saveIcon: saveIcon,
+        ),
+      ],
+    );
+  }
 }

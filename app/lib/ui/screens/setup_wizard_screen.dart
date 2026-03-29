@@ -13,6 +13,8 @@ import '../widgets/setup_wizard/wizard_step_identity.dart';
 import '../widgets/setup_wizard/wizard_step_workspace.dart';
 import '../widgets/setup_wizard/wizard_step_telegram.dart';
 import '../widgets/app_styles.dart';
+import '../widgets/app_snackbar.dart';
+import '../widgets/setup_wizard/wizard_step_indicator.dart';
 
 // ---------------------------------------------------------------------------
 // SetupWizardScreen — shown on first run / after reset when no provider set
@@ -194,16 +196,6 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
     }
   }
 
-  void _showSnackBar(String message, {bool isError = false}) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? AppColors.errorDark : AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
 
   // ---- Build ----
 
@@ -217,8 +209,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          _buildHeader(),
-          _buildStepIndicator(state),
+          _buildHeader(state),
           Expanded(
             child: PageView(
               controller: _pageController,
@@ -253,7 +244,6 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
                 WizardStepWorkspace(
                   state: state,
                   workspaceController: _workspaceCtrl,
-                  showSnackBar: _showSnackBar,
                 ),
                 WizardStepTelegram(
                   state: state,
@@ -268,23 +258,41 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(SetupWizardState state) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(32, 40, 32, 0),
+      padding: const EdgeInsets.fromLTRB(32, 40, 32, 24),
       decoration: const BoxDecoration(
         color: AppColors.surface,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            AppConstants.appName,
-            style: TextStyle(
-              fontSize: AppConstants.fontSizeDisplay,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              const Text(
+                AppConstants.appName,
+                style: TextStyle(
+                  fontSize: AppConstants.fontSizeDisplay,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
+              Text(
+                'wizard.step_of'.tr(namedArgs: {
+                  'current': (state.currentStep + 1).toString(),
+                  'total': _totalSteps.toString(),
+                }),
+                style: const TextStyle(
+                  color: AppColors.textDim,
+                  fontSize: AppConstants.fontSizeLabelTiny,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           Text(
@@ -294,56 +302,16 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
               fontSize: AppConstants.fontSizeSubhead,
             ),
           ),
+          const SizedBox(height: 16),
+          WizardStepIndicator(
+            currentStep: state.currentStep,
+            totalSteps: _totalSteps,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStepIndicator(SetupWizardState state) {
-    final stepKeys = [
-      'wizard.step_language',
-      'wizard.step_provider',
-      'wizard.step_user',
-      'wizard.step_identity',
-      'wizard.step_workspace',
-      'wizard.step_telegram',
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 0),
-      child: AppDropdownField<int>(
-        value: state.currentStep,
-        items: List.generate(stepKeys.length, (index) => index),
-        onChanged: (index) {
-          if (index == null) return;
-          final state = ref.read(setupWizardProvider);
-          
-          // Block navigation to "Your Profile" (index 2) and beyond if key not verified
-          if (index >= 2 &&
-              (!state.keyVerified || state.selectedModel == null)) {
-            _showSnackBar(
-              'wizard.errors.key_required_for_next'.tr(),
-              isError: true,
-            );
-            return;
-          }
-
-          // Prevent jumping too far ahead (more than one step)
-          if (index <= state.currentStep || index == state.currentStep + 1) {
-            _pageController.animateToPage(
-              index,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-            );
-            ref.read(setupWizardProvider.notifier).setStep(index);
-          } else {
-            _showSnackBar('wizard.errors.step_by_step'.tr(), isError: true);
-          }
-        },
-        displayValue: (index) => stepKeys[index].tr(),
-      ),
-    );
-  }
 
   Widget _buildNavButtons(SetupWizardState state) {
     final isLast = state.currentStep == _totalSteps - 1;
@@ -427,9 +395,9 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
         }
       }
     } catch (e) {
-      _showSnackBar(
+      AppSnackBar.showError(
+        context,
         'file_picker.pick_error'.tr(namedArgs: {'error': e.toString()}),
-        isError: true,
       );
     }
     return null;

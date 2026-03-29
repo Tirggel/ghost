@@ -78,7 +78,10 @@ class BrowserTool extends Tool {
 
     if (_browser == null) {
       _log.info('Launching browser (headless: $headless)...');
-      _browser = await puppeteer.puppeteer.launch(headless: headless);
+      _browser = await puppeteer.puppeteer.launch(
+        headless: headless,
+        args: headless ? ['--headless=new'] : [],
+      );
       _page = await _browser!.newPage();
       _lastHeadless = headless;
     }

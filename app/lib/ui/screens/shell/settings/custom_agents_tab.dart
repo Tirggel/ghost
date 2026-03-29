@@ -10,6 +10,7 @@ import '../../../widgets/app_avatar_picker.dart';
 import '../../../widgets/searchable_model_picker.dart';
 import '../../../widgets/business_card.dart';
 import '../../../widgets/skills_selector_widget.dart';
+import '../../../widgets/app_snackbar.dart';
 
 class CustomAgentsTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -32,7 +33,12 @@ class _CustomAgentsTabState extends ConsumerState<CustomAgentsTab> {
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.fromLTRB(
+              AppConstants.settingsPagePadding,
+              AppConstants.settingsTopPadding,
+              AppConstants.settingsPagePadding,
+              AppConstants.settingsPagePadding,
+            ),
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -138,6 +144,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> {
   bool _isLoadingModels = false;
   int _avatarNonce = 0;
   bool _enabled = true;
+  bool _sendChatHistory = true;
 
   final Map<String, String> _cronPresets = {
     '': 'settings.agents.cron_none',
@@ -173,6 +180,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> {
     _selectedProvider = agent['provider'];
     _selectedModel = agent['model'];
     _enabled = agent['enabled'] ?? true;
+    _sendChatHistory = agent['shouldSendChatHistory'] ?? true;
     if (_selectedSkills.isEmpty) {
         _selectedSkills.addAll((agent['skills'] as List<dynamic>?)?.cast<String>() ?? []);
     }
@@ -220,6 +228,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> {
       'cronMessage': _controllers['cronMessage']!.text.trim(),
       'skills': _selectedSkills,
       'enabled': _enabled,
+      'shouldSendChatHistory': _sendChatHistory,
     };
 
     if (widget.isNew) {
@@ -349,6 +358,13 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> {
           controller: _controllers['cronMessage']!,
           maxLines: 2,
         ),
+        BusinessCardField(
+          label: 'settings.agents.send_chat_history_label',
+          hint: 'settings.agents.send_chat_history_hint',
+          controller: TextEditingController(),
+          value: (_sendChatHistory ? 'common.enabled' : 'common.disabled').tr(),
+          customEditWidget: _buildChatHistoryToggle(),
+        ),
       ],
       maxViewFields: 3,
       bottom: (context, isEditing) => _buildSkillsSection(isEditing),
@@ -406,6 +422,37 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> {
           _selectedSkills.addAll(next);
         });
       },
+    );
+  }
+
+  Widget _buildChatHistoryToggle() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppFormLabel('settings.agents.send_chat_history_label'),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'settings.agents.send_chat_history_hint'.tr(),
+                  style: const TextStyle(
+                    fontSize: AppConstants.fontSizeSmall,
+                    color: AppColors.textDim,
+                  ),
+                ),
+              ),
+              Switch(
+                value: _sendChatHistory,
+                onChanged: (val) => setState(() => _sendChatHistory = val),
+                activeThumbColor: AppColors.primary,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -467,11 +514,9 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('file_picker.pick_error'.tr(namedArgs: {'error': e.toString()})),
-            backgroundColor: AppColors.errorDark,
-          ),
+        AppSnackBar.showError(
+          context,
+          'file_picker.pick_error'.tr(namedArgs: {'error': e.toString()}),
         );
       }
     }

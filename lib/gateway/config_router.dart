@@ -58,7 +58,7 @@ class ConfigRouter {
       final customAgents =
           await _loadCustomAgentsFromVault() ?? config.customAgents;
 
-      final session = await _loadSessionFromVault() ?? config.session;
+      await _loadSessionFromVault() ?? config.session;
       final channels = await _loadChannelsFromVault() ?? config.channels;
       final tools = await _loadToolsFromVault() ?? config.tools;
       final integrations =
@@ -462,7 +462,7 @@ class ConfigRouter {
         (params, context) async {
       if (params == null) throw ProtocolError('Missing params');
 
-      var config = await loadConfig(configPath);
+      final config = await loadConfig(configPath);
       final updatedIntegrations = config.integrations.copyWith(
         googleClientIdWeb: params['googleClientIdWeb'] as String?,
         googleClientIdDesktop: params['googleClientIdDesktop'] as String?,
@@ -482,7 +482,7 @@ class ConfigRouter {
         (params, context) async {
       if (params == null) throw ProtocolError('Missing params');
 
-      var config = await loadConfig(configPath);
+      final config = await loadConfig(configPath);
 
       final googleChatParams = params['googleChat'] as Map<String, dynamic>?;
       final telegramParams = params['telegram'] as Map<String, dynamic>?;

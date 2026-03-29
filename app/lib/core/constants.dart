@@ -38,6 +38,10 @@ class AppConstants {
   static const double buttonBorderRadius = 0.0;
 
   // Spacing
+  static const double settingsPagePadding = 20.0;
+  static const double settingsTopPadding = 24.0;
+  static const double settingsHeaderBottomPadding = 16.0;
+
   static const double cardPadding = 14.0; // inner padding of selectable cards
   static const double iconBoxSize = 36.0; // step-header icon container size
   static const double iconBoxIconSize = 18.0; // icon inside iconBox
@@ -50,6 +54,8 @@ class AppConstants {
   static const double fontSizeTitle = 16.0; // settings section headers
   static const double fontSizeLead = 20.0; // wizard step titles
   static const double fontSizeHeading = 22.0; // sidebar app name
+  static const double fontSizeLabelTiny = 11.0; // All-caps section labels / small titles
+  static const double fontSizeSidebarLabel = 12.0; // Labels in sidebar items (sessions, folders, settings)
   static const double fontSizeDisplay = 28.0; // wizard header title
 
   static const double avatarRadius = 28.0;
@@ -102,7 +108,7 @@ class AppConstants {
     return 'assets/icons/llm/$icon';
   }
 
-  static const Map<String, String> defaultFlags = {'en': '🇺🇸', 'de': '🇩🇪'};
+  static const Map<String, String> defaultFlags = {'en': '🇬🇧', 'de': '🇩🇪'};
 }
 
 class AppColors {

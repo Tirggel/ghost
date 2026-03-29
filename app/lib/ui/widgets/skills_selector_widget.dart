@@ -99,7 +99,7 @@ class SkillsSelector extends ConsumerWidget {
               ),
             ),
           ),
-          error: (_, __) => Text('settings.skills.error_loading_generic'.tr()),
+          error: (err, _) => Text('settings.skills.error_loading_generic'.tr()),
         ),
       ],
     );

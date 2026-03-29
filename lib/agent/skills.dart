@@ -116,16 +116,21 @@ class SkillManager {
 
             // Frontmatter takes precedence or fills gaps
             metaData ??= {};
-            if (frontmatter.containsKey('name'))
+            if (frontmatter.containsKey('name')) {
               metaData['name'] = frontmatter['name'];
-            if (frontmatter.containsKey('description'))
+            }
+            if (frontmatter.containsKey('description')) {
               metaData['description'] = frontmatter['description'];
-            if (frontmatter.containsKey('emoji'))
+            }
+            if (frontmatter.containsKey('emoji')) {
               metaData['emoji'] = frontmatter['emoji'];
-            if (frontmatter.containsKey('slug'))
+            }
+            if (frontmatter.containsKey('slug')) {
               metaData['slug'] = frontmatter['slug'];
-            if (frontmatter.containsKey('mcp_command'))
+            }
+            if (frontmatter.containsKey('mcp_command')) {
               metaData['mcp_command'] = frontmatter['mcp_command'];
+            }
           } catch (e) {
             _log.warning('Failed to parse SKILL.md for skill $slug: $e');
           }
@@ -197,20 +202,25 @@ class SkillManager {
     final archive = ZipDecoder().decodeBytes(zipBytes);
 
     String? foundSlug;
-    Map<String, dynamic> metaJson = {};
+    final metaJson = <String, dynamic>{};
 
     // 1. Look for SKILL.md for frontmatter metadata (Modern way)
     for (final file in archive) {
       if (file.isFile && p.basename(file.name) == 'SKILL.md') {
         final content = utf8.decode(file.content as List<int>);
         final frontmatter = _parseFrontmatter(content);
-        if (frontmatter.containsKey('name'))
+        if (frontmatter.containsKey('name')) {
           metaJson['name'] = frontmatter['name'];
-        if (frontmatter.containsKey('description'))
+        }
+        if (frontmatter.containsKey('description')) {
           metaJson['description'] = frontmatter['description'];
-        if (frontmatter.containsKey('emoji'))
+        }
+        if (frontmatter.containsKey('emoji')) {
           metaJson['emoji'] = frontmatter['emoji'];
-        if (frontmatter.containsKey('slug')) foundSlug = frontmatter['slug'];
+        }
+        if (frontmatter.containsKey('slug')) {
+          foundSlug = frontmatter['slug'];
+        }
         break;
       }
     }
@@ -313,7 +323,7 @@ class SkillManager {
       }
     }
 
-    await _initializeRuntimes(foundSlug, skillDir.path);
+    await initializeRuntimes(foundSlug, skillDir.path);
 
     return Skill(
       slug: foundSlug,
@@ -407,7 +417,7 @@ class SkillManager {
       }
     }
 
-    await _initializeRuntimes(foundSlug, targetPath);
+    await initializeRuntimes(foundSlug, targetPath);
 
     if (moveSource) {
       try {
@@ -439,7 +449,7 @@ class SkillManager {
     if (uri.host != 'github.com') {
       throw Exception('Invalid GitHub URL: $url');
     }
-    var segments = uri.pathSegments.toList();
+    final segments = uri.pathSegments.toList();
 
     // If URL points directly to SKILL.md, trim it off to get the folder
     if (segments.isNotEmpty && segments.last == 'SKILL.md') {
@@ -689,7 +699,7 @@ class SkillManager {
         await outFile.writeAsString(content);
       }
 
-      await _initializeRuntimes(slug, skillDir.path);
+      await initializeRuntimes(slug, skillDir.path);
 
       if (isGlobal) {
         _globalSlugs.add(slug);
@@ -700,7 +710,7 @@ class SkillManager {
   }
 
   /// Detects runtimes and initializes environments (venv, npm install).
-  Future<void> _initializeRuntimes(String slug, String skillPath) async {
+  Future<void> initializeRuntimes(String slug, String skillPath) async {
     final hasPython = await File(p.join(skillPath, 'scripts', 'requirements.txt')).exists() ||
         await File(p.join(skillPath, 'requirements.txt')).exists();
     final hasNode = await File(p.join(skillPath, 'package.json')).exists() ||

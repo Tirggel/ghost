@@ -13,6 +13,7 @@ import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/skills_selector_widget.dart';
 import '../../../widgets/app_dialogs.dart';
+import '../../../widgets/app_snackbar.dart';
 
 class SkillsTab extends StatelessWidget {
   final VoidCallback? onBack;
@@ -92,9 +93,7 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
             .read(configProvider.notifier)
             .downloadSkillFromGithub(urlController.text);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('settings.skills.download_success'.tr())),
-          );
+          AppSnackBar.showSuccess(context, 'settings.skills.download_success'.tr());
         }
       } catch (e) {
         if (mounted) {
@@ -135,21 +134,16 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
 
       await ref.read(configProvider.notifier).installSkill(base64Zip);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('settings.skills.install_success'.tr())),
-        );
+        AppSnackBar.showSuccess(context, 'settings.skills.install_success'.tr());
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'settings.skills.install_failed'.tr(
-                namedArgs: {'error': e.toString()},
-              ),
+          AppSnackBar.showError(
+            context,
+            'settings.skills.install_failed'.tr(
+              namedArgs: {'error': e.toString()},
             ),
-          ),
-        );
+          );
       }
     } finally {
       if (mounted) setState(() => _isInstalling = false);
@@ -169,9 +163,7 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
       if (path != null) {
         await File(path).writeAsString(data);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('settings.skills.backup_success'.tr())),
-          );
+          AppSnackBar.showSuccess(context, 'settings.skills.backup_success'.tr());
         }
       }
     } catch (e) {
@@ -199,9 +191,7 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
         final data = await File(result.files.single.path!).readAsString();
         await ref.read(configProvider.notifier).restoreSkills(data);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('settings.skills.restore_success'.tr())),
-          );
+          AppSnackBar.showSuccess(context, 'settings.skills.restore_success'.tr());
         }
       }
     } catch (e) {
@@ -225,7 +215,12 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(
+            AppConstants.settingsPagePadding,
+            AppConstants.settingsTopPadding,
+            AppConstants.settingsPagePadding,
+            AppConstants.settingsPagePadding,
+          ),
           child: Row(
             children: [
               Expanded(
@@ -336,7 +331,7 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
         const Divider(height: 1),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.symmetric(horizontal: AppConstants.settingsPagePadding),
             child: SkillsSelector(
               isManagement: true,
               title: '', // No internal header

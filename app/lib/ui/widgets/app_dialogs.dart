@@ -84,6 +84,59 @@ class AppAlertDialog extends StatelessWidget {
     );
   }
 
+  /// Standard factory for text input dialogs
+  static Future<String?> showTextInput({
+    required BuildContext context,
+    required String title,
+    String? initialValue,
+    String? hintText,
+    String? confirmLabel,
+    String? cancelLabel,
+  }) {
+    final controller = TextEditingController(text: initialValue);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AppAlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(color: AppColors.white, fontSize: 13),
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: const TextStyle(color: AppColors.textDim),
+            enabledBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: AppColors.primary),
+            ),
+          ),
+          onSubmitted: (val) => Navigator.pop(ctx, val),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              cancelLabel ?? 'common.cancel'.tr(),
+              style: const TextStyle(color: AppColors.textDim),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: Text(
+              confirmLabel ?? 'common.save'.tr(),
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(

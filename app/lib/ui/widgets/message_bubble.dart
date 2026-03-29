@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:markdown/markdown.dart' as md;
 import 'package:easy_localization/easy_localization.dart';
+import 'code_block_widget.dart';
 import '../../providers/gateway_provider.dart';
 import '../../core/constants.dart';
 import '../../core/models/chat_message.dart';
 import 'avatar_widget.dart';
+import '../screens/shell/session_model_dialog.dart';
 
 class MessageBubble extends ConsumerWidget {
   const MessageBubble({
@@ -18,6 +21,7 @@ class MessageBubble extends ConsumerWidget {
     this.timestamp,
     this.activity,
     this.attachments,
+    this.sessionId,
   });
 
   final String role;
@@ -27,11 +31,13 @@ class MessageBubble extends ConsumerWidget {
   final String? timestamp;
   final String? activity;
   final List<ChatAttachment>? attachments;
+  final String? sessionId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activityLocal = activity;
     final isAssistant = role == 'assistant';
+    final isSystem = role == 'system' || role == 'error';
     final modelName = metadata?['model'] as String?;
     final config = ref.watch(configProvider);
     final customAgents = config.customAgents;
@@ -78,13 +84,17 @@ class MessageBubble extends ConsumerWidget {
       );
       if (agentData != null) {
         identityName = agentData['name'] as String? ?? identityName;
-        identityAvatarPath =
-            (agentData['avatar'] as String?) ??
-            '/assets/images/ghost-mini.png';
+        identityAvatarPath = (agentData['avatar'] as String?) ?? identity.avatar ?? '';
       }
     }
 
-    Widget buildAvatar({required bool isAssistant}) {
+    Widget buildAvatar({required bool isAssistant, bool isSystem = false}) {
+      if (isSystem) {
+        return const AppAssistantAvatar(
+          icon: Icons.settings,
+          radius: AppConstants.avatarRadius,
+        );
+      }
       if (isAssistant) {
         return AppIdentityAvatar(
           path: identityAvatarPath,
@@ -111,19 +121,22 @@ class MessageBubble extends ConsumerWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                buildAvatar(isAssistant: isAssistant),
+                buildAvatar(isAssistant: isAssistant, isSystem: isSystem),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        (isAssistant ? identityName : userName).toUpperCase(),
-                        style: const TextStyle(
+                        (isSystem
+                                ? 'SYSTEM'
+                                : (isAssistant ? identityName : userName))
+                            .toUpperCase(),
+                        style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1.5,
-                          color: AppColors.textMain,
+                          color: isSystem ? AppColors.warning : AppColors.textMain,
                         ),
                       ),
                       if (isAssistant && modelName != null)
@@ -154,17 +167,18 @@ class MessageBubble extends ConsumerWidget {
             ),
           ),
           Padding(
-            padding: EdgeInsets.only(
-              left: isAssistant ? 16 : 48,
-              right: isAssistant ? 48 : 16,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isAssistant 
-                    ? AppColors.transparent 
-                    : AppColors.surface.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(AppConstants.borderRadiusDefault),
+                color: isSystem
+                    ? AppColors.warning.withValues(alpha: 0.1)
+                    : (isAssistant
+                        ? AppColors.surface.withValues(alpha: 0.3)
+                        : AppColors.surface.withValues(alpha: 0.6)),
+                borderRadius:
+                    BorderRadius.circular(AppConstants.borderRadiusDefault),
+                border: isSystem ? Border.all(color: AppColors.warning.withValues(alpha: 0.2)) : null,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,6 +224,9 @@ class MessageBubble extends ConsumerWidget {
                     ),
                   MarkdownBody(
                     data: content.isEmpty && isAssistant ? '_${'chat.thinking'.tr()}_' : content,
+                    builders: {
+                      'pre': CodeElementBuilder(),
+                    },
                     styleSheet: MarkdownStyleSheet(
                       p: TextStyle(
                         color: role == 'assistant' && content.isEmpty ? AppColors.textDim : AppColors.textMain,
@@ -221,13 +238,50 @@ class MessageBubble extends ConsumerWidget {
                         color: AppColors.primary,
                         fontFamily: 'monospace',
                       ),
-                      codeblockDecoration: BoxDecoration(
-                        color: AppColors.surface,
-                        border: Border.all(color: AppColors.border),
-                        borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
-                      ),
+                      codeblockDecoration: const BoxDecoration(), // New widget handles decoration
                     ),
                   ),
+                  _buildErrorRecoveryButton(context),
+                  if (isAssistant && metadata?['tool_calls'] != null) ...[
+                    const SizedBox(height: 16),
+                    Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        title: Text(
+                          '${'common.agent'.tr()} used ${(metadata?['tool_calls'] as List).length} tools',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDim,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        tilePadding: EdgeInsets.zero,
+                        childrenPadding: const EdgeInsets.only(bottom: 8),
+                        collapsedIconColor: AppColors.textDim,
+                        iconColor: AppColors.primary,
+                        children: (metadata?['tool_calls'] as List).map((tc) {
+                          final name = tc['label'] ?? tc['name'];
+                          final summary = tc['summary'] ?? '';
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.check_circle_outline, size: 14, color: AppColors.primary),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '$name${summary.isNotEmpty ? ': $summary' : ''}',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textMain),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
                   if (isStreaming)
                     Padding(
                       padding: const EdgeInsets.only(top: 16),
@@ -236,39 +290,92 @@ class MessageBubble extends ConsumerWidget {
                         children: [
                           if (activityLocal != null)
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Row(
-                                children: [
-                                  const SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 1.5,
-                                      valueColor: AlwaysStoppedAnimation(AppColors.primary),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      activityLocal.toUpperCase(),
-                                      style: const TextStyle(
-                                        fontSize: 9,
-                                        color: AppColors.textDim,
-                                        letterSpacing: 1.0,
-                                        fontWeight: FontWeight.w600,
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation(AppColors.primary),
                                       ),
-                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        activityLocal.toUpperCase(),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.primary,
+                                          letterSpacing: 1.2,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          const ThinkingLine(),
                         ],
                       ),
                     ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorRecoveryButton(BuildContext context) {
+    if (sessionId == null) return const SizedBox.shrink();
+
+    final hasError = content.contains('⚠️ Provider returned error') ||
+        content.contains('⚠️ Rate limit exceeded') ||
+        content.contains('💡 Tipp');
+
+    if (!hasError) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Divider(color: AppColors.warning.withValues(alpha: 0.2)),
+          const SizedBox(height: 8),
+          ElevatedButton.icon(
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => SessionModelDialog(
+                  sessionId: sessionId!,
+                  currentModel: metadata?['model'] as String?,
+                  currentProvider: metadata?['provider'] as String?,
+                  alsoUpdateMainAgent: true,
+                ),
+              );
+            },
+            icon: const Icon(Icons.smart_toy_outlined, size: 18),
+            label: Text('settings.identity.choose_model'.tr()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.warning.withValues(alpha: 0.2),
+              foregroundColor: AppColors.warning,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(AppConstants.borderRadiusSmall),
+                side: BorderSide(color: AppColors.warning.withValues(alpha: 0.3)),
+              ),
+              elevation: 0,
             ),
           ),
         ],
@@ -286,60 +393,28 @@ class MessageBubble extends ConsumerWidget {
   }
 }
 
-class ThinkingLine extends StatefulWidget {
-  const ThinkingLine({super.key});
-
+class CodeElementBuilder extends MarkdownElementBuilder {
   @override
-  State<ThinkingLine> createState() => _ThinkingLineState();
-}
+  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    var language = '';
+    
+    // The 'pre' element usually contains a 'code' element as its first child
+    if (element.children != null && element.children!.isNotEmpty) {
+      final child = element.children![0];
+      if (child is md.Element && child.tag == 'code') {
+        if (child.attributes['class'] != null) {
+          final lg = child.attributes['class']!;
+          if (lg.startsWith('language-')) {
+            language = lg.substring('language-'.length);
+          }
+        }
+      }
+    }
 
-class _ThinkingLineState extends State<ThinkingLine>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
-    _animation = Tween<double>(
-      begin: 0.2,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Container(
-          width: 48,
-          height: 3,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
-            color: AppConstants.iconColorPrimary.withValues(alpha: _animation.value),
-            boxShadow: [
-              BoxShadow(
-                color: AppConstants.iconColorPrimary.withValues(
-                  alpha: _animation.value * 0.4,
-                ),
-                blurRadius: 6,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-        );
-      },
+    return CodeBlockWidget(
+      code: element.textContent,
+      language: language.isEmpty ? null : language,
     );
   }
 }
+

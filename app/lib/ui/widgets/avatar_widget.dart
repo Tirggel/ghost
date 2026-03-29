@@ -7,6 +7,7 @@ import '../../providers/gateway_provider.dart';
 class AvatarWidget extends ConsumerWidget {
   final String? path;
   final String? emoji;
+  final IconData? icon;
   final double radius;
   final double iconSize;
   final bool isAssistant;
@@ -18,6 +19,7 @@ class AvatarWidget extends ConsumerWidget {
     super.key,
     this.path,
     this.emoji,
+    this.icon,
     this.radius = AppConstants.avatarRadius,
     this.iconSize = AppConstants.avatarIconSize,
     this.isAssistant = false,
@@ -78,6 +80,39 @@ class AvatarWidget extends ConsumerWidget {
   }
 
   Widget _buildFallback() {
+    final effectiveIcon = icon ?? (isAssistant ? Icons.auto_awesome : Icons.person);
+    final iconColor = isAssistant
+        ? AppConstants.iconColorPrimary
+        : AppConstants.iconColorWhite;
+
+    if (icon != null) {
+      if (borderRadius != null) {
+        return Container(
+          width: radius * 2,
+          height: radius * 2,
+          decoration: BoxDecoration(
+            color: AppColors.border,
+            borderRadius: borderRadius,
+          ),
+          alignment: Alignment.center,
+          child: Icon(
+            icon,
+            size: iconSize,
+            color: iconColor,
+          ),
+        );
+      }
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: AppColors.border,
+        child: Icon(
+          icon,
+          size: iconSize,
+          color: iconColor,
+        ),
+      );
+    }
+
     if (emoji != null && emoji!.isNotEmpty) {
       if (borderRadius != null) {
         return Container(
@@ -132,11 +167,9 @@ class AvatarWidget extends ConsumerWidget {
         ),
         alignment: Alignment.center,
         child: Icon(
-          isAssistant ? Icons.auto_awesome : Icons.person,
+          effectiveIcon,
           size: iconSize,
-          color: isAssistant
-              ? AppConstants.iconColorPrimary
-              : AppConstants.iconColorWhite,
+          color: iconColor,
         ),
       );
     }
@@ -145,11 +178,9 @@ class AvatarWidget extends ConsumerWidget {
       radius: radius,
       backgroundColor: AppColors.border,
       child: Icon(
-        isAssistant ? Icons.auto_awesome : Icons.person,
+        effectiveIcon,
         size: iconSize,
-        color: isAssistant
-            ? AppConstants.iconColorPrimary
-            : AppConstants.iconColorWhite,
+        color: iconColor,
       ),
     );
   }
@@ -223,10 +254,10 @@ class AppIdentityAvatar extends ConsumerWidget {
   }
 }
 
-/// A generic assistant avatar, used for custom agents or messages.
 class AppAssistantAvatar extends StatelessWidget {
   final String? path;
   final String? emoji;
+  final IconData? icon;
   final double radius;
   final double iconSize;
   final BorderRadius? borderRadius;
@@ -236,6 +267,7 @@ class AppAssistantAvatar extends StatelessWidget {
     super.key,
     this.path,
     this.emoji,
+    this.icon,
     this.radius = AppConstants.avatarRadius,
     this.iconSize = AppConstants.avatarIconSize,
     this.borderRadius,
@@ -247,6 +279,7 @@ class AppAssistantAvatar extends StatelessWidget {
     return AvatarWidget(
       path: path,
       emoji: emoji,
+      icon: icon,
       radius: radius,
       iconSize: iconSize,
       isAssistant: true,

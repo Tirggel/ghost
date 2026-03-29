@@ -6,7 +6,7 @@ import '../core/gateway.dart';
 import '../core/constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 
 import '../core/models/chat_session.dart';
@@ -83,8 +83,18 @@ final authTokenProvider = AsyncNotifierProvider<AuthTokenNotifier, String?>(() {
 });
 
 class AuthTokenNotifier extends AsyncNotifier<String?> {
+  static const _tokenKey = 'auth_token';
+
   @override
   FutureOr<String?> build() async {
+    // 1. Try local storage first (fastest and handles restarts)
+    final prefs = await SharedPreferences.getInstance();
+    final localToken = prefs.getString(_tokenKey);
+    if (localToken != null && localToken.isNotEmpty) {
+      return localToken;
+    }
+
+    // 2. Fallback to gateway (migration/sync)
     final wsUrl = await ref.watch(gatewayUrlProvider.future);
     final baseUrl = _gatewayHttpUrl(wsUrl);
     try {
@@ -92,13 +102,22 @@ class AuthTokenNotifier extends AsyncNotifier<String?> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final token = data['token'] as String?;
-        return token;
+        if (token != null && token.isNotEmpty) {
+          // Persist locally for next time
+          await prefs.setString(_tokenKey, token);
+          return token;
+        }
       }
     } catch (_) {}
     return null;
   }
 
   Future<void> setToken(String token) async {
+    // Persist locally
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, token);
+
+    // Sync to gateway
     final wsUrl = await ref.read(gatewayUrlProvider.future);
     final baseUrl = _gatewayHttpUrl(wsUrl);
     try {
@@ -113,6 +132,12 @@ class AuthTokenNotifier extends AsyncNotifier<String?> {
 
   Future<void> logout() async {
     ref.read(gatewayClientProvider).disconnect();
+
+    // Clear local storage
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+
+    // Clear gateway storage
     final wsUrl = await ref.read(gatewayUrlProvider.future);
     final baseUrl = _gatewayHttpUrl(wsUrl);
     try {
@@ -300,6 +325,51 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
             lastActiveAt: s.lastActiveAt,
           );
 
+        }
+        return s;
+      }).toList();
+    } catch (_) {}
+  }
+
+  Future<void> setSessionTitle(String sessionId, String title) async {
+    final client = ref.read(gatewayClientProvider);
+
+    // Update pending if applicable
+    final pIndex = _pending.indexWhere((s) => s.id == sessionId);
+    if (pIndex != -1) {
+      final old = _pending[pIndex];
+      _pending[pIndex] = ChatSession(
+        id: old.id,
+        title: title,
+        model: old.model,
+        provider: old.provider,
+        messageCount: old.messageCount,
+        agentName: old.agentName,
+        agentId: old.agentId,
+        createdAt: old.createdAt,
+        lastActiveAt: old.lastActiveAt,
+      );
+    }
+
+    try {
+      await client.call('agent.setSessionTitle', {
+        'sessionId': sessionId,
+        'title': title,
+      });
+      // Update local state
+      state = state.map((s) {
+        if (s.id == sessionId) {
+          return ChatSession(
+            id: s.id,
+            title: title,
+            model: s.model,
+            provider: s.provider,
+            messageCount: s.messageCount,
+            agentName: s.agentName,
+            agentId: s.agentId,
+            createdAt: s.createdAt,
+            lastActiveAt: s.lastActiveAt,
+          );
         }
         return s;
       }).toList();
@@ -674,6 +744,8 @@ class ConfigNotifier extends Notifier<AppConfig> {
     }
   }
 
+  // --- Avatar Upload ---
+
   Future<String?> uploadAvatar(
     String name,
     List<int> bytes,
@@ -692,6 +764,70 @@ class ConfigNotifier extends Notifier<AppConfig> {
     } catch (_) {}
     return null;
   }
+}
+
+// -----------------------------------------------------------------------------
+// Gateway Logs — Shared in-memory buffer for the Gateway console
+// -----------------------------------------------------------------------------
+
+class GatewayLogEntry {
+  final String level;
+  final String message;
+  final DateTime time;
+  final String? logger;
+
+  GatewayLogEntry({
+    required this.level,
+    required this.message,
+    required this.time,
+    this.logger,
+  });
+
+  factory GatewayLogEntry.fromJson(Map<String, dynamic> json) {
+    return GatewayLogEntry(
+      level: json['level'] as String? ?? 'INFO',
+      message: json['message'] as String? ?? '',
+      time: json['time'] != null
+          ? DateTime.tryParse(json['time'] as String) ?? DateTime.now()
+          : DateTime.now(),
+      logger: json['logger'] as String?,
+    );
+  }
+}
+
+final gatewayLogsProvider =
+    NotifierProvider<GatewayLogsNotifier, List<GatewayLogEntry>>(() {
+  return GatewayLogsNotifier();
+});
+
+class GatewayLogsNotifier extends Notifier<List<GatewayLogEntry>> {
+  static const int _maxLogs = 500;
+
+  @override
+  List<GatewayLogEntry> build() {
+    final client = ref.watch(gatewayClientProvider);
+
+    // Initial state is empty if client changes, but we might want to keep history?
+    // For now, clean start on client change to avoid mixing logs from different gateways.
+
+    final sub = client.messages.listen((msg) {
+      if (msg['method'] == 'gateway.log') {
+        final params = msg['params'];
+        if (params != null) {
+          final entry = GatewayLogEntry.fromJson(params as Map<String, dynamic>);
+          final next = [...state, entry];
+          state = (next.length > _maxLogs)
+              ? next.sublist(next.length - _maxLogs)
+              : next;
+        }
+      }
+    });
+
+    ref.onDispose(() => sub.cancel());
+    return [];
+  }
+
+  void clear() => state = [];
 }
 
 final skillsProvider = FutureProvider<List<dynamic>>((ref) async {

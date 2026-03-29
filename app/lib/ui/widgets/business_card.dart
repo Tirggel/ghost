@@ -57,7 +57,6 @@ class BusinessCard extends StatefulWidget {
 class _BusinessCardState extends State<BusinessCard> {
   late bool _isEditing;
   bool _isSaving = false;
-  bool _isHovered = false;
 
   @override
   void initState() {
@@ -91,11 +90,7 @@ class _BusinessCardState extends State<BusinessCard> {
 
   @override
   Widget build(BuildContext context) {
-    final active = _isEditing || _isHovered;
-
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
       cursor: SystemMouseCursors.click,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -141,7 +136,7 @@ class _BusinessCardState extends State<BusinessCard> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       color: _isEditing ? AppColors.surface : AppColors.background,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -149,9 +144,8 @@ class _BusinessCardState extends State<BusinessCard> {
           Text(
             widget.title.tr().toUpperCase(),
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: AppConstants.fontSizeTitle,
               fontWeight: FontWeight.w900,
-              letterSpacing: 2.0,
               color: AppColors.primary,
             ),
           ),
@@ -177,7 +171,7 @@ class _BusinessCardState extends State<BusinessCard> {
                         child: Switch(
                           value: widget.isEnabled!,
                           onChanged: widget.onToggleEnabled,
-                          activeColor: AppColors.primary,
+                          activeThumbColor: AppColors.primary,
                           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                       ),
@@ -272,10 +266,9 @@ class _BusinessCardState extends State<BusinessCard> {
               Text(
                 field.label.tr().toUpperCase(),
                 style: const TextStyle(
-                  fontSize: 9,
+                  fontSize: AppConstants.fontSizeLabelTiny,
                   color: AppColors.textDim,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
               const SizedBox(height: 2),

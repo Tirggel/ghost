@@ -67,9 +67,10 @@ class GatewayAuth {
       );
     }
 
-    final providedHash = sha256Hash(token);
-    if (!secureCompare(providedHash, tokenHash)) {
-      _log.warning('Authentication failed — invalid token');
+    final providedHash = sha256Hash(token.toLowerCase());
+    if (!secureCompare(providedHash, tokenHash.toLowerCase())) {
+      _log.warning('Authentication failed — invalid token. '
+          'If you just updated the token via CLI, ensure the gateway was restarted or reloaded.');
       throw AuthError('Invalid authentication token', code: 'INVALID_TOKEN');
     }
 

@@ -7,6 +7,7 @@ import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_settings_input.dart';
 import '../../../widgets/app_dialogs.dart';
+import '../../../widgets/app_snackbar.dart';
 
 class ApiKeysTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -65,12 +66,9 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
         _getApiController(service, ref.read(configProvider)).clear();
         setState(() => _visibleKeyProvider = null);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'settings.api_keys.key_saved'.tr(namedArgs: {'label': 'providers.$service'.tr()}),
-              ),
-            ),
+          AppSnackBar.showSuccess(
+            context,
+            'settings.api_keys.key_saved'.tr(namedArgs: {'label': 'providers.$service'.tr()}),
           );
         }
       } catch (e) {
@@ -81,14 +79,11 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'settings.api_keys.verification_failed_content'.tr(
-                namedArgs: {'message': result['message'].toString()},
-              ),
-            ),
-            backgroundColor: AppColors.errorDark,
+        _getApiController(service, ref.read(configProvider)).clear();
+        AppSnackBar.showError(
+          context,
+          'settings.api_keys.verification_failed_content'.tr(
+            namedArgs: {'message': result['message'].toString()},
           ),
         );
       }
@@ -129,12 +124,9 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
       try {
         await ref.read(configProvider.notifier).setKey(service, '');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'settings.api_keys.key_removed'.tr(namedArgs: {'label': 'providers.$service'.tr()}),
-              ),
-            ),
+          AppSnackBar.showSuccess(
+            context,
+            'settings.api_keys.key_removed'.tr(namedArgs: {'label': 'providers.$service'.tr()}),
           );
         }
       } catch (e) {
@@ -152,26 +144,20 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
     final config = ref.watch(configProvider);
     final vaultKeys = config.vaultKeys.toSet();
 
-    return Column(
+    return AppSettingsPage(
+      onBack: widget.onBack,
+      onNext: widget.onNext,
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              const AppSectionHeader('settings.api_keys.section', large: true),
-              Text(
-                'settings.api_keys.desc'.tr(),
-                style: const TextStyle(
-                  fontSize: AppConstants.fontSizeBody,
-                  color: AppColors.textDim,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ...buildProviderSections(providers, vaultKeys, config),
-            ],
+        const AppSectionHeader('settings.api_keys.section', large: true),
+        Text(
+          'settings.api_keys.desc'.tr(),
+          style: const TextStyle(
+            fontSize: AppConstants.fontSizeBody,
+            color: AppColors.textDim,
           ),
         ),
-        _buildNavButtons(),
+        const SizedBox(height: 16),
+        ...buildProviderSections(providers, vaultKeys, config),
       ],
     );
   }

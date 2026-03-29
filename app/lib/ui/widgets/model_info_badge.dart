@@ -17,13 +17,8 @@ class ModelInfoBadge extends ConsumerWidget {
 
     final currentSession = sessions.where((s) => s.id == sessionId).firstOrNull;
 
-    final rawModel =
-        currentSession?.model ??
-        config.agent.model ??
-        'Unknown';
-    final rawProvider =
-        currentSession?.provider ??
-        config.agent.provider;
+    final rawModel = currentSession?.model ?? config.agent.model ?? 'Unknown';
+    final rawProvider = currentSession?.provider ?? config.agent.provider;
 
     // Derive display strings
     String providerLabel = rawProvider?.toUpperCase() ?? 'AI';

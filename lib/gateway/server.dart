@@ -72,6 +72,8 @@ class GatewayServer {
   /// Number of connected clients.
   int get clientCount => _clients.length;
 
+  StreamSubscription<LogRecord>? _logSub;
+
   /// Start the Gateway server.
   Future<void> start() async {
     if (isRunning) {
@@ -81,6 +83,26 @@ class GatewayServer {
     await Hive.openBox<Uint8List>('avatars');
 
     final handler = webSocketHandler(_handleWebSocket);
+
+    // Subscribe to all system logs and broadcast them to authenticated clients
+    _logSub = Logger.root.onRecord.listen((record) {
+      // Prevent infinite loops: don't broadcast logs about broadcasting logs
+      // or other high-frequency internal gateway noise if needed.
+      final msg = record.message;
+      if (record.loggerName == 'Ghost.Gateway' &&
+          (msg.contains('JSON-RPC') ||
+              msg.contains('RPC Request') ||
+              msg.contains('RPC Response'))) {
+        return;
+      }
+
+      broadcast('gateway.log', {
+        'level': record.level.name,
+        'message': record.message,
+        'time': record.time.toIso8601String(),
+        'logger': record.loggerName,
+      });
+    });
 
     // Add a health check endpoint for HTTP
     final cascade =
@@ -237,6 +259,9 @@ class GatewayServer {
   Future<void> stop() async {
     if (!isRunning) return;
 
+    await _logSub?.cancel();
+    _logSub = null;
+
     // Close all client connections
     // Note: Use a copy of values to avoid ConcurrentModificationError
     final clients = List<GatewayClient>.from(_clients.values);
@@ -329,8 +354,11 @@ class GatewayServer {
       isAuthenticated: client.isAuthenticated,
     );
 
+    _log.info('RPC Request from ${client.id}: $raw');
+
     final response = await rpcRegistry.handleRequest(raw, context);
     if (response != null) {
+      _log.info('RPC Response to ${client.id}: $response');
       client.channel.sink.add(response);
     }
   }
@@ -381,6 +409,31 @@ class GatewayServer {
     // List registered RPC methods
     rpcRegistry.register('gateway.methods', (params, context) async {
       return {'methods': rpcRegistry.methods.toList()..sort()};
+    });
+
+    // Restart the HTTP/WS server (keeps the same config/port)
+    rpcRegistry.register('gateway.restart', (params, context) async {
+      _log.info('Restart requested via RPC');
+      broadcast('gateway.log', {
+        'level': 'INFO',
+        'message': '↺ Gateway restart requested — reconnecting in ~1 s…',
+        'time': DateTime.now().toIso8601String(),
+      });
+
+      // Perform restart in background so the RPC response can still be sent
+      Future<void>.delayed(const Duration(milliseconds: 500)).then((_) async {
+        await stop();
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        await start();
+        _log.info('Gateway restarted on port $port');
+        broadcast('gateway.log', {
+          'level': 'INFO',
+          'message': '✅ Gateway restarted on port $port',
+          'time': DateTime.now().toIso8601String(),
+        });
+      });
+
+      return {'status': 'restarting', 'port': port};
     });
   }
 

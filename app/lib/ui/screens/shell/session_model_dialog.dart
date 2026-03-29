@@ -11,12 +11,14 @@ class SessionModelDialog extends ConsumerStatefulWidget {
   final String sessionId;
   final String? currentModel;
   final String? currentProvider;
+  final bool alsoUpdateMainAgent;
 
   const SessionModelDialog({
     super.key,
     required this.sessionId,
     this.currentModel,
     this.currentProvider,
+    this.alsoUpdateMainAgent = false,
   });
 
   @override
@@ -63,16 +65,28 @@ class _SessionModelDialogState extends ConsumerState<SessionModelDialog> {
     }
   }
 
-  void _apply() {
+  void _apply() async {
     if (_selectedProvider != null && _selectedModel != null) {
-      ref
-          .read(sessionsProvider.notifier)
-          .setSessionModel(
+      // Update the Specific Session
+      ref.read(sessionsProvider.notifier).setSessionModel(
             widget.sessionId,
             _selectedModel!,
             _selectedProvider,
           );
-      Navigator.pop(context);
+
+      // Also update the Global Main Agent if requested
+      if (widget.alsoUpdateMainAgent) {
+        try {
+          await ref.read(configProvider.notifier).updateAgent({
+            'provider': _selectedProvider,
+            'model': _selectedModel,
+          });
+        } catch (_) {
+          // Silent fail or could show a snackbar (but Picker is already closed)
+        }
+      }
+
+      if (mounted) Navigator.pop(context);
     }
   }
 
@@ -162,7 +176,9 @@ class _SessionModelDialogState extends ConsumerState<SessionModelDialog> {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: AppColors.black,
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.zero,
+            ),
           ),
           child: Text('common.apply'.tr()),
         ),

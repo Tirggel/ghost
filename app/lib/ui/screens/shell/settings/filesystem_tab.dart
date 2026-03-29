@@ -6,6 +6,7 @@ import 'package:file_selector/file_selector.dart' as fs;
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
+import '../../../widgets/app_snackbar.dart';
 
 class FilesystemTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -34,9 +35,7 @@ class _FilesystemTabState extends ConsumerState<FilesystemTab> {
   Future<void> _save() async {
     await ref.read(configProvider.notifier).updateAgentWorkspace(_controller.text);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('settings.workspace.saved'.tr())),
-      );
+      AppSnackBar.showSuccess(context, 'settings.workspace.saved'.tr());
     }
   }
 
@@ -49,60 +48,53 @@ class _FilesystemTabState extends ConsumerState<FilesystemTab> {
       }
     });
 
-    return Column(
+    return AppSettingsPage(
+      onBack: widget.onBack,
+      onNext: widget.onNext,
+      onSave: _save,
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              const AppSectionHeader('settings.workspace.section', large: true),
-              Text(
-                'settings.workspace.desc'.tr(),
-                style: const TextStyle(color: AppColors.textDim, fontSize: AppConstants.fontSizeBody),
-              ),
-              const SizedBox(height: 16),
-              AppFormField.text(
-                controller: _controller,
-                label: 'settings.workspace.path_label',
-                hint: 'settings.workspace.path_hint',
-                prefixIcon: const Icon(
-                  AppConstants.folderIcon,
-                  color: AppColors.textDim,
-                  size: AppConstants.iconSizeSmall,
-                ),
-                suffixIcon: IconButton(
-                  onPressed: _browse,
-                  icon: const Icon(
-                    Icons.folder_open,
-                    color: AppColors.primary,
-                    size: AppConstants.settingsIconSize,
-                  ),
-                  tooltip: 'common.browse'.tr(),
-                ),
-                onSubmitted: (_) {},
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  _controller.clear();
-                  await ref.read(configProvider.notifier).updateAgentWorkspace('');
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('settings.workspace.reset_done'.tr())),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.refresh, size: 18),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textDim,
-                  side: const BorderSide(color: AppColors.border),
-                ),
-                label: Text('settings.workspace.reset'.tr()),
-              ),
-            ],
-          ),
+        const AppSectionHeader('settings.workspace.section', large: true),
+        Text(
+          'settings.workspace.desc'.tr(),
+          style: const TextStyle(color: AppColors.textDim, fontSize: AppConstants.fontSizeBody),
         ),
-        _buildNavButtons(),
+        const SizedBox(height: 16),
+        AppFormField.text(
+          controller: _controller,
+          label: 'settings.workspace.path_label',
+          hint: 'settings.workspace.path_hint',
+          prefixIcon: const Icon(
+            AppConstants.folderIcon,
+            color: AppColors.textDim,
+            size: AppConstants.iconSizeSmall,
+          ),
+          suffixIcon: IconButton(
+            onPressed: _browse,
+            icon: const Icon(
+              Icons.folder_open,
+              color: AppColors.primary,
+              size: AppConstants.settingsIconSize,
+            ),
+            tooltip: 'common.browse'.tr(),
+          ),
+          onSubmitted: (_) {},
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () async {
+            _controller.clear();
+            await ref.read(configProvider.notifier).updateAgentWorkspace('');
+            if (context.mounted) {
+              AppSnackBar.showSuccess(context, 'settings.workspace.reset_done'.tr());
+            }
+          },
+          icon: const Icon(Icons.refresh, size: 18),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.textDim,
+            side: const BorderSide(color: AppColors.border),
+          ),
+          label: Text('settings.workspace.reset'.tr()),
+        ),
       ],
     );
   }
@@ -110,12 +102,7 @@ class _FilesystemTabState extends ConsumerState<FilesystemTab> {
   Future<void> _browse() async {
     if (kIsWeb) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('settings.workspace.browse_web_error'.tr()),
-            backgroundColor: AppColors.errorDark,
-          ),
-        );
+        AppSnackBar.showError(context, 'settings.workspace.browse_web_error'.tr());
       }
       return;
     }
@@ -128,21 +115,11 @@ class _FilesystemTabState extends ConsumerState<FilesystemTab> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('file_picker.pick_error'.tr(namedArgs: {'error': e.toString()})),
-            backgroundColor: AppColors.errorDark,
-          ),
+        AppSnackBar.showError(
+          context,
+          'file_picker.pick_error'.tr(namedArgs: {'error': e.toString()}),
         );
       }
     }
-  }
-
-  Widget _buildNavButtons() {
-    return AppSettingsNavBar(
-      onBack: widget.onBack,
-      onSave: _save,
-      onNext: widget.onNext,
-    );
   }
 }

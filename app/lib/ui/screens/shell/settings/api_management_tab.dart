@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:easy_localization/easy_localization.dart';
-import '../../../widgets/app_styles.dart';
+import '../../../../providers/shell_provider.dart';
 import '../../../widgets/settings_sub_nav_bar.dart';
 import 'api_keys_tab.dart';
 import 'external_services_tab.dart';
@@ -16,7 +15,7 @@ class ApiManagementTab extends ConsumerStatefulWidget {
 }
 
 class _ApiManagementTabState extends ConsumerState<ApiManagementTab> {
-  int _currentIndex = 0;
+  final int _mainTabIndex = 2;
 
   final List<String> _subTabLabels = [
     'settings.api_keys.tab',
@@ -25,24 +24,26 @@ class _ApiManagementTabState extends ConsumerState<ApiManagementTab> {
 
   @override
   Widget build(BuildContext context) {
+    final currentIndex = ref.watch(shellProvider.select((s) => s.settingsSubTabIndices[_mainTabIndex] ?? 0));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SettingsSubNavBar(
           items: _subTabLabels,
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
+          currentIndex: currentIndex,
+          onTap: (index) => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, index),
         ),
         Expanded(
           child: IndexedStack(
-            index: _currentIndex,
+            index: currentIndex,
             children: [
               ApiKeysTab(
                 onBack: widget.onBack,
-                onNext: () => setState(() => _currentIndex = 1),
+                onNext: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 1),
               ),
               ExternalServicesTab(
-                onBack: () => setState(() => _currentIndex = 0),
+                onBack: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 0),
                 onNext: widget.onNext,
               ),
             ],

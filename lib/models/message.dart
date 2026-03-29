@@ -59,12 +59,6 @@ class MessageAttachment {
     required this.data,
   });
 
-  final String name;
-  final String mimeType;
-
-  /// Base64 encoded or raw bytes (internally stored as Base64 in JSON).
-  final String data;
-
   factory MessageAttachment.fromJson(Map<String, dynamic> json) {
     return MessageAttachment(
       name: json['name'] as String,
@@ -72,6 +66,12 @@ class MessageAttachment {
       data: json['data'] as String,
     );
   }
+
+  final String name;
+  final String mimeType;
+
+  /// Base64 encoded or raw bytes (internally stored as Base64 in JSON).
+  final String data;
 
   Map<String, dynamic> toJson() => {
         'name': name,
