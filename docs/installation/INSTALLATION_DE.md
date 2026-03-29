@@ -26,8 +26,14 @@ flutter pub get
 ### 3. Gateway manuell starten
 Falls du Docker nicht nutzt, kannst du das Gateway direkt starten.
 
-**Wichtig beim ersten Start:**
-Führe zuerst einen Reset aus, um die Datenbank korrekt zu initialisieren:
+**Option A: Einrichtungsassistent (Empfohlen)**
+Der einfachste Weg, Ghost zum ersten Mal zu konfigurieren, ist der integrierte **Einrichtungsassistent**.
+1. Starte das Gateway: `dart bin/ghost.dart gateway`
+2. Starte die App: `cd app && flutter run`
+3. Die App erkennt automatisch, ob eine Einrichtung erforderlich ist und führt dich durch den Prozess.
+
+**Option B: Manuelles Zurücksetzen (CLI)**
+Falls du die Kommandozeile bevorzugst, führe einen Reset aus, um die Datenbank korrekt zu initialisieren:
 ```bash
 dart bin/ghost.dart gateway reset
 # Beantworte die Fragen wie folgt:

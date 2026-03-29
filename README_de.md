@@ -37,6 +37,9 @@ Um mit Ghost zu starten, folge bitte unserer detaillierten Installationsanleitun
 👉 **[Installation & Setup Guide (English)](docs/installation/INSTALLATION_EN.md)**
 👉 **[Installs- & Setup-Anleitung (Deutsch)](docs/installation/INSTALLATION_DE.md)**
 
+### 🪄 Einrichtungsassistent (Setup Wizard)
+Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistenten**, der dich bei der Erstausführung der Anwendung durch den Konfigurationsprozess führt. Dies hilft dir, deinen Arbeitsbereich und deine Verbindungen mühelos einzurichten!
+
 ### 📚 Weiterführende Dokumentation
 - **[Skills Development Guide](docs/SKILLS_GUIDE_DE.md)**: Erfahre, wie du eigene KI-Skills erstellst und paketierst.
 - **[STT & TTS Setup](docs/STT_TTS_SETUP_DE.md)**: Konfiguriere lokale Spracherkennung und -synthese.
@@ -75,10 +78,15 @@ Um mit Ghost zu starten, folge bitte unserer detaillierten Installationsanleitun
     - **Cron-basierte Automatisierung**: Erstelle eigene Agenten mit spezialisierten Skills und plane deren Ausführung mittels Unix-Cron-Ausdrücken (z.B. alle 5 Minuten).
     - **Echtzeit-UI-Synchronisierung**: Neue Agenten und Konfigurationsänderungen werden sofort an das UI übertragen für ein nahtloses Erlebnis.
 - **Privacy & Security**:
+    - **Sicherheits-Audit-Protokolle**: Verfolge und überprüfe alle sicherheitsrelevanten Aktionen und Ereignisse direkt in der Benutzeroberfläche.
     - **Sicherer Tresor**: API-Schlüssel, Agenten-Konfigurationen und Memory-Einstellungen sind mit AES-256-GCM verschlüsselt und nur auf deinem Rechner gespeichert.
     - **Verschlüsselte Datenbank**: Chat-Sitzungen und Avatare werden in einer lokalen Hive-Datenbank mit zusätzlicher Verschlüsselung gespeichert.
     - **Avatar-Management**: Bilder werden direkt in der Datenbank gespeichert, um maximale Privatsphäre zu gewährleisten.
     - **Selbstgehostet**: Volle Kontrolle über deine Daten und die Codebasis.
+- **Moderne Benutzeroberfläche**:
+    - **Klares Design**: Eine minimalistische und intuitive Oberfläche für ein ablenkungsfreies Erlebnis.
+    - **Code-Darstellung**: Hebt Code-Blöcke hervor und formatiert sie für eine bessere Lesbarkeit.
+    - **Einstellungszentrale**: Verwalte alle deine Konfigurationen zentral, einschließlich eines dedizierten Gateway-Tabs.
 
 ---
 

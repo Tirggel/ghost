@@ -37,6 +37,9 @@ To get started with Ghost, please follow our detailed installation guide:
 👉 **[Installation & Setup Guide (English)](docs/installation/INSTALLATION_EN.md)**
 👉 **[Installs- & Setup-Anleitung (Deutsch)](docs/installation/INSTALLATION_DE.md)**
 
+### 🪄 Setup Wizard
+For new users, Ghost now includes an interactive **Setup Wizard** that guides you through the initial configuration process upon the first launch of the application. This helps you set up your workspace and connections easily!
+
 ### 📚 Further Documentation
 - **[Skills Development Guide](docs/SKILLS_GUIDE.md)**: Learn how to create and package your own AI skills.
 - **[STT & TTS Setup](docs/STT_TTS_SETUP.md)**: Configure local speech recognition and synthesis.
@@ -75,10 +78,16 @@ To get started with Ghost, please follow our detailed installation guide:
     - **Cron-based Automation**: Create custom agents with specialized skills and schedule them using unix-style cron expressions (e.g., every 5 minutes).
     - **Real-time UI Sync**: New agents and configuration changes are broadcasted immediately to the UI for a seamless experience.
 - **Privacy & Security**:
+    - **Security Audit Logs**: Track and review all security-relevant actions and events directly in the UI.
     - **Secure Vault**: API keys, agent configurations, and memory settings are encrypted with AES-256-GCM and stored only on your machine.
     - **Encrypted Database**: Chat sessions and avatars are stored in a local Hive database with additional encryption.
     - **Avatar Management**: Images are stored directly in the database for maximum privacy.
     - **Self-hosted**: Full control over your data and codebase.
+- **Modern User Interface**:
+    - **Clean Design**: A minimalist and intuitive interface for a distraction-free experience.
+    - **Code Rendering**: Highlights and formats code blocks for easy reading.
+    - **Settings Hub**: Centrally manage all your configurations, including a dedicated Gateway tab.
+
 
 ---
 
