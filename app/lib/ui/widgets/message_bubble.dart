@@ -8,6 +8,7 @@ import 'code_block_widget.dart';
 import '../../providers/gateway_provider.dart';
 import '../../core/constants.dart';
 import '../../core/models/chat_message.dart';
+import '../../providers/chat_provider.dart';
 import 'avatar_widget.dart';
 import '../screens/shell/session_model_dialog.dart';
 
@@ -241,7 +242,7 @@ class MessageBubble extends ConsumerWidget {
                       codeblockDecoration: const BoxDecoration(), // New widget handles decoration
                     ),
                   ),
-                  _buildErrorRecoveryButton(context),
+                  _buildErrorRecoveryButton(context, ref),
                   if (isAssistant && metadata?['tool_calls'] != null) ...[
                     const SizedBox(height: 16),
                     Theme(
@@ -336,7 +337,7 @@ class MessageBubble extends ConsumerWidget {
     );
   }
 
-  Widget _buildErrorRecoveryButton(BuildContext context) {
+  Widget _buildErrorRecoveryButton(BuildContext context, WidgetRef ref) {
     if (sessionId == null) return const SizedBox.shrink();
 
     final hasError = content.contains('⚠️ Provider returned error') ||
@@ -352,31 +353,86 @@ class MessageBubble extends ConsumerWidget {
         children: [
           Divider(color: AppColors.warning.withValues(alpha: 0.2)),
           const SizedBox(height: 8),
-          ElevatedButton.icon(
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => SessionModelDialog(
-                  sessionId: sessionId!,
-                  currentModel: metadata?['model'] as String?,
-                  currentProvider: metadata?['provider'] as String?,
-                  alsoUpdateMainAgent: true,
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => SessionModelDialog(
+                        sessionId: sessionId!,
+                        currentModel: metadata?['model'] as String?,
+                        currentProvider: metadata?['provider'] as String?,
+                        alsoUpdateMainAgent: true,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.smart_toy_outlined, size: 18),
+                  label: Text('settings.identity.choose_model'.tr()),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.warning.withValues(alpha: 0.2),
+                    foregroundColor: AppColors.warning,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppConstants.borderRadiusSmall),
+                      side: BorderSide(color: AppColors.warning.withValues(alpha: 0.3)),
+                    ),
+                    elevation: 0,
+                  ),
                 ),
-              );
-            },
-            icon: const Icon(Icons.smart_toy_outlined, size: 18),
-            label: Text('settings.identity.choose_model'.tr()),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.warning.withValues(alpha: 0.2),
-              foregroundColor: AppColors.warning,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(AppConstants.borderRadiusSmall),
-                side: BorderSide(color: AppColors.warning.withValues(alpha: 0.3)),
               ),
-              elevation: 0,
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final text = 'continue';
+                    final notifier = ref.read(chatProvider.notifier);
+                    
+                    notifier.addMessageEntry(sessionId!, {
+                      'role': 'user',
+                      'content': text,
+                      'timestamp': DateTime.now().toIso8601String(),
+                      'attachments': [],
+                    });
+                    notifier.setProcessing(sessionId!, true);
+                    
+                    final sessions = ref.read(sessionsProvider);
+                    final currentSession = sessions.where(
+                      (s) => s.id == sessionId,
+                    ).firstOrNull;
+                    
+                    final config = ref.read(configProvider);
+                    final agentModel = currentSession?.model ?? config.agent.model;
+                    final agentProvider = currentSession?.provider ?? config.agent.provider;
+
+                    try {
+                      await ref.read(gatewayClientProvider).call('agent.chat', {
+                        'content': text,
+                        'sessionId': sessionId!,
+                        'model': agentModel,
+                        'provider': agentProvider,
+                        'attachments': [],
+                      });
+                    } catch (_) {}
+                  },
+                  icon: const Icon(Icons.play_arrow_outlined, size: 18),
+                  label: const Text('Weiter'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppConstants.borderRadiusSmall),
+                      side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

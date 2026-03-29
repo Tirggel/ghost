@@ -37,8 +37,21 @@ Um mit Ghost zu starten, folge bitte unserer detaillierten Installationsanleitun
 👉 **[Installation & Setup Guide (English)](docs/installation/INSTALLATION_EN.md)**
 👉 **[Installs- & Setup-Anleitung (Deutsch)](docs/installation/INSTALLATION_DE.md)**
 
+### 🪄 Erststart: Manuelle Einrichtung
+Vor dem ersten Start von Ghost **musst** du ein Reset durchführen, um die lokale Umgebung und die Datenbanken korrekt zu initialisieren.
+
+Führe den folgenden Befehl in deinem Terminal aus:
+```bash
+dart bin/ghost.dart gateway reset
+```
+
+**Erforderliche Antworten während des Vorgangs:**
+*   `Are you sure you want to continue? (y/N):` **y**
+*   `Do you want to save the user and main agent configuration and restore them after reset? (y/N):` **n**
+*   `Do you want to start the gateway now? (y/N):` **y**
+
 ### 🪄 Einrichtungsassistent (Setup Wizard)
-Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistenten**, der dich bei der Erstausführung der Anwendung durch den Konfigurationsprozess führt. Dies hilft dir, deinen Arbeitsbereich und deine Verbindungen mühelos einzurichten!
+Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistenten**, der automatisch gestartet wird, wenn die Anwendung noch nicht konfiguriert ist.
 
 ### 📚 Weiterführende Dokumentation
 - **[Skills Development Guide](docs/SKILLS_GUIDE_DE.md)**: Erfahre, wie du eigene KI-Skills erstellst und paketierst.

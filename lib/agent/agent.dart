@@ -66,10 +66,10 @@ class Agent {
     _log.info('Processing message for session $sessionId');
 
     try {
-      // 1. Resolve session history
+      final history = await sessionManager.getHistory(sessionId, maxMessages: 20);
       final messages = shouldSendChatHistory
-          ? await sessionManager.getHistory(sessionId, maxMessages: 20)
-          : <Message>[];
+          ? history
+          : (history.isNotEmpty ? [history.last] : <Message>[]);
 
       // 2. Start the turn loop (to handle multiple tool calls)
       int iterations = 0;
