@@ -827,9 +827,17 @@ class ResetCommand extends Command<void> {
           tokenHash: tokenHash,
         ),
       ),
+      security: const SecurityConfig(
+        level: SecurityLevel.none,
+        humanInTheLoop: false,
+        promptHardening: false,
+        restrictNetwork: false,
+        promptAnalyzers: false,
+      ),
     );
 
     await saveConfig(newConfig, configPath);
+    print('🔓 Security settings reset to level "none" (all disabled).');
 
     final sessionKey =
         Uint8List.fromList(sha256.convert(utf8.encode(tokenHash)).bytes);

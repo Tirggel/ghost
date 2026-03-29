@@ -39,6 +39,10 @@ class ChatMessage {
   bool get isUser => role == 'user';
   bool get isSystem => role == 'system';
   bool get isError => role == 'error';
+  /// Messages that should never be shown in the UI (internal sentinels).
+  bool get isHidden =>
+      content.trim() == '__HITL_DECLINED__' ||
+      (metadata?['hitl_declined'] == true);
 }
 
 class ChatAttachment {

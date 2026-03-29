@@ -11,6 +11,7 @@ import 'integrations_tab.dart';
 import 'channels_tab.dart';
 import 'toolbox_tab.dart';
 import 'gateway_tab.dart';
+import 'security_tab.dart';
 import 'widgets/settings_sidebar.dart';
 
 class SettingsDialog extends ConsumerStatefulWidget {
@@ -28,6 +29,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
     {'label': 'settings.integrations.tab', 'icon': Icons.extension_outlined},
     {'label': 'settings.channels.tab', 'icon': Icons.hub_outlined},
     {'label': 'settings.toolbox.tab', 'icon': Icons.construction_rounded},
+    {'label': 'settings.tabs.security', 'icon': Icons.security_rounded},
     {'label': 'settings.gateway.tab', 'icon': Icons.router_rounded},
   ];
 
@@ -77,7 +79,11 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                           onBack: () => ref.read(shellProvider.notifier).setSettingsTabIndex(4),
                           onNext: () => ref.read(shellProvider.notifier).setSettingsTabIndex(6),
                         ),
-                        GatewayTab(onBack: () => ref.read(shellProvider.notifier).setSettingsTabIndex(5)),
+                        SecurityTab(
+                          onBack: () => ref.read(shellProvider.notifier).setSettingsTabIndex(5),
+                          onNext: () => ref.read(shellProvider.notifier).setSettingsTabIndex(7),
+                        ),
+                        GatewayTab(onBack: () => ref.read(shellProvider.notifier).setSettingsTabIndex(6)),
                       ],
                     ),
                   ),

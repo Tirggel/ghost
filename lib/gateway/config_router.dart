@@ -63,6 +63,7 @@ class ConfigRouter {
       final tools = await _loadToolsFromVault() ?? config.tools;
       final integrations =
           await _loadIntegrationsFromVault() ?? config.integrations;
+      final security = config.security;
 
       return {
         'agent': agent.toJson(),
@@ -78,6 +79,7 @@ class ConfigRouter {
         'integrations': integrations.toJson(),
         'channels': channels.toJson(),
         'tools': tools.toJson(),
+        'security': security.toJson(),
         'vault': {
           'keys': await storage.listKeys(),
         },
@@ -795,6 +797,30 @@ class ConfigRouter {
 
       await _saveToolsToVault(updatedTools);
       await saveConfig(config, configPath);
+      await _syncAgentManagerConfig();
+
+      return {'status': 'ok'};
+    });
+
+    // 19. Update security config
+    gateway.rpcRegistry.register('config.updateSecurity', (params, context) async {
+      if (params == null) throw ProtocolError('Missing params');
+
+      final config = await loadConfig(configPath);
+      final current = config.security;
+
+      final updated = SecurityConfig(
+        level: SecurityLevel.values.firstWhere(
+          (e) => e.name == (params['level'] as String? ?? current.level.name),
+          orElse: () => current.level,
+        ),
+        humanInTheLoop: params['humanInTheLoop'] as bool? ?? current.humanInTheLoop,
+        promptHardening: params['promptHardening'] as bool? ?? current.promptHardening,
+        restrictNetwork: params['restrictNetwork'] as bool? ?? current.restrictNetwork,
+        promptAnalyzers: params['promptAnalyzers'] as bool? ?? current.promptAnalyzers,
+      );
+
+      await saveConfig(config.copyWith(security: updated), configPath);
       await _syncAgentManagerConfig();
 
       return {'status': 'ok'};

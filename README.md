@@ -1,7 +1,7 @@
 # Ghost 👻
 
 <p align="center">
-  <img src="app/assets/icons/logo/ghost-large.png" width="300" alt="Ghost Logo">
+  <img src="app/assets/icons/logo/ghost-large.png" width="150" alt="Ghost Logo">
 </p>
 
 > [!WARNING]
@@ -42,13 +42,27 @@ Before starting Ghost for the first time, you **must** perform a reset to correc
 
 Run the following command in your terminal:
 ```bash
-dart bin/ghost.dart gateway reset
+dart bin/ghost.dart reset
 ```
 
 **Required answers during the process:**
 *   `Are you sure you want to continue? (y/N):` **y**
 *   `Do you want to save the user and main agent configuration and restore them after reset? (y/N):` **n**
 *   `Do you want to start the gateway now? (y/N):` **y**
+
+> [!IMPORTANT]
+> **Review your security settings after the first install!**
+> After a reset, all security settings are reset to **level "none" (everything disabled)**.
+> Once the app is running, navigate to **Settings → Security** and configure them to your needs:
+>
+> | Setting | Description | Recommendation |
+> |---|---|---|
+> | **Human-In-The-Loop (HITL)** | Requires confirmation before sensitive actions | ✅ Enable |
+> | **Prompt Hardening** | Protects against jailbreaks & prompt injection | ✅ Enable |
+> | **Network Restriction** | Isolates web tools at high security level | ⚠️ As needed |
+> | **Prompt Analyzers** | Advanced analysis of incoming prompts | ⚠️ As needed |
+>
+> For normal use, at least **level "medium"** is recommended (HITL + Prompt Hardening active).
 
 ### 🪄 Setup Wizard
 For new users, Ghost now includes an interactive **Setup Wizard** which is triggered automatically if the application is not yet configured.
@@ -91,7 +105,10 @@ For new users, Ghost now includes an interactive **Setup Wizard** which is trigg
     - **Cron-based Automation**: Create custom agents with specialized skills and schedule them using unix-style cron expressions (e.g., every 5 minutes).
     - **Real-time UI Sync**: New agents and configuration changes are broadcasted immediately to the UI for a seamless experience.
 - **Privacy & Security**:
+    - **Human-In-The-Loop (HITL)**: Sensitive actions (file system, terminal, web access) require explicit user confirmation via interactive **YES / NO buttons** in the chat.
     - **Security Audit Logs**: Track and review all security-relevant actions and events directly in the UI.
+    - **Prompt Hardening**: Advanced system prompts protect the agent from jailbreaks and instructions that attempt to bypass security rules.
+    - **Network Restriction**: Complete isolation of the agent's web tools when high security is enabled to prevent unauthorized data exfiltration.
     - **Secure Vault**: API keys, agent configurations, and memory settings are encrypted with AES-256-GCM and stored only on your machine.
     - **Encrypted Database**: Chat sessions and avatars are stored in a local Hive database with additional encryption.
     - **Avatar Management**: Images are stored directly in the database for maximum privacy.

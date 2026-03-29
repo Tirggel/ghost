@@ -8,6 +8,7 @@ import '../models/provider.dart';
 import '../sessions/manager.dart';
 import '../tools/registry.dart';
 import '../config/secure_storage.dart';
+import '../config/config.dart';
 import 'providers/factory.dart';
 import 'memory_system.dart';
 
@@ -26,12 +27,13 @@ class Agent {
     required this.storage,
     required this.memory,
     this.systemPrompt = 'You are a helpful AI assistant.',
-    this.maxToolIterations = 30,
+    int? maxToolIterations,
     this.workspaceDir = '.',
     this.stateDir = '.ghost',
     this.browserHeadless = true,
     this.shouldSendChatHistory = true,
-  });
+    this.security = const SecurityConfig(),
+  }) : _maxToolIterationsOverride = maxToolIterations;
 
   final String id;
   AIModelProvider provider;
@@ -40,12 +42,23 @@ class Agent {
   final SecureStorage storage;
   final MemorySystem memory;
   String systemPrompt;
-  final int maxToolIterations;
+  final int? _maxToolIterationsOverride;
   String workspaceDir;
   final String stateDir;
   bool browserHeadless;
   bool shouldSendChatHistory;
+  SecurityConfig security;
   final Set<String> _stoppedSessions = {};
+
+  int get maxToolIterations {
+    if (_maxToolIterationsOverride != null) return _maxToolIterationsOverride!;
+    switch (security.level) {
+      case SecurityLevel.high: return 5;
+      case SecurityLevel.medium: return 15;
+      case SecurityLevel.low: return 25;
+      case SecurityLevel.none: return 40;
+    }
+  }
 
   AgentState _state = AgentState.idle;
   AgentState get state => _state;
@@ -71,9 +84,75 @@ class Agent {
           ? history
           : (history.isNotEmpty ? [history.last] : <Message>[]);
 
+      // --- Sentinel: HITL decline recorded silently, no LLM call needed ---
+      if (content.trim() == '__HITL_DECLINED__') {
+        _log.info('HITL declined sentinel received for session $sessionId');
+        await sessionManager.addMessage(
+          sessionId: sessionId,
+          role: 'user',
+          content: '__HITL_DECLINED__',
+          metadata: {'hitl_declined': true},
+        );
+        _state = AgentState.idle;
+        onActivityUpdate?.call('');
+        return;
+      }
+
       // 2. Start the turn loop (to handle multiple tool calls)
       int iterations = 0;
-      final turnMessages = List<Message>.from(messages);
+
+      // Sanitize history: remove assistant+tool pairs from HITL-blocked turns.
+      // Two cases:
+      //   1. Null tool_call IDs (leftover in-memory turns, cause 400 errors)
+      //   2. Tool results containing SECURITY ALERT (stored in DB, cause agent to retry blocked actions)
+      final sanitized = <Message>[];
+      for (int i = 0; i < messages.length; i++) {
+        final m = messages[i];
+        if (m.role == 'assistant' && m.metadata.containsKey('tool_calls')) {
+          final calls = m.metadata['tool_calls'] as List<dynamic>;
+
+          // Case 1: null IDs
+          final hasNullId = calls.any((c) {
+            final id = (c as Map<String, dynamic>)['id'];
+            return id == null || id == 'null' || (id is String && id.isEmpty);
+          });
+
+          // Case 2: look ahead — any following tool message contains SECURITY ALERT?
+          bool hasSecurityBlock = false;
+          int j = i + 1;
+          while (j < messages.length && messages[j].role == 'tool') {
+            if (messages[j].content.contains('SECURITY ALERT') ||
+                messages[j].content.contains('Tool execution blocked')) {
+              hasSecurityBlock = true;
+            }
+            j++;
+          }
+
+          if (hasNullId || hasSecurityBlock) {
+            // Scan forward past ALL tool/assistant messages until we reach
+            // a user message. If it's __HITL_DECLINED__, include and skip it.
+            // If it's a real user message, stop before it.
+            while (j < messages.length) {
+              if (messages[j].role == 'user') {
+                if (messages[j].content.trim() == '__HITL_DECLINED__') {
+                  j++; // include the sentinel in the removed range
+                }
+                break; // stop (next real user message stays in history)
+              }
+              j++; // skip tool, assistant, system messages
+            }
+            i = j - 1;
+            _log.info(
+              'Sanitized HITL-blocked turn (nullId=$hasNullId, '
+              'securityBlock=$hasSecurityBlock)',
+            );
+            continue;
+          }
+        }
+        sanitized.add(m);
+      }
+
+      final turnMessages = List<Message>.from(sanitized);
 
       // Resolve the provider to use (either override or global default)
       AIModelProvider activeProvider = provider;
@@ -121,6 +200,10 @@ class Agent {
       final List<Map<String, dynamic>> executedToolSummaries = [];
       final contentBuffer = StringBuffer();
       Map<String, dynamic>? finalUsage;
+      bool hitlWasTriggered = false; // set true if any tool was HITL-blocked
+      
+      final totalToolsLimit = maxToolIterations * 2;
+      var totalToolsExecuted = 0;
 
       while (iterations < maxToolIterations) {
         if (_stoppedSessions.contains(sessionId)) {
@@ -216,11 +299,19 @@ class Agent {
           timestamp: DateTime.now(),
           metadata: {
             'tool_calls': response.toolCalls.map((tc) => tc.toJson()).toList(),
+            if (response.content.contains('Tool execution blocked')) 'hitl_blocked': true,
           },
         ));
 
         for (var i = 0; i < response.toolCalls.length; i++) {
           final call = response.toolCalls[i];
+          
+          if (totalToolsExecuted >= totalToolsLimit) {
+            _log.warning('Total tool limit reached ($totalToolsLimit). Stopping turn.');
+            break;
+          }
+          totalToolsExecuted++;
+
           final progress = response.toolCalls.length > 1 ? ' [${i + 1}/${response.toolCalls.length}]' : '';
           
           try {
@@ -237,18 +328,19 @@ class Agent {
               'arguments': call.arguments,
             });
 
-            final result = await toolRegistry.execute(
-              call.name,
-              call.arguments,
-              ToolContext(
-                sessionId: sessionId,
-                agentId: id,
-                workspaceDir: workspaceDir,
-                stateDir: stateDir,
-                activeProvider: activeProvider,
-                browserHeadless: browserHeadless,
-              ),
+            final result = await _executeToolWithHITL(
+              call,
+              sessionId,
+              toolRegistry,
+              activeProvider,
+              turnMessages,
             );
+
+            // Track if HITL actually blocked this tool
+            if (result.isError &&
+                result.output.contains('SECURITY ALERT')) {
+              hitlWasTriggered = true;
+            }
 
             String output = result.output;
             if (output.length > 40000) {
@@ -298,6 +390,7 @@ class Agent {
             'model': activeProvider.modelId,
             'usage': finalUsage,
             'tool_calls': executedToolSummaries,
+            if (hitlWasTriggered) 'hitl_pending': true,
           },
         );
       }
@@ -313,5 +406,73 @@ class Agent {
   void stop(String sessionId) {
     _stoppedSessions.add(sessionId);
     _log.info('Stop signal received for session $sessionId');
+  }
+
+  Future<ToolResult> _executeToolWithHITL(
+    ToolCall call,
+    String sessionId,
+    ToolRegistry registry,
+    AIModelProvider activeProvider,
+    List<Message> turnMessages,
+  ) async {
+    final isCron = sessionId.startsWith('cron_');
+    
+    // Check if security dictates HITL for this tool
+    if (security.humanInTheLoop && !isCron) {
+      final sensitiveTools = [
+        'bash', 'terminal', 'exec', 'process',
+        'write_file', 'edit_file', 'apply_patch', 'delete_file',
+        'github', 'github_pr', 'github_commit',
+        'browser_open', 'browser_click', 'browser_type'
+      ];
+      if (sensitiveTools.contains(call.name)) {
+        // Did the user already confirm in recent context?
+        // simple heuristic: last user message contains confirmation words.
+        Message? lastUser;
+        for (var i = turnMessages.length - 1; i >= 0; i--) {
+          if (turnMessages[i].role == 'user') {
+            lastUser = turnMessages[i];
+            break;
+          }
+        }
+        
+        bool isConfirmed = false;
+        if (lastUser != null) {
+          final text = lastUser.content.toLowerCase().trim();
+          // Use whole-word matching to avoid false positives.
+          // e.g. 'y' would match 'py', 'schreibe' contains 'y' etc.
+          final confirmPattern = RegExp(
+            r'\b(ja|yes|ok|okay|yep|sure|bestätige|bestätig|erlaubt|gerne|klar|natürlich|do it|go ahead|proceed|confirm|allow|weiter|mach es|mach das)\b',
+            caseSensitive: false,
+          );
+          isConfirmed = confirmPattern.hasMatch(text);
+        }
+        
+        if (!isConfirmed) {
+          _log.info('HITL intercepted tool execution for ${call.name} in session $sessionId');
+          return ToolResult(
+            output: 'SECURITY ALERT: Tool execution blocked by Human-In-The-Loop policy.\n'
+                    'You MUST ask the user for explicit permission to execute "${call.name}".\n'
+                    'The user will see "YES" and "NO" buttons to confirm.\n'
+                    'Wait for the user to say "yes" (or click the button) before trying again.',
+            isError: true,
+          );
+        }
+      }
+    }
+
+    return registry.execute(
+      call.name,
+      call.arguments,
+      ToolContext(
+        sessionId: sessionId,
+        agentId: id,
+        workspaceDir: workspaceDir,
+        stateDir: stateDir,
+        activeProvider: activeProvider,
+        browserHeadless: browserHeadless,
+        restrictNetwork: security.restrictNetwork,
+      ),
+    );
   }
 }

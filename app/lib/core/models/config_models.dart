@@ -259,12 +259,70 @@ class ToolsConfig {
   }
 }
 
+enum SecurityLevel { none, low, medium, high }
+
+class SecurityConfig {
+  final SecurityLevel level;
+  final bool humanInTheLoop;
+  final bool promptHardening;
+  final bool restrictNetwork;
+  final bool promptAnalyzers;
+
+  SecurityConfig({
+    this.level = SecurityLevel.medium,
+    this.humanInTheLoop = true,
+    this.promptHardening = true,
+    this.restrictNetwork = true,
+    this.promptAnalyzers = false,
+  });
+
+  factory SecurityConfig.fromJson(Map<String, dynamic> json) {
+    return SecurityConfig(
+      level: SecurityLevel.values.firstWhere(
+        (lvl) => lvl.name == (json['level'] as String?),
+        orElse: () => SecurityLevel.medium,
+      ),
+      humanInTheLoop: json['humanInTheLoop'] as bool? ?? true,
+      promptHardening: json['promptHardening'] as bool? ?? true,
+      restrictNetwork: json['restrictNetwork'] as bool? ?? true,
+      promptAnalyzers: json['promptAnalyzers'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'level': level.name,
+      'humanInTheLoop': humanInTheLoop,
+      'promptHardening': promptHardening,
+      'restrictNetwork': restrictNetwork,
+      'promptAnalyzers': promptAnalyzers,
+    };
+  }
+
+  SecurityConfig copyWith({
+    SecurityLevel? level,
+    bool? humanInTheLoop,
+    bool? promptHardening,
+    bool? restrictNetwork,
+    bool? promptAnalyzers,
+  }) {
+    return SecurityConfig(
+      level: level ?? this.level,
+      humanInTheLoop: humanInTheLoop ?? this.humanInTheLoop,
+      promptHardening: promptHardening ?? this.promptHardening,
+      restrictNetwork: restrictNetwork ?? this.restrictNetwork,
+      promptAnalyzers: promptAnalyzers ?? this.promptAnalyzers,
+    );
+  }
+}
+
 class AppConfig {
   final UserConfig user;
   final IdentityConfig identity;
   final AgentConfig agent;
   final MemoryConfig memory;
   final ToolsConfig tools;
+  final SecurityConfig security;
   final Map<String, dynamic> vault;
   final Map<String, dynamic> channels;
   final Map<String, dynamic> integrations;
@@ -278,6 +336,7 @@ class AppConfig {
     required this.agent,
     required this.memory,
     required this.tools,
+    required this.security,
     this.vault = const {},
     this.channels = const {},
     this.integrations = const {},
@@ -295,6 +354,7 @@ class AppConfig {
       agent: AgentConfig.fromJson(json['agent'] as Map<String, dynamic>? ?? {}),
       memory: MemoryConfig.fromJson(json['memory'] as Map<String, dynamic>? ?? {}),
       tools: ToolsConfig.fromJson(json['tools'] as Map<String, dynamic>? ?? {}),
+      security: SecurityConfig.fromJson(json['security'] as Map<String, dynamic>? ?? {}),
       vault: json['vault'] as Map<String, dynamic>? ?? {},
       channels: json['channels'] as Map<String, dynamic>? ?? {},
       integrations: json['integrations'] as Map<String, dynamic>? ?? {},
@@ -313,6 +373,7 @@ class AppConfig {
       agent: AgentConfig(),
       memory: MemoryConfig(),
       tools: ToolsConfig(),
+      security: SecurityConfig(),
     );
   }
 

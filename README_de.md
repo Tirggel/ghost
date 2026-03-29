@@ -1,7 +1,7 @@
 # Ghost 👻
 
 <p align="center">
-  <img src="app/assets/icons/logo/ghost-large.png" width="300" alt="Ghost Logo">
+  <img src="app/assets/icons/logo/ghost-large.png" width="150" alt="Ghost Logo">
 </p>
 
 > [!WARNING]
@@ -42,13 +42,27 @@ Vor dem ersten Start von Ghost **musst** du ein Reset durchführen, um die lokal
 
 Führe den folgenden Befehl in deinem Terminal aus:
 ```bash
-dart bin/ghost.dart gateway reset
+dart bin/ghost.dart reset
 ```
 
 **Erforderliche Antworten während des Vorgangs:**
 *   `Are you sure you want to continue? (y/N):` **y**
 *   `Do you want to save the user and main agent configuration and restore them after reset? (y/N):` **n**
 *   `Do you want to start the gateway now? (y/N):` **y**
+
+> [!IMPORTANT]
+> **Sicherheitseinstellungen nach der Erstinstallation überprüfen!**
+> Nach einem Reset werden alle Sicherheitseinstellungen auf **Level "none" (alles deaktiviert)** zurückgesetzt.
+> Öffne nach dem ersten Start die App und navigiere zu **Einstellungen → Sicherheit**, um die Einstellungen deinen Bedürfnissen anzupassen:
+>
+> | Einstellung | Beschreibung | Empfehlung |
+> |---|---|---|
+> | **Human-In-The-Loop (HITL)** | Fordert Bestätigung vor sensiblen Aktionen | ✅ Aktivieren |
+> | **Prompt-Härtung** | Schützt vor Jailbreaks & Prompt-Injection | ✅ Aktivieren |
+> | **Netzwerk-Einschränkung** | Isoliert Web-Tools bei hohem Sicherheitsniveau | ⚠️ Nach Bedarf |
+> | **Prompt-Analyzer** | Erweiterte Analyse eingehender Prompts | ⚠️ Nach Bedarf |
+>
+> Für normale Nutzung empfiehlt sich mindestens **Level "medium"** (HITL + Prompt-Härtung aktiv).
 
 ### 🪄 Einrichtungsassistent (Setup Wizard)
 Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistenten**, der automatisch gestartet wird, wenn die Anwendung noch nicht konfiguriert ist.
@@ -91,7 +105,10 @@ Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistent
     - **Cron-basierte Automatisierung**: Erstelle eigene Agenten mit spezialisierten Skills und plane deren Ausführung mittels Unix-Cron-Ausdrücken (z.B. alle 5 Minuten).
     - **Echtzeit-UI-Synchronisierung**: Neue Agenten und Konfigurationsänderungen werden sofort an das UI übertragen für ein nahtloses Erlebnis.
 - **Privacy & Security**:
+    - **Human-In-The-Loop (HITL)**: Sensible Aktionen (Dateisystem, Terminal, Web-Zugriff) müssen über interaktive **JA / NEIN Buttons** direkt im Chat bestätigt werden.
     - **Sicherheits-Audit-Protokolle**: Verfolge und überprüfe alle sicherheitsrelevanten Aktionen und Ereignisse direkt in der Benutzeroberfläche.
+    - **Prompt-Härtung**: Fortschrittliche System-Prompts schützen den Agenten vor Jailbreaks und Anweisungen, die versuchen Sicherheitsregeln zu umgehen.
+    - **Netzwerk-Einschränkung**: Komplette Isolation der Web-Tools des Agenten bei hoher Sicherheitsstufe, um unbefugte Datenabflüsse zu verhindern.
     - **Sicherer Tresor**: API-Schlüssel, Agenten-Konfigurationen und Memory-Einstellungen sind mit AES-256-GCM verschlüsselt und nur auf deinem Rechner gespeichert.
     - **Verschlüsselte Datenbank**: Chat-Sitzungen und Avatare werden in einer lokalen Hive-Datenbank mit zusätzlicher Verschlüsselung gespeichert.
     - **Avatar-Management**: Bilder werden direkt in der Datenbank gespeichert, um maximale Privatsphäre zu gewährleisten.

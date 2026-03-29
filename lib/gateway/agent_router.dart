@@ -78,21 +78,24 @@ class AgentRouter {
           session.provider = provider;
         }
 
-        // Add user message to history
-        await sessionManager.addMessage(
-          sessionId: session.id,
-          role: 'user',
-          content: content,
-          attachments: attachments,
-          metadata: {
-            'channelType': channelType,
-            'senderId': peerId,
-            if (groupId != null) 'groupId': groupId,
-            if (model != null) 'model': model,
-            if (provider != null) 'provider': provider,
-            if (targetAgentId != null) 'agentId': targetAgentId,
-          },
-        );
+        // Add user message to history (skip internal HITL sentinel — agent handles it)
+        if (content.trim() != '__HITL_DECLINED__') {
+          await sessionManager.addMessage(
+            sessionId: session.id,
+            role: 'user',
+            content: content,
+            attachments: attachments,
+            metadata: {
+              'channelType': channelType,
+              'senderId': peerId,
+              if (groupId != null) 'groupId': groupId,
+              if (model != null) 'model': model,
+              if (provider != null) 'provider': provider,
+              if (targetAgentId != null) 'agentId': targetAgentId,
+            },
+          );
+        }
+
 
         // Trigger agent processing in the background
         unawaited(_processInAgent(session.id, content, targetAgentId,
@@ -254,6 +257,9 @@ class AgentRouter {
         },
       );
 
+      // Skip all side-effects for internal HITL sentinel messages
+      if (content.trim() == '__HITL_DECLINED__') return;
+
       // Auto-rename if this is a new session with no title yet
       if (session != null && session.title == null) {
         final hasAssistantResponse = session.history.any((m) => m.role == 'assistant');
@@ -266,6 +272,8 @@ class AgentRouter {
       // Notify completion
       if (session != null && session.history.isNotEmpty) {
         final lastMsg = session.history.last;
+        // Don't broadcast sentinel messages
+        if (lastMsg.content.trim() == '__HITL_DECLINED__') return;
         gateway.broadcast('agent.response', {
           'sessionId': sessionId,
           'message': lastMsg.toJson(),

@@ -588,6 +588,16 @@ class ConfigNotifier extends Notifier<AppConfig> {
     }
   }
 
+  Future<void> updateSecurity(Map<String, dynamic> securityConfig) async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      await client.call('config.updateSecurity', securityConfig);
+      await refresh();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> addCustomAgent(Map<String, dynamic> agentConfig) async {
     final client = ref.read(gatewayClientProvider);
     try {

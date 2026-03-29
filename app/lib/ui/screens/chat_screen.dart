@@ -7,6 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../providers/gateway_provider.dart';
 import '../../core/constants.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/hitl_provider.dart';
 import '../widgets/connection_status.dart';
 import '../widgets/model_info_badge.dart';
 import '../widgets/message_bubble.dart';
@@ -61,6 +62,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _sendMessage(String text, List<PlatformFile> attachments) async {
     if (text.trim().isEmpty && attachments.isEmpty) return;
+
+    final hitlNotifier = ref.read(hitlProvider.notifier);
+    final hitlStatus = hitlNotifier.getStatus(widget.sessionId);
+
+    // --- HITL DECLINED: block any confirmation attempt ---
+    if (hitlStatus == HitlStatus.declined && isHitlConfirmation(text)) {
+      // Show local security message, do NOT send to agent
+      ref.read(chatProvider.notifier).addMessageEntry(widget.sessionId, {
+        'role': 'error',
+        'content':
+            '🔒 **Nicht erlaubt aufgrund der Sicherheitseinstellungen.**\n\n'
+            'Diese Aktion wurde von dir abgelehnt. Um sie erneut anzufordern, '
+            'stelle die Frage neu und bestätige mit **JA**.',
+        'timestamp': DateTime.now().toIso8601String(),
+        'attachments': [],
+      });
+      _textController.clear();
+      return;
+    }
+
+    // --- Normal send ---
+    // If a new (non-confirmation) message is sent after decline, reset HITL state
+    if (hitlStatus == HitlStatus.declined && !isHitlConfirmation(text)) {
+      hitlNotifier.reset(widget.sessionId);
+    }
 
     _textController.clear();
     final notifier = ref.read(chatProvider.notifier);
@@ -156,7 +182,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final allChatStates = ref.watch(chatProvider);
     final chatState = allChatStates[widget.sessionId] ?? ChatState.initial();
     final visibleMessages =
-        chatState.messages.where((m) => !m.isSystem).toList();
+        chatState.messages.where((m) => !m.isSystem && !m.isHidden).toList();
 
     final sessions = ref.watch(sessionsProvider);
     final ChatSession? currentSession = sessions.where(

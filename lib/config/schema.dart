@@ -35,6 +35,9 @@ List<String> validateConfig(GhostConfig config) {
   // Custom Agents validation
   _validateCustomAgents(config.customAgents, errors);
 
+  // Security validation
+  _validateSecurity(config.security, errors);
+
   return errors;
 }
 
@@ -65,6 +68,7 @@ List<String> validateConfigJson(Map<String, dynamic> json) {
     'identity',
     'integrations',
     'customAgents',
+    'security',
   };
   for (final key in json.keys) {
     if (!validTopLevel.contains(key)) {
@@ -231,4 +235,9 @@ void _validateCustomAgents(
       errors.add('customAgent ${agent.id} must have a name');
     }
   }
+}
+
+void _validateSecurity(SecurityConfig security, List<String> errors) {
+  // Add any specific security validation if needed
+  // For now, the enum parsing handles the level constraint
 }

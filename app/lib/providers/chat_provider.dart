@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'gateway_provider.dart';
+import 'hitl_provider.dart';
 import '../core/models/chat_message.dart';
 
 class ChatState {
@@ -96,6 +97,17 @@ class ChatNotifier extends Notifier<Map<String, ChatState>> {
         final current = _getState(sessionId);
         final messageData = msg['params']['message'] as Map<String, dynamic>;
         final message = ChatMessage.fromJson(messageData);
+
+        // Auto-set HITL pending ONLY when backend explicitly flags it
+        final isHitlPending =
+            messageData['metadata']?['hitl_pending'] == true;
+        if (isHitlPending) {
+          ref.read(hitlProvider.notifier).setPending(sessionId);
+        } else {
+          ref.read(hitlProvider.notifier).reset(sessionId);
+        }
+
+
         state = {
           ...state,
           sessionId: current.copyWith(

@@ -287,11 +287,4 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
       ),
     );
   }
-
-  Widget _buildNavButtons() {
-    return AppSettingsNavBar(
-      onBack: widget.onBack,
-      onNext: widget.onNext,
-    );
-  }
 }

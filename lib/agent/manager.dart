@@ -117,6 +117,7 @@ class AgentManager {
       workspaceDir: workspaceDir,
       stateDir: stateDir,
       browserHeadless: config.tools.browserHeadless,
+      security: config.security,
     );
 
     // 3. Initialize custom agents
@@ -160,6 +161,7 @@ class AgentManager {
           stateDir: stateDir,
           browserHeadless: config.tools.browserHeadless,
           shouldSendChatHistory: agentConfig.shouldSendChatHistory,
+          security: config.security,
         );
 
         _customAgents[agentConfig.id] = agent;
@@ -294,6 +296,7 @@ class AgentManager {
       skillsContext: await skillManager.buildSkillContext(config.agent.skills),
     );
     defaultAgent.browserHeadless = config.tools.browserHeadless;
+    defaultAgent.security = config.security;
 
     // 2. Refresh memory engine config
     memoryEngine.config = config.memory;
@@ -327,6 +330,7 @@ class AgentManager {
             : finalPrompt;
         agent.browserHeadless = config.tools.browserHeadless;
         agent.shouldSendChatHistory = agentConfig.shouldSendChatHistory;
+        agent.security = config.security;
       }
     }
     _log.info('Updated config, providers, and system prompts for all agents');

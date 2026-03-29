@@ -41,6 +41,7 @@ class ToolContext {
     required this.stateDir,
     this.activeProvider,
     this.browserHeadless = true,
+    this.restrictNetwork = false,
   });
 
   final String sessionId;
@@ -49,6 +50,7 @@ class ToolContext {
   final String stateDir;
   final AIModelProvider? activeProvider;
   final bool browserHeadless;
+  final bool restrictNetwork;
 }
 
 /// Abstract base class for tools.
@@ -202,6 +204,18 @@ class ToolRegistry {
         toolName: toolName,
         code: 'TOOL_DENIED',
       );
+    }
+
+    // Check Network Isolation
+    if (context.restrictNetwork) {
+      final webTools = ToolGroups.groups['group:web'] ?? [];
+      if (webTools.contains(toolName)) {
+        throw ToolError(
+          'Tool "$toolName" is blocked by Network Isolation policy',
+          toolName: toolName,
+          code: 'NETWORK_RESTRICTED',
+        );
+      }
     }
 
     final tool = _tools[toolName];
