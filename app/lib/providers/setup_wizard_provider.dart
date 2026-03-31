@@ -25,10 +25,6 @@ class SetupWizardState {
   final String identNotes;
   final String? identAvatar;
   final String workspace;
-  final String tgToken;
-  final bool verifyingTg;
-  final bool tgVerified;
-  final String? tgError;
   final bool saving;
   final String language;
 
@@ -54,10 +50,6 @@ class SetupWizardState {
     this.identNotes = '',
     this.identAvatar,
     this.workspace = '',
-    this.tgToken = '',
-    this.verifyingTg = false,
-    this.tgVerified = false,
-    this.tgError,
     this.saving = false,
     this.language = 'en',
   });
@@ -84,10 +76,6 @@ class SetupWizardState {
     String? identNotes,
     String? identAvatar,
     String? workspace,
-    String? tgToken,
-    bool? verifyingTg,
-    bool? tgVerified,
-    String? tgError,
     bool? saving,
     String? language,
   }) {
@@ -113,10 +101,6 @@ class SetupWizardState {
       identNotes: identNotes ?? this.identNotes,
       identAvatar: identAvatar ?? this.identAvatar,
       workspace: workspace ?? this.workspace,
-      tgToken: tgToken ?? this.tgToken,
-      verifyingTg: verifyingTg ?? this.verifyingTg,
-      tgVerified: tgVerified ?? this.tgVerified,
-      tgError: tgError ?? this.tgError,
       saving: saving ?? this.saving,
       language: language ?? this.language,
     );
@@ -248,34 +232,6 @@ class SetupWizardNotifier extends Notifier<SetupWizardState> {
     state = state.copyWith(workspace: val);
   }
 
-  void updateTgToken(String val) {
-    state = state.copyWith(tgToken: val, tgVerified: false, tgError: null);
-  }
-
-  Future<void> verifyTelegram() async {
-    if (state.tgToken.isEmpty) return;
-    state = state.copyWith(verifyingTg: true, tgError: null);
-    try {
-      final res = await ref
-          .read(configProvider.notifier)
-          .testKey('telegram', state.tgToken);
-      if (res['status'] == 'ok') {
-        state = state.copyWith(
-          verifyingTg: false,
-          tgVerified: true,
-          tgError: null,
-        );
-      } else {
-        state = state.copyWith(
-          verifyingTg: false,
-          tgError: res['message'] ?? 'Invalid token',
-        );
-      }
-    } catch (e) {
-      state = state.copyWith(verifyingTg: false, tgError: e.toString());
-    }
-  }
-
   Future<void> save() async {
     state = state.copyWith(saving: true);
     final config = ref.read(configProvider.notifier);
@@ -309,16 +265,6 @@ class SetupWizardNotifier extends Notifier<SetupWizardState> {
       });
       if (state.workspace.isNotEmpty) {
         await config.updateAgentWorkspace(state.workspace);
-      }
-      if (state.tgToken.isNotEmpty) {
-        await config.setKey('telegram', state.tgToken);
-        await config.updateChannels({
-          'telegram': {
-            'enabled': true,
-            'dmPolicy': 'open',
-            'settings': {'botToken': state.tgToken},
-          },
-        });
       }
       state = state.copyWith(saving: false);
     } catch (_) {

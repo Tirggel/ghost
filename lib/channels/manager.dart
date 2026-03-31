@@ -35,6 +35,7 @@ class ChannelManager {
   final GatewayServer? gateway;
   final Map<String, Channel> _channels = {};
   final Map<String, String> _connectionErrors = {};
+  final Set<String> _updatingChannels = {};
 
   Map<String, String> get connectionErrors =>
       Map.unmodifiable(_connectionErrors);
@@ -49,18 +50,31 @@ class ChannelManager {
 
   /// Update or start the Telegram channel.
   Future<void> updateTelegram(String botName, {String? token}) async {
-    final effectiveToken = token ?? await storage.get('telegram_bot_token');
-    if (effectiveToken == null || effectiveToken.isEmpty) {
-      _log.warning('Attempted to start Telegram without token');
+    if (_updatingChannels.contains('telegram')) {
+      _log.info('Telegram update already in progress, skipping...');
       return;
     }
+    _updatingChannels.add('telegram');
 
-    await removeChannel('telegram');
-    await addChannel(TelegramChannel(
-      token: effectiveToken,
-      botName: botName,
-    ));
-    _log.info('Telegram channel updated/started for $botName');
+    try {
+      final effectiveToken = token ?? await storage.get('telegram_bot_token');
+      if (effectiveToken == null || effectiveToken.isEmpty) {
+        _log.warning('Attempted to start Telegram without token');
+        return;
+      }
+
+      await removeChannel('telegram');
+      // Give a small breathing room for the OS/Network to release sockets
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+
+      await addChannel(TelegramChannel(
+        token: effectiveToken,
+        botName: botName,
+      ));
+      _log.info('Telegram channel updated/started for $botName');
+    } finally {
+      _updatingChannels.remove('telegram');
+    }
   }
 
   /// Add and start a channel.
@@ -103,9 +117,9 @@ class ChannelManager {
 
   Future<void> _handleIncomingMessage(
       Channel channel, Envelope envelope) async {
-    _log.info('Incoming message from ${channel.type}:${envelope.senderId}');
+    _log.info('Incoming message from ${channel.type} user id:${envelope.senderId}');
 
-    // 0. Check DmPolicy (Pairing)
+    // 0. Check DmPolicy
     final channelsConfig = agentManager.config.channels;
     ChannelConfig? cConfig;
     switch (channel.type) {
@@ -130,9 +144,50 @@ class ChannelManager {
       case 'webchat':
         cConfig = channelsConfig.webchat;
         break;
+      case 'imessage':
+        cConfig = channelsConfig.imessage;
+        break;
+      case 'msTeams':
+        cConfig = channelsConfig.msTeams;
+        break;
+      case 'nextcloudTalk':
+        cConfig = channelsConfig.nextcloudTalk;
+        break;
+      case 'matrix':
+        cConfig = channelsConfig.matrix;
+        break;
+      case 'nostr':
+        cConfig = channelsConfig.nostr;
+        break;
+      case 'tlon':
+        cConfig = channelsConfig.tlon;
+        break;
+      case 'zalo':
+        cConfig = channelsConfig.zalo;
+        break;
     }
 
-    if (cConfig != null && cConfig.dmPolicy == DmPolicy.pairing) {
+    if (cConfig == null || cConfig.dmPolicy == DmPolicy.disabled) {
+      _log.info(
+          'Message ignored: Channel disabled or no config for ${channel.type}');
+      return;
+    }
+
+    if (cConfig.dmPolicy == DmPolicy.allowlist) {
+      if (!cConfig.allowFrom.contains(envelope.senderId)) {
+        _log.warning(
+            'Message ignored: User ${envelope.senderId} not in allowlist for ${channel.type}');
+        await channel.sendMessage(
+          peerId: envelope.senderId,
+          groupId: envelope.groupId,
+          content:
+              '🔒 Access denied. Your ID: `${envelope.senderId}` is not on the allowlist.',
+        );
+        return;
+      }
+    }
+
+    if (cConfig.dmPolicy == DmPolicy.pairing) {
       if (!cConfig.allowFrom.contains(envelope.senderId)) {
         final expectedCode = cConfig.settings['pairingCode'] as String?;
         if (expectedCode != null && expectedCode.isNotEmpty) {
@@ -141,49 +196,37 @@ class ChannelManager {
             final updatedAllowFrom = List<String>.from(cConfig.allowFrom)
               ..add(envelope.senderId);
 
-            // Note: In a fully persistent setup, we should save this new config to disk.
-            // For now, we update it in memory via agentManager so they can chat until restart.
-            // To persist across restarts, the user will see they are paired but may need to re-pair
-            // if we don't save to disk here.
-
             final updatedConfig = cConfig.copyWith(allowFrom: updatedAllowFrom);
 
-            ChannelsConfig newChannels;
-            switch (channel.type) {
-              case 'telegram':
-                newChannels = channelsConfig.copyWith(telegram: updatedConfig);
-                break;
-              case 'googleChat':
-                newChannels =
-                    channelsConfig.copyWith(googleChat: updatedConfig);
-                break;
-              case 'discord':
-                newChannels = channelsConfig.copyWith(discord: updatedConfig);
-                break;
-              case 'whatsapp':
-                newChannels = channelsConfig.copyWith(whatsapp: updatedConfig);
-                break;
-              case 'slack':
-                newChannels = channelsConfig.copyWith(slack: updatedConfig);
-                break;
-              case 'signal':
-                newChannels = channelsConfig.copyWith(signal: updatedConfig);
-                break;
-              case 'webchat':
-                newChannels = channelsConfig.copyWith(webchat: updatedConfig);
-                break;
-              default:
-                newChannels = channelsConfig;
-            }
-            agentManager.config =
-                agentManager.config.copyWith(channels: newChannels);
+            // Update only the specific channel that matched
+            final newChannels = channelsConfig.copyWith(
+              telegram: channel.type == 'telegram' ? updatedConfig : null,
+              discord: channel.type == 'discord' ? updatedConfig : null,
+              whatsapp: channel.type == 'whatsapp' ? updatedConfig : null,
+              slack: channel.type == 'slack' ? updatedConfig : null,
+              signal: channel.type == 'signal' ? updatedConfig : null,
+              webchat: channel.type == 'webchat' ? updatedConfig : null,
+              imessage: channel.type == 'imessage' ? updatedConfig : null,
+              msTeams: channel.type == 'msTeams' ? updatedConfig : null,
+              nextcloudTalk:
+                  channel.type == 'nextcloudTalk' ? updatedConfig : null,
+              matrix: channel.type == 'matrix' ? updatedConfig : null,
+              nostr: channel.type == 'nostr' ? updatedConfig : null,
+              tlon: channel.type == 'tlon' ? updatedConfig : null,
+              zalo: channel.type == 'zalo' ? updatedConfig : null,
+              googleChat: channel.type == 'googleChat' ? updatedConfig : null,
+            );
+
+            await agentManager.updateConfig(
+                agentManager.config.copyWith(channels: newChannels));
 
             if (configPath != null) {
               await saveConfig(agentManager.config, configPath!);
             }
 
-            // Notify user and continue to process the message? Or just notify?
-            // Let's notify and then DROP the pairing code message so the LLM doesn't see it.
+            _log.info(
+                'Pairing success for ${channel.type} sender: ${envelope.senderId}');
+
             await channel.sendMessage(
               peerId: envelope.senderId,
               groupId: envelope.groupId,
@@ -197,7 +240,7 @@ class ChannelManager {
               peerId: envelope.senderId,
               groupId: envelope.groupId,
               content:
-                  '🔒 Authentication required. Please enter your pairing code.',
+                  '🔒 Authentication required. Please enter your pairing code.\n(Your ID: `${envelope.senderId}`)',
             );
             return;
           }

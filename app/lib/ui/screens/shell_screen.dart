@@ -314,6 +314,12 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center, // Centered
           children: [
+            Image.asset(
+              'assets/icons/logo/ghost.png',
+              height: 160,
+              width: 160,
+            ),
+            const SizedBox(height: 32),
             Text(
               'chat.welcome_headline'.tr().toUpperCase(),
               style: const TextStyle(

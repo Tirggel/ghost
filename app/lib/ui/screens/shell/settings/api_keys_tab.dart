@@ -22,12 +22,25 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
   final Map<String, TextEditingController> _controllers = {};
   final Map<String, bool> _verifyingKey = {};
   String? _visibleKeyProvider;
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
 
   @override
   void dispose() {
     for (final c in _controllers.values) {
       c.dispose();
     }
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -157,6 +170,23 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
           ),
         ),
         const SizedBox(height: 16),
+        TextField(
+          controller: _searchController,
+          style: const TextStyle(color: AppColors.white, fontSize: 13),
+          decoration: AppInputDecoration.compact(
+            hint: 'settings.api_keys.search_placeholder',
+            prefixIcon:
+                const Icon(Icons.search, size: 18, color: AppColors.textDim),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear,
+                        size: 18, color: AppColors.textDim),
+                    onPressed: () => _searchController.clear(),
+                  )
+                : null,
+          ),
+        ),
+        const SizedBox(height: 16),
         ...buildProviderSections(providers, vaultKeys, config),
       ],
     );
@@ -172,6 +202,13 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
 
     for (final p in providers) {
       final service = p['id']!;
+      final label = 'providers.$service'.tr();
+
+      if (_searchQuery.isNotEmpty &&
+          !label.toLowerCase().contains(_searchQuery)) {
+        continue;
+      }
+
       final isLocalProvider =
           service == 'ollama' || service == 'vllm' || service == 'litellm';
 
@@ -250,14 +287,22 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
       isEditing: isEditing || (!isAlreadySet && _visibleKeyProvider == service),
       isAlreadySet: isAlreadySet,
       isVerifying: isVerifying,
-      obscureText: !isLocalProvider,
+      obscureText: !isLocalProvider && !isEditing,
       hint: isLocalProvider
           ? 'settings.api_keys.base_url_hint'
           : 'settings.api_keys.key_hint',
       labelText: isLocalProvider
           ? 'settings.api_keys.base_url_label'
           : null,
-      onEdit: () => setState(() => _visibleKeyProvider = service),
+      onEdit: () async {
+        final key = await ref.read(configProvider.notifier).getKey(service);
+        if (mounted) {
+          if (key != null) {
+            _getApiController(service, config).text = key;
+          }
+          setState(() => _visibleKeyProvider = service);
+        }
+      },
       onDelete: () => _deleteApiKey(service, label),
       onSave: () => _verifyAndSaveKey(service, label),
       onCancel: () => setState(() => _visibleKeyProvider = null),

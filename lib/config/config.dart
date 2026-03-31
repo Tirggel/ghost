@@ -664,6 +664,13 @@ class ChannelsConfig {
     this.slack = const ChannelConfig(),
     this.signal = const ChannelConfig(),
     this.googleChat = const ChannelConfig(),
+    this.imessage = const ChannelConfig(),
+    this.msTeams = const ChannelConfig(),
+    this.nextcloudTalk = const ChannelConfig(),
+    this.matrix = const ChannelConfig(),
+    this.nostr = const ChannelConfig(),
+    this.tlon = const ChannelConfig(),
+    this.zalo = const ChannelConfig(),
   });
 
   factory ChannelsConfig.fromJson(Map<String, dynamic> json) {
@@ -689,6 +696,27 @@ class ChannelsConfig {
       googleChat: json['googleChat'] != null
           ? ChannelConfig.fromJson(json['googleChat'] as Map<String, dynamic>)
           : const ChannelConfig(),
+      imessage: json['imessage'] != null
+          ? ChannelConfig.fromJson(json['imessage'] as Map<String, dynamic>)
+          : const ChannelConfig(),
+      msTeams: json['msTeams'] != null
+          ? ChannelConfig.fromJson(json['msTeams'] as Map<String, dynamic>)
+          : const ChannelConfig(),
+      nextcloudTalk: json['nextcloudTalk'] != null
+          ? ChannelConfig.fromJson(json['nextcloudTalk'] as Map<String, dynamic>)
+          : const ChannelConfig(),
+      matrix: json['matrix'] != null
+          ? ChannelConfig.fromJson(json['matrix'] as Map<String, dynamic>)
+          : const ChannelConfig(),
+      nostr: json['nostr'] != null
+          ? ChannelConfig.fromJson(json['nostr'] as Map<String, dynamic>)
+          : const ChannelConfig(),
+      tlon: json['tlon'] != null
+          ? ChannelConfig.fromJson(json['tlon'] as Map<String, dynamic>)
+          : const ChannelConfig(),
+      zalo: json['zalo'] != null
+          ? ChannelConfig.fromJson(json['zalo'] as Map<String, dynamic>)
+          : const ChannelConfig(),
     );
   }
 
@@ -699,6 +727,13 @@ class ChannelsConfig {
   final ChannelConfig slack;
   final ChannelConfig signal;
   final ChannelConfig googleChat;
+  final ChannelConfig imessage;
+  final ChannelConfig msTeams;
+  final ChannelConfig nextcloudTalk;
+  final ChannelConfig matrix;
+  final ChannelConfig nostr;
+  final ChannelConfig tlon;
+  final ChannelConfig zalo;
 
   Map<String, dynamic> toJson() => {
         'telegram': telegram.toJson(),
@@ -708,6 +743,13 @@ class ChannelsConfig {
         'slack': slack.toJson(),
         'signal': signal.toJson(),
         'googleChat': googleChat.toJson(),
+        'imessage': imessage.toJson(),
+        'msTeams': msTeams.toJson(),
+        'nextcloudTalk': nextcloudTalk.toJson(),
+        'matrix': matrix.toJson(),
+        'nostr': nostr.toJson(),
+        'tlon': tlon.toJson(),
+        'zalo': zalo.toJson(),
       };
 
   ChannelsConfig copyWith({
@@ -718,6 +760,13 @@ class ChannelsConfig {
     ChannelConfig? slack,
     ChannelConfig? signal,
     ChannelConfig? googleChat,
+    ChannelConfig? imessage,
+    ChannelConfig? msTeams,
+    ChannelConfig? nextcloudTalk,
+    ChannelConfig? matrix,
+    ChannelConfig? nostr,
+    ChannelConfig? tlon,
+    ChannelConfig? zalo,
   }) {
     return ChannelsConfig(
       telegram: telegram ?? this.telegram,
@@ -727,6 +776,13 @@ class ChannelsConfig {
       slack: slack ?? this.slack,
       signal: signal ?? this.signal,
       googleChat: googleChat ?? this.googleChat,
+      imessage: imessage ?? this.imessage,
+      msTeams: msTeams ?? this.msTeams,
+      nextcloudTalk: nextcloudTalk ?? this.nextcloudTalk,
+      matrix: matrix ?? this.matrix,
+      nostr: nostr ?? this.nostr,
+      tlon: tlon ?? this.tlon,
+      zalo: zalo ?? this.zalo,
     );
   }
 }

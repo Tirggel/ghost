@@ -53,10 +53,14 @@ class Agent {
   int get maxToolIterations {
     if (_maxToolIterationsOverride != null) return _maxToolIterationsOverride!;
     switch (security.level) {
-      case SecurityLevel.high: return 5;
-      case SecurityLevel.medium: return 15;
-      case SecurityLevel.low: return 25;
-      case SecurityLevel.none: return 40;
+      case SecurityLevel.high:
+        return 5;
+      case SecurityLevel.medium:
+        return 15;
+      case SecurityLevel.low:
+        return 25;
+      case SecurityLevel.none:
+        return 40;
     }
   }
 
@@ -79,7 +83,8 @@ class Agent {
     _log.info('Processing message for session $sessionId');
 
     try {
-      final history = await sessionManager.getHistory(sessionId, maxMessages: 20);
+      final history =
+          await sessionManager.getHistory(sessionId, maxMessages: 20);
       final messages = shouldSendChatHistory
           ? history
           : (history.isNotEmpty ? [history.last] : <Message>[]);
@@ -201,7 +206,7 @@ class Agent {
       final contentBuffer = StringBuffer();
       Map<String, dynamic>? finalUsage;
       bool hitlWasTriggered = false; // set true if any tool was HITL-blocked
-      
+
       final totalToolsLimit = maxToolIterations * 2;
       var totalToolsExecuted = 0;
 
@@ -215,11 +220,20 @@ class Agent {
         _log.fine('Iteration $iterations for session $sessionId');
 
         onActivityUpdate?.call('AI: Processing turn $iterations...');
-        
+
         // --- Model Execution ---
         final now = DateTime.now();
-        final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        final timeStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
+        final days = [
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday',
+          'Sunday'
+        ];
+        final timeStr =
+            '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
             '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} '
             '(${days[now.weekday - 1]})';
 
@@ -232,7 +246,8 @@ class Agent {
             'When you use "memory_add" for personal facts, use the category "user_profile".\n'
             'After adding a memory, use the tool output to see if related facts already exist, and acknowledge them in your response to the user.';
 
-        final dynamicSystemPrompt = '$systemPrompt\n\n[SYSTEM: The current date and time is $timeStr]$contextString$memoryInstruction\n';
+        final dynamicSystemPrompt =
+            '$systemPrompt\n\n[SYSTEM: The current date and time is $timeStr]$contextString$memoryInstruction\n';
 
         final activeTools = toolRegistry
             .getToolDefinitions()
@@ -244,9 +259,12 @@ class Agent {
             .where((t) => t.name.isNotEmpty)
             .toList();
 
-        final totalChars = turnMessages.fold<int>(0, (sum, m) => sum + m.content.length) + dynamicSystemPrompt.length;
-        _log.info('AI Turn $iterations: Sending request with ${turnMessages.length} messages (~$totalChars chars)');
-        
+        final totalChars =
+            turnMessages.fold<int>(0, (sum, m) => sum + m.content.length) +
+                dynamicSystemPrompt.length;
+        _log.info(
+            'AI Turn $iterations: Sending request with ${turnMessages.length} messages (~$totalChars chars)');
+
         onActivityUpdate?.call('AI: Waiting for provider...');
         AIResponse response;
         try {
@@ -260,7 +278,8 @@ class Agent {
           if (errorStr.contains('context_length_exceeded') ||
               errorStr.contains('maximum context length') ||
               errorStr.contains('400')) {
-            _log.warning('Context length exceeded. Pruning history and retrying...');
+            _log.warning(
+                'Context length exceeded. Pruning history and retrying...');
             if (turnMessages.length > 2) {
               turnMessages.removeAt(0);
               iterations--;
@@ -269,14 +288,14 @@ class Agent {
           }
           rethrow;
         }
-        
+
         if (response.content.isNotEmpty) {
           contentBuffer.write(response.content);
           if (onPartialResponse != null) {
             onPartialResponse(response.content);
           }
         }
-        
+
         if (response.usage != null) {
           finalUsage = {
             'input': response.usage!.inputTokens,
@@ -291,7 +310,7 @@ class Agent {
         }
 
         _state = AgentState.executingTools;
-        
+
         // Add assistant turn to history
         turnMessages.add(Message(
           role: 'assistant',
@@ -299,27 +318,32 @@ class Agent {
           timestamp: DateTime.now(),
           metadata: {
             'tool_calls': response.toolCalls.map((tc) => tc.toJson()).toList(),
-            if (response.content.contains('Tool execution blocked')) 'hitl_blocked': true,
+            if (response.content.contains('Tool execution blocked'))
+              'hitl_blocked': true,
           },
         ));
 
         for (var i = 0; i < response.toolCalls.length; i++) {
           final call = response.toolCalls[i];
-          
+
           if (totalToolsExecuted >= totalToolsLimit) {
-            _log.warning('Total tool limit reached ($totalToolsLimit). Stopping turn.');
+            _log.warning(
+                'Total tool limit reached ($totalToolsLimit). Stopping turn.');
             break;
           }
           totalToolsExecuted++;
 
-          final progress = response.toolCalls.length > 1 ? ' [${i + 1}/${response.toolCalls.length}]' : '';
-          
+          final progress = response.toolCalls.length > 1
+              ? ' [${i + 1}/${response.toolCalls.length}]'
+              : '';
+
           try {
             final tool = toolRegistry.getTool(call.name);
             final summary = tool?.getLogSummary(call.arguments);
             final label = tool?.label ?? call.name;
 
-            onActivityUpdate?.call('${summary != null ? '$label: $summary' : label}$progress');
+            onActivityUpdate?.call(
+                '${summary != null ? '$label: $summary' : label}$progress');
 
             executedToolSummaries.add({
               'name': call.name,
@@ -337,14 +361,14 @@ class Agent {
             );
 
             // Track if HITL actually blocked this tool
-            if (result.isError &&
-                result.output.contains('SECURITY ALERT')) {
+            if (result.isError && result.output.contains('SECURITY ALERT')) {
               hitlWasTriggered = true;
             }
 
             String output = result.output;
             if (output.length > 40000) {
-              output = '${output.substring(0, 40000)}\n\n(--- OUTPUT TRUNCATED ---)';
+              output =
+                  '${output.substring(0, 40000)}\n\n(--- OUTPUT TRUNCATED ---)';
             }
 
             turnMessages.add(Message(
@@ -364,7 +388,11 @@ class Agent {
               role: 'tool',
               content: 'Error: $e',
               timestamp: DateTime.now(),
-              metadata: {'tool_call_id': call.id, 'tool_name': call.name, 'is_error': true},
+              metadata: {
+                'tool_call_id': call.id,
+                'tool_name': call.name,
+                'is_error': true
+              },
             ));
           }
         }
@@ -416,14 +444,24 @@ class Agent {
     List<Message> turnMessages,
   ) async {
     final isCron = sessionId.startsWith('cron_');
-    
+
     // Check if security dictates HITL for this tool
     if (security.humanInTheLoop && !isCron) {
       final sensitiveTools = [
-        'bash', 'terminal', 'exec', 'process',
-        'write_file', 'edit_file', 'apply_patch', 'delete_file',
-        'github', 'github_pr', 'github_commit',
-        'browser_open', 'browser_click', 'browser_type'
+        'bash',
+        'terminal',
+        'exec',
+        'process',
+        'write_file',
+        'edit_file',
+        'apply_patch',
+        'delete_file',
+        'github',
+        'github_pr',
+        'github_commit',
+        'browser_open',
+        'browser_click',
+        'browser_type'
       ];
       if (sensitiveTools.contains(call.name)) {
         // Did the user already confirm in recent context?
@@ -435,7 +473,7 @@ class Agent {
             break;
           }
         }
-        
+
         bool isConfirmed = false;
         if (lastUser != null) {
           final text = lastUser.content.toLowerCase().trim();
@@ -447,14 +485,16 @@ class Agent {
           );
           isConfirmed = confirmPattern.hasMatch(text);
         }
-        
+
         if (!isConfirmed) {
-          _log.info('HITL intercepted tool execution for ${call.name} in session $sessionId');
+          _log.info(
+              'HITL intercepted tool execution for ${call.name} in session $sessionId');
           return ToolResult(
-            output: 'SECURITY ALERT: Tool execution blocked by Human-In-The-Loop policy.\n'
-                    'You MUST ask the user for explicit permission to execute "${call.name}".\n'
-                    'The user will see "YES" and "NO" buttons to confirm.\n'
-                    'Wait for the user to say "yes" (or click the button) before trying again.',
+            output:
+                'SECURITY ALERT: Tool execution blocked by Human-In-The-Loop policy.\n'
+                'You MUST ask the user for explicit permission to execute "${call.name}".\n'
+                'The user will see "YES" and "NO" buttons to confirm.\n'
+                'Wait for the user to say "yes" (or click the button) before trying again.',
             isError: true,
           );
         }

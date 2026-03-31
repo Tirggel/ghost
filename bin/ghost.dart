@@ -20,28 +20,29 @@ import 'package:ghost/tools/sessions.dart';
 import 'package:ghost/tools/google_workspace.dart';
 import 'package:ghost/tools/github.dart';
 import 'package:ghost/channels/google_chat.dart';
+import 'package:ghost/channels/discord.dart';
+import 'package:ghost/channels/whatsapp.dart';
+import 'package:ghost/channels/slack.dart';
+import 'package:ghost/channels/signal.dart';
+import 'package:ghost/channels/imessage.dart';
+import 'package:ghost/channels/ms_teams.dart';
+import 'package:ghost/channels/nextcloud_talk.dart';
+import 'package:ghost/channels/matrix.dart';
+import 'package:ghost/channels/nostr.dart';
+import 'package:ghost/channels/tlon.dart';
+import 'package:ghost/channels/zalo.dart';
+import 'package:ghost/channels/webchat.dart';
 import 'package:ghost/tools/memory.dart';
 import 'package:ghost/tools/browser.dart';
 import 'package:ghost/tools/skills.dart';
 import 'package:ghost/tools/agents.dart';
 
 Future<void> main(List<String> arguments) async {
-  print(r'''
-
-         █████████
-       █████████████
-      ███   ███   ███
-      ███   ███   ███
-      ███████████████
-      ███████████████                    
-      ███████████████
-      ████ █████ ████
-       ██   ███   ██
-''');
+  print('Ghost — Personal AI Assistant built by aquawitchcode.dev');
 
   final runner = CommandRunner<void>(
     'ghost',
-    '👻 Ghost — Personal AI Assistant',
+    '👻 Ghost — Personal AI Assistant built by aquawitchcode.dev',
   )
     ..addCommand(GatewayCommand())
     ..addCommand(ConfigCommand())
@@ -107,110 +108,9 @@ class GatewayCommand extends Command<void> {
 
     final storage = HiveSecureStorage(encryptionKey: sessionKey);
 
-    // 2. Overlay encrypted config from Vault (agent, user, identity)
-    bool fromVault = false;
-    final rawAgent = await storage.get('agent_config');
-    if (rawAgent != null) {
-      try {
-        final json = jsonDecode(rawAgent) as Map<String, dynamic>;
-        final agent = AgentConfig.fromJson(json);
-        if (agent.model.isNotEmpty || agent.provider.isNotEmpty) {
-          config = config.copyWith(agent: agent);
-          fromVault = true;
-          _log.info('Applied agent config from vault');
-        }
-      } catch (e) {
-        print('⚠️  Failed to load agent config from vault: $e');
-      }
-    }
-    final rawUser = await storage.get('user_config');
-    if (rawUser != null) {
-      try {
-        final json = jsonDecode(rawUser) as Map<String, dynamic>;
-        config = config.copyWith(user: UserConfig.fromJson(json));
-        _log.info('Applied user config from vault');
-      } catch (e) {
-        print('⚠️  Failed to load user config from vault: $e');
-      }
-    }
-    final rawIdentity = await storage.get('identity_config');
-    if (rawIdentity != null) {
-      try {
-        final json = jsonDecode(rawIdentity) as Map<String, dynamic>;
-        config = config.copyWith(identity: IdentityConfig.fromJson(json));
-        _log.info('Applied identity config from vault');
-      } catch (e) {
-        print('⚠️  Failed to load identity config from vault: $e');
-      }
-    }
-    final rawMemory = await storage.get('memory_config');
-    if (rawMemory != null) {
-      try {
-        final json = jsonDecode(rawMemory) as Map<String, dynamic>;
-        final memory = MemoryConfig.fromJson(json);
-        config = config.copyWith(memory: memory);
-        _log.info('Applied memory config from vault');
-      } catch (e) {
-        print('⚠️  Failed to load memory config from vault: $e');
-      }
-    }
-
-    final rawCustomAgents = await storage.get('custom_agents_config');
-    if (rawCustomAgents != null) {
-      try {
-        final list = jsonDecode(rawCustomAgents) as List<dynamic>;
-        config = config.copyWith(
-          customAgents: list
-              .map((a) => CustomAgentConfig.fromJson(a as Map<String, dynamic>))
-              .toList(),
-        );
-        _log.info(
-            'Applied ${config.customAgents.length} custom agents from vault');
-      } catch (e) {
-        print('⚠️  Failed to load custom agents config from vault: $e');
-      }
-    }
-
-    final rawChannels = await storage.get('channels_config');
-    if (rawChannels != null) {
-      try {
-        final json = jsonDecode(rawChannels) as Map<String, dynamic>;
-        config = config.copyWith(channels: ChannelsConfig.fromJson(json));
-      } catch (e) {
-        print('⚠️  Failed to load channels config from vault: $e');
-      }
-    }
-
-    final rawTools = await storage.get('tools_config');
-    if (rawTools != null) {
-      try {
-        final json = jsonDecode(rawTools) as Map<String, dynamic>;
-        config = config.copyWith(tools: ToolsConfig.fromJson(json));
-      } catch (e) {
-        print('⚠️  Failed to load tools config from vault: $e');
-      }
-    }
-
-    final rawSession = await storage.get('session_config');
-    if (rawSession != null) {
-      try {
-        final json = jsonDecode(rawSession) as Map<String, dynamic>;
-        config = config.copyWith(session: SessionConfig.fromJson(json));
-      } catch (e) {
-        print('⚠️  Failed to load session config from vault: $e');
-      }
-    }
-
-    final rawIntegrations = await storage.get('integrations_config');
-    if (rawIntegrations != null) {
-      try {
-        final json = jsonDecode(rawIntegrations) as Map<String, dynamic>;
-        config =
-            config.copyWith(integrations: IntegrationsConfig.fromJson(json));
-      } catch (e) {
-        print('⚠️  Failed to load integrations config from vault: $e');
-      }
-    }
+    final consolidatedRes = await _consolidateConfig(config, storage);
+    config = consolidatedRes.consolidated;
+    final fromVault = consolidatedRes.fromVault;
 
     if (!fromVault) {
       _log.info('No active agent configuration in vault, using defaults');
@@ -337,10 +237,11 @@ class GatewayCommand extends Command<void> {
     await server.start();
 
     // 8. Watch for config changes
-    watchConfig(configPath, (newConfig) {
+    watchConfig(configPath, (newConfig) async {
       _log.info('Configuration file changed, reloading...');
-      server.updateConfig(newConfig.gateway);
-      agentManager.updateConfig(newConfig);
+      final res = await _consolidateConfig(newConfig, storage);
+      server.updateConfig(res.consolidated.gateway);
+      await agentManager.updateConfig(res.consolidated);
     });
 
     // Always use the bound server port in the active config for this run
@@ -393,16 +294,187 @@ class GatewayCommand extends Command<void> {
         }
       }
 
+      // Discord
+      if (config.channels.discord.enabled) {
+        final token = config.channels.discord.settings['token'] as String?;
+        final name = config.channels.discord.settings['botName'] as String? ?? 'Ghost';
+        if (token != null && token.isNotEmpty) {
+          await channelManager.addChannel(DiscordChannel(botToken: token, botName: name));
+        } else {
+          print('⚠️  Discord enabled but Bot Token is missing.');
+        }
+      }
+
+      // WhatsApp
+      if (config.channels.whatsapp.enabled) {
+        final token = config.channels.whatsapp.settings['token'] as String?;
+        final phoneNumberId = config.channels.whatsapp.settings['phoneNumberId'] as String?;
+        final verifyToken = config.channels.whatsapp.settings['verifyToken'] as String?;
+        if (token != null && phoneNumberId != null) {
+          await channelManager.addChannel(WhatsAppChannel(
+            apiToken: token,
+            phoneNumberId: phoneNumberId,
+            verifyToken: verifyToken ?? 'ghost_verify',
+          ));
+        } else {
+          print('⚠️  WhatsApp enabled but API Token or Phone Number ID is missing.');
+        }
+      }
+
+      // Slack
+      if (config.channels.slack.enabled) {
+        final token = config.channels.slack.settings['token'] as String?;
+        final signingSecret = config.channels.slack.settings['signingSecret'] as String?;
+        if (token != null && token.isNotEmpty) {
+          await channelManager.addChannel(SlackChannel(
+            botToken: token,
+            signingSecret: signingSecret,
+          ));
+        } else {
+          print('⚠️  Slack enabled but Bot OAuth Token is missing.');
+        }
+      }
+
+      // Signal
+      if (config.channels.signal.enabled) {
+        final phone = config.channels.signal.settings['token'] as String?;
+        final apiUrl = config.channels.signal.settings['apiUrl'] as String?;
+        if (phone != null && apiUrl != null) {
+          await channelManager.addChannel(SignalChannel(
+            phoneNumber: phone,
+            apiUrl: apiUrl,
+          ));
+        } else {
+          print('⚠️  Signal enabled but phone number or API URL is missing.');
+        }
+      }
+
+      // iMessage (via BlueBubbles)
+      if (config.channels.imessage.enabled) {
+        final serverUrl = config.channels.imessage.settings['apiUrl'] as String?;
+        final password = config.channels.imessage.settings['token'] as String?;
+        if (serverUrl != null && password != null) {
+          await channelManager.addChannel(IMessageChannel(
+            serverUrl: serverUrl,
+            serverPassword: password,
+          ));
+        } else {
+          print('⚠️  iMessage enabled but BlueBubbles URL or password is missing.');
+        }
+      }
+
+      // Microsoft Teams
+      if (config.channels.msTeams.enabled) {
+        final appId = config.channels.msTeams.settings['apiUrl'] as String?;
+        final appPassword = config.channels.msTeams.settings['token'] as String?;
+        if (appId != null && appPassword != null) {
+          await channelManager.addChannel(MsTeamsChannel(
+            appId: appId,
+            appPassword: appPassword,
+          ));
+        } else {
+          print('⚠️  MS Teams enabled but App ID or App Password is missing.');
+        }
+      }
+
+      // Nextcloud Talk
+      if (config.channels.nextcloudTalk.enabled) {
+        final nextcloudUrl = config.channels.nextcloudTalk.settings['apiUrl'] as String?;
+        final credentials = config.channels.nextcloudTalk.settings['token'] as String?;
+        final roomToken = config.channels.nextcloudTalk.settings['roomToken'] as String?;
+        if (nextcloudUrl != null && credentials != null) {
+          await channelManager.addChannel(NextcloudTalkChannel(
+            nextcloudUrl: nextcloudUrl,
+            basicAuthCredentials: credentials,
+            roomToken: roomToken,
+          ));
+        } else {
+          print('⚠️  Nextcloud Talk enabled but URL or credentials are missing.');
+        }
+      }
+
+      // Matrix
+      if (config.channels.matrix.enabled) {
+        final homeserverUrl = config.channels.matrix.settings['apiUrl'] as String?;
+        final accessToken = config.channels.matrix.settings['token'] as String?;
+        final userId = config.channels.matrix.settings['userId'] as String?;
+        if (homeserverUrl != null && accessToken != null && userId != null) {
+          await channelManager.addChannel(MatrixChannel(
+            accessToken: accessToken,
+            homeserverUrl: homeserverUrl,
+            userId: userId,
+          ));
+        } else {
+          print('⚠️  Matrix enabled but homeserver URL, access token, or user ID is missing.');
+        }
+      }
+
+      // Nostr
+      if (config.channels.nostr.enabled) {
+        final relayUrl = config.channels.nostr.settings['apiUrl'] as String?;
+        final pubKey = config.channels.nostr.settings['pubKey'] as String?;
+        final privKey = config.channels.nostr.settings['token'] as String?;
+        if (relayUrl != null && pubKey != null) {
+          await channelManager.addChannel(NostrChannel(
+            relayUrl: relayUrl,
+            publicKeyHex: pubKey,
+            privateKeyHex: privKey,
+          ));
+        } else {
+          print('⚠️  Nostr enabled but relay URL or public key is missing.');
+        }
+      }
+
+      // Tlon / Urbit
+      if (config.channels.tlon.enabled) {
+        final shipUrl = config.channels.tlon.settings['apiUrl'] as String?;
+        final code = config.channels.tlon.settings['token'] as String?;
+        final shipName = config.channels.tlon.settings['shipName'] as String?;
+        if (shipUrl != null && code != null && shipName != null) {
+          await channelManager.addChannel(TlonChannel(
+            shipUrl: shipUrl,
+            code: code,
+            shipName: shipName,
+          ));
+        } else {
+          print('⚠️  Tlon enabled but ship URL, code, or ship name is missing.');
+        }
+      }
+
+      // Zalo
+      if (config.channels.zalo.enabled) {
+        final token = config.channels.zalo.settings['token'] as String?;
+        final oaId = config.channels.zalo.settings['oaId'] as String?;
+        if (token != null && token.isNotEmpty) {
+          await channelManager.addChannel(ZaloChannel(
+            oaAccessToken: token,
+            oaId: oaId,
+          ));
+        } else {
+          print('⚠️  Zalo enabled but OA Access Token is missing.');
+        }
+      }
+
+      // WebChat (always start if enabled, it uses the gateway's HTTP server)
+      if (config.channels.webchat.enabled) {
+        final host = config.gateway.bindAddress;
+        final port = server.port;
+        await channelManager.addChannel(WebChatChannel(
+          host: host,
+          port: port,
+        ));
+      }
+
       print('👻 Ghost Gateway running on '
           'ws://${config.gateway.bindAddress}:${server.port}');
       print('📂 Workspace: $workspaceDir');
       if (provider.modelId.isNotEmpty) {
-          print('🧠 Model: ${provider.displayName} (${provider.modelId})');
+        print('🧠 Model: ${provider.displayName} (${provider.modelId})');
       }
 
       final channelsStatus = channelManager.getStatus();
       if (channelsStatus.isNotEmpty) {
-          print(
+        print(
             '📱 Active Channels: ${channelsStatus.map((c) => c['type']).join(', ')}');
       }
       print('   Press Ctrl+C to stop');
@@ -423,6 +495,106 @@ class GatewayCommand extends Command<void> {
 
     // Keep running
     await Future<void>.delayed(const Duration(days: 365));
+  }
+
+  /// Consolidated configuration from disk and vault.
+  Future<({GhostConfig consolidated, bool fromVault})> _consolidateConfig(
+      GhostConfig config, SecureStorage storage) async {
+    var consolidated = config;
+    bool fromVault = false;
+
+    // Overlay encrypted config from Vault
+    final rawAgent = await storage.get('agent_config');
+    if (rawAgent != null) {
+      try {
+        final json = jsonDecode(rawAgent) as Map<String, dynamic>;
+        final agent = AgentConfig.fromJson(json);
+        if (agent.model.isNotEmpty || agent.provider.isNotEmpty) {
+          consolidated = consolidated.copyWith(agent: agent);
+          fromVault = true;
+          _log.fine('Applied agent config from vault');
+        }
+      } catch (e) {
+        _log.warning('Failed to load agent config from vault: $e');
+      }
+    }
+
+    final rawUser = await storage.get('user_config');
+    if (rawUser != null) {
+      try {
+        final json = jsonDecode(rawUser) as Map<String, dynamic>;
+        consolidated =
+            consolidated.copyWith(user: UserConfig.fromJson(json));
+      } catch (_) {}
+    }
+
+    final rawIdentity = await storage.get('identity_config');
+    if (rawIdentity != null) {
+      try {
+        final json = jsonDecode(rawIdentity) as Map<String, dynamic>;
+        consolidated =
+            consolidated.copyWith(identity: IdentityConfig.fromJson(json));
+      } catch (_) {}
+    }
+
+    final rawMemory = await storage.get('memory_config');
+    if (rawMemory != null) {
+      try {
+        final json = jsonDecode(rawMemory) as Map<String, dynamic>;
+        consolidated =
+            consolidated.copyWith(memory: MemoryConfig.fromJson(json));
+      } catch (_) {}
+    }
+
+    final rawCustomAgents = await storage.get('custom_agents_config');
+    if (rawCustomAgents != null) {
+      try {
+        final list = jsonDecode(rawCustomAgents) as List<dynamic>;
+        consolidated = consolidated.copyWith(
+          customAgents: list
+              .map((a) => CustomAgentConfig.fromJson(a as Map<String, dynamic>))
+              .toList(),
+        );
+      } catch (_) {}
+    }
+
+    final rawChannels = await storage.get('channels_config');
+    if (rawChannels != null) {
+      try {
+        final json = jsonDecode(rawChannels) as Map<String, dynamic>;
+        consolidated =
+            consolidated.copyWith(channels: ChannelsConfig.fromJson(json));
+      } catch (_) {}
+    }
+
+    final rawTools = await storage.get('tools_config');
+    if (rawTools != null) {
+      try {
+        final json = jsonDecode(rawTools) as Map<String, dynamic>;
+        consolidated =
+            consolidated.copyWith(tools: ToolsConfig.fromJson(json));
+      } catch (_) {}
+    }
+
+    final rawSession = await storage.get('session_config');
+    if (rawSession != null) {
+      try {
+        final json = jsonDecode(rawSession) as Map<String, dynamic>;
+        consolidated =
+            consolidated.copyWith(session: SessionConfig.fromJson(json));
+      } catch (_) {}
+    }
+
+    final rawIntegrations = await storage.get('integrations_config');
+    if (rawIntegrations != null) {
+      try {
+        final json = jsonDecode(rawIntegrations) as Map<String, dynamic>;
+        consolidated = consolidated.copyWith(
+            integrations: IntegrationsConfig.fromJson(json));
+      } catch (_) {}
+    }
+
+    return (consolidated: consolidated, fromVault: fromVault);
   }
 }
 
@@ -486,7 +658,7 @@ class ConfigValidateCommand extends Command<void> {
     } else {
       print('❌ Configuration errors:');
       for (final error in errors) {
-          print('  - $error');
+        print('  - $error');
       }
       exit(1);
     }
@@ -617,11 +789,11 @@ class DoctorCommand extends Command<void> {
         } else {
           print('⚠️  Config has ${errors.length} issue(s):');
           for (final error in errors) {
-              print('   - $error');
+            print('   - $error');
           }
         }
       } catch (e) {
-          print('❌ Config error: $e');
+        print('❌ Config error: $e');
       }
     }
 
@@ -634,9 +806,9 @@ class DoctorCommand extends Command<void> {
 
       final vaultFile = File(p.join(stateDir.path, 'vault.enc'));
       if (await vaultFile.exists()) {
-          print('✅ Secure vault found');
+        print('✅ Secure vault found');
       } else {
-          print('ℹ️  Secure vault not initialized');
+        print('ℹ️  Secure vault not initialized');
       }
     }
 
@@ -678,7 +850,7 @@ class ResetCommand extends Command<void> {
       stdout.write('Are you sure you want to continue? (y/N): ');
       final response = stdin.readLineSync();
       if (response == null || response.trim().toLowerCase() != 'y') {
-          print('Reset cancelled.');
+        print('Reset cancelled.');
         return;
       }
     }
@@ -722,7 +894,7 @@ class ResetCommand extends Command<void> {
                 savedSecrets[key] = val;
               }
             }
-              print('✅ All vault secrets (${keys.length}) backed up.');
+            print('✅ All vault secrets (${keys.length}) backed up.');
           }
 
           // Also back up avatar bytes from Hive
@@ -735,21 +907,21 @@ class ResetCommand extends Command<void> {
             savedUserAvatar = avatarsBox.get('user_avatar');
             savedIdentityAvatar = avatarsBox.get('identity_avatar');
             if (savedUserAvatar != null) {
-                  print('✅ User avatar backed up from database.');
+              print('✅ User avatar backed up from database.');
             }
             if (savedIdentityAvatar != null) {
-                  print('✅ Identity avatar backed up from database.');
+              print('✅ Identity avatar backed up from database.');
             }
           } catch (e) {
-              print('ℹ️  Could not read avatars from database: $e');
+            print('ℹ️  Could not read avatars from database: $e');
           }
 
           if (savedSecrets != null ||
               savedUserAvatar != null ||
               savedIdentityAvatar != null) {
-              print('✅ Successfully captured configuration for restoration.');
+            print('✅ Successfully captured configuration for restoration.');
           } else {
-              print('ℹ️  No data found to backup. Backup skipped.');
+            print('ℹ️  No data found to backup. Backup skipped.');
             backupData = false;
           }
         } catch (e) {
@@ -779,9 +951,9 @@ class ResetCommand extends Command<void> {
     if (await stateDir.exists()) {
       try {
         await stateDir.delete(recursive: true);
-          print('✅ Deleted state directory (${stateDir.path})');
+        print('✅ Deleted state directory (${stateDir.path})');
       } catch (e) {
-          print('❌ Failed to delete state directory: $e');
+        print('❌ Failed to delete state directory: $e');
       }
     } else {
       print('ℹ️  State directory did not exist.');
@@ -792,9 +964,9 @@ class ResetCommand extends Command<void> {
     if (await configFile.exists()) {
       try {
         await configFile.delete();
-          print('✅ Deleted configuration file ($configPath)');
+        print('✅ Deleted configuration file ($configPath)');
       } catch (e) {
-          print('❌ Failed to delete configuration file: $e');
+        print('❌ Failed to delete configuration file: $e');
       }
     }
 
@@ -808,12 +980,12 @@ class ResetCommand extends Command<void> {
     if (backupData && providedToken != null) {
       try {
         tokenHash = GatewayAuth.hashToken(providedToken);
-          print('✅ Preserved explicit gateway auth token.');
+        print('✅ Preserved explicit gateway auth token.');
       } catch (e) {
         // Fallback to new if parsing fails somehow
         authToken = GatewayAuth.generateAuthToken();
         tokenHash = authToken.hash;
-          print('⚠️  Failed to parse/hash provided token, generated a new one.');
+        print('⚠️  Failed to parse/hash provided token, generated a new one.');
       }
     } else {
       authToken = GatewayAuth.generateAuthToken();
@@ -873,7 +1045,7 @@ class ResetCommand extends Command<void> {
         if (filteredKeys.isNotEmpty) {
           print('✅ Restored vault keys: ${filteredKeys.join(', ')}');
         }
-          print('ℹ️  Excluded agent config and API keys to allow Setup Wizard.');
+        print('ℹ️  Excluded agent config and API keys to allow Setup Wizard.');
       }
 
       // Restore avatar bytes back into the new Hive database

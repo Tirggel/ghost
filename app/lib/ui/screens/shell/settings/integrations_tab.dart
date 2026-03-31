@@ -257,7 +257,7 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
                       controller: _getOAuthEditController('google_client_id_web'),
                       label: 'settings.integrations.client_id_web_label',
                       hint: 'settings.integrations.client_id_missing_web',
-                      obscureText: true,
+                      obscureText: false,
                     ),
                   ]
                 : [
@@ -265,16 +265,29 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
                       controller: _getOAuthEditController('google_client_id_desktop'),
                       label: 'settings.integrations.client_id_desktop_label',
                       hint: 'settings.integrations.client_id_missing_desktop',
-                      obscureText: true,
+                      obscureText: false,
                     ),
                     AppSettingsInputField(
                       controller: _getOAuthEditController('google_client_secret'),
                       label: 'settings.integrations.client_secret_label',
                       hint: 'settings.integrations.secret_missing',
-                      obscureText: true,
+                      obscureText: false,
                     ),
                   ],
-            onEdit: () => setState(() => _editingOAuthField = 'google_workspace'),
+            onEdit: () async {
+              final creds = await ref.read(configProvider.notifier).getGoogleCredentials();
+              if (mounted) {
+                setState(() {
+                  if (kIsWeb) {
+                    _getOAuthEditController('google_client_id_web').text = creds['clientIdWeb'] ?? '';
+                  } else {
+                    _getOAuthEditController('google_client_id_desktop').text = creds['clientIdDesktop'] ?? '';
+                    _getOAuthEditController('google_client_secret').text = creds['clientSecret'] ?? '';
+                  }
+                  _editingOAuthField = 'google_workspace';
+                });
+              }
+            },
             onImport: _importGoogleJson,
             importTooltip: 'settings.integrations.import_json_tooltip',
             onDelete: () async {

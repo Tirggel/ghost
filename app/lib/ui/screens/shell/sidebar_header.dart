@@ -25,15 +25,15 @@ class SidebarHeader extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: AppColors.transparent,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 padding: const EdgeInsets.all(4),
                 child: Image.asset(
-                  'assets/icons/logo/ghost-small-black.png',
+                  'assets/icons/logo/ghost.png',
                   errorBuilder: (context, error, stackTrace) => const Center(
                     child: Icon(
                       Icons.terminal_rounded,

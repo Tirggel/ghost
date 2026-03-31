@@ -108,6 +108,33 @@ class AppConstants {
     return 'assets/icons/llm/$icon';
   }
 
+  static const List<Map<String, String>> chatChannels = [
+    {'id': 'whatsapp', 'label': 'settings.channels.whatsapp', 'icon': 'whatsapp.png'},
+    {'id': 'telegram', 'label': 'settings.channels.telegram', 'icon': 'telegram.png'},
+    {'id': 'discord', 'label': 'settings.channels.discord', 'icon': 'discord.png'},
+    {'id': 'slack', 'label': 'settings.channels.slack', 'icon': 'slack.png'},
+    {'id': 'signal', 'label': 'settings.channels.signal', 'icon': 'signal.png'},
+    {'id': 'imessage', 'label': 'settings.channels.imessage', 'icon': 'imessage.png'},
+    {'id': 'msTeams', 'label': 'settings.channels.msteams', 'icon': 'msteams.png'},
+    {'id': 'nextcloudTalk', 'label': 'settings.channels.nextcloud', 'icon': 'nextcloudtalk.png'},
+    {'id': 'matrix', 'label': 'settings.channels.matrix', 'icon': 'matrix.png'},
+    {'id': 'nostr', 'label': 'settings.channels.nostr', 'icon': 'nostr.png'},
+    {'id': 'tlon', 'label': 'settings.channels.tlon', 'icon': 'tlon.png'},
+    {'id': 'zalo', 'label': 'settings.channels.zalo', 'icon': 'zalo.png'},
+    {'id': 'webchat', 'label': 'settings.channels.webchat', 'icon': 'webchat.png'},
+    {'id': 'googleChat', 'label': 'settings.channels.googlechat', 'icon': 'google.png'},
+  ];
+
+  static String getChannelIcon(String id) {
+    final channel = chatChannels.firstWhere(
+      (c) => c['id'] == id,
+      orElse: () => {},
+    );
+    final icon = channel['icon'];
+    if (icon == null) return ''; 
+    return 'assets/icons/channels/$icon';
+  }
+
   static const Map<String, String> defaultFlags = {'en': '🇬🇧', 'de': '🇩🇪'};
 }
 

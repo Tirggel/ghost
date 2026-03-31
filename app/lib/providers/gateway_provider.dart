@@ -431,6 +431,16 @@ class ConfigNotifier extends Notifier<AppConfig> {
     }
   }
 
+  Future<String?> getKey(String service) async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      final result = await client.call('config.getKey', {'service': service});
+      return result['key'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> setKey(String service, String key) async {
     final client = ref.read(gatewayClientProvider);
     try {
@@ -644,6 +654,20 @@ class ConfigNotifier extends Notifier<AppConfig> {
     } catch (e) {
       return {'clientIdWeb': '', 'clientIdDesktop': '', 'clientSecret': ''};
     }
+  }
+
+  Future<String?> getChannelToken(String channelId) async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      final result = await client.call('config.getChannelToken', {'channelId': channelId});
+      return result['token'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String?> getTelegramToken() async {
+    return getChannelToken('telegram');
   }
 
   Future<void> deleteCustomAgent(String agentId) async {

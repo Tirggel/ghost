@@ -87,7 +87,31 @@ class ConfigRouter {
       };
     });
 
-    // 1b. Get Telegram token from vault
+    // 1b. Get channel token from vault
+    gateway.rpcRegistry.register('config.getChannelToken',
+        (params, context) async {
+      final channelId = params?['channelId'] as String?;
+      if (channelId == null) {
+        throw ProtocolError('Missing required parameter: channelId');
+      }
+      final storageKey =
+          channelId == 'telegram' ? 'telegram_bot_token' : '${channelId}_token';
+      final token = await storage.get(storageKey) ?? '';
+      return {'token': token};
+    });
+
+    // 1c. Get API Key from vault
+    gateway.rpcRegistry.register('config.getKey', (params, context) async {
+      final service = params?['service'] as String?;
+      if (service == null) {
+        throw ProtocolError('Missing required parameter: service');
+      }
+      final storageKey = _getStorageKey(service);
+      final key = await storage.get(storageKey) ?? '';
+      return {'key': key};
+    });
+
+    // Legacy method for backward compatibility
     gateway.rpcRegistry.register('config.getTelegramToken',
         (params, context) async {
       final token = await storage.get('telegram_bot_token') ?? '';
@@ -485,44 +509,72 @@ class ConfigRouter {
       if (params == null) throw ProtocolError('Missing params');
 
       final config = await loadConfig(configPath);
+      final currentChannels = await _loadChannelsFromVault() ?? config.channels;
 
-      final googleChatParams = params['googleChat'] as Map<String, dynamic>?;
-      final telegramParams = params['telegram'] as Map<String, dynamic>?;
+      // Generalize token handling for all channels
+      for (final channelId in params.keys) {
+        // Skip keys that are not channel IDs if any
+        final channelParams = params[channelId];
+        if (channelParams is! Map<String, dynamic>) continue;
 
-      if (telegramParams != null) {
-        final settings = telegramParams['settings'] as Map<String, dynamic>?;
-        final botToken = settings?['botToken'] as String?;
-        if (botToken != null && botToken.isNotEmpty) {
-          await storage.set('telegram_bot_token', botToken);
-          _log.info('Updated telegram_bot_token in vault');
-          // Remove from settings so it's not saved plain in config.json
-          telegramParams['settings'] = Map<String, dynamic>.from(settings!)
-            ..remove('botToken');
+        final settings = channelParams['settings'] as Map<String, dynamic>?;
+        if (settings != null) {
+          // Find any field that looks like a token/secret
+          // Currently, Telegram uses 'botToken', others use 'token'
+          final tokenKey = channelId == 'telegram' ? 'botToken' : 'token';
+          final token = settings[tokenKey] as String?;
+          if (token != null && token.isNotEmpty) {
+            final storageKey = channelId == 'telegram'
+                ? 'telegram_bot_token'
+                : '${channelId}_token';
+            await storage.set(storageKey, token);
+            _log.info('Updated $storageKey in vault');
+            // Remove from settings so it's not saved plain in config.json
+            channelParams['settings'] = Map<String, dynamic>.from(settings)
+              ..remove(tokenKey);
+          }
+        }
+
+        // Handle deletion if channel is disabled
+        final enabled = channelParams['enabled'] as bool?;
+        if (enabled == false) {
+          final storageKey = channelId == 'telegram'
+              ? 'telegram_bot_token'
+              : '${channelId}_token';
+          await storage.remove(storageKey);
+          _log.info('Cleared $storageKey from vault (channel disabled)');
         }
       }
 
-      final telegramEnabled = telegramParams?['enabled'] as bool? ??
-          config.channels.telegram.enabled;
-
-      if (!telegramEnabled) {
-        await storage.remove('telegram_bot_token');
-        _log.info('Cleared telegram_bot_token from vault (channel disabled)');
+      // Helper to parse channel config from params or current
+      ChannelConfig parse(String id, ChannelConfig current) {
+        final data = params[id] as Map<String, dynamic>?;
+        if (data == null) return current;
+        return ChannelConfig.fromJson(data);
       }
 
-      final updatedChannels = config.channels.copyWith(
-        googleChat: googleChatParams != null
-            ? ChannelConfig.fromJson(googleChatParams)
-            : config.channels.googleChat,
-        telegram: telegramParams != null
-            ? ChannelConfig.fromJson(telegramParams)
-            : config.channels.telegram,
+      final updatedChannels = currentChannels.copyWith(
+        whatsapp: parse('whatsapp', currentChannels.whatsapp),
+        telegram: parse('telegram', currentChannels.telegram),
+        discord: parse('discord', currentChannels.discord),
+        slack: parse('slack', currentChannels.slack),
+        signal: parse('signal', currentChannels.signal),
+        imessage: parse('imessage', currentChannels.imessage),
+        msTeams: parse('msTeams', currentChannels.msTeams),
+        nextcloudTalk: parse('nextcloudTalk', currentChannels.nextcloudTalk),
+        matrix: parse('matrix', currentChannels.matrix),
+        nostr: parse('nostr', currentChannels.nostr),
+        tlon: parse('tlon', currentChannels.tlon),
+        zalo: parse('zalo', currentChannels.zalo),
+        webchat: parse('webchat', currentChannels.webchat),
+        googleChat: parse('googleChat', currentChannels.googleChat),
       );
 
       await _saveChannelsToVault(updatedChannels);
       await saveConfig(config, configPath);
 
       // Reconnect telegram if updated
-      if (telegramParams != null && updatedChannels.telegram.enabled) {
+      if (params['telegram'] != null && updatedChannels.telegram.enabled) {
         final botName =
             updatedChannels.telegram.settings['botName'] as String? ??
                 'GhostBot';

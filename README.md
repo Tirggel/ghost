@@ -1,7 +1,7 @@
-# Ghost 👻
+# Ghost
 
 <p align="center">
-  <img src="app/assets/icons/logo/ghost-large.png" width="150" alt="Ghost Logo">
+  <img src="app/assets/icons/logo/ghost.png" width="150" alt="Ghost Logo">
 </p>
 
 > [!WARNING]
@@ -70,6 +70,7 @@ For new users, Ghost now includes an interactive **Setup Wizard** which is trigg
 ### 📚 Further Documentation
 - **[Skills Development Guide](docs/SKILLS_GUIDE.md)**: Learn how to create and package your own AI skills.
 - **[STT & TTS Setup](docs/STT_TTS_SETUP.md)**: Configure local speech recognition and synthesis.
+- **[Multi-Channel Setup](docs/CHANNELS_EN.md)**: Detailed guide for connecting Telegram, Discord, WhatsApp, etc.
 - **[RPC API Reference](docs/RPC_API_REFERENCE.md)**: Detailed documentation of the JSON-RPC 2.0 WebSocket API.
 - **[Docker Setup Guide](docs/DOCKER_SETUP_EN.md)**: Deployment and management via Docker.
 
@@ -97,19 +98,24 @@ For new users, Ghost now includes an interactive **Setup Wizard** which is trigg
     - **Web Search**: Integrated web search via DuckDuckGo.
     - **File System**: Full access to read, write, and manage local files.
     - **GitHub**: Integration for managing repositories and issues.
-- **Secure Communication**:
-    - **Telegram Bot**: Control your agent securely on the go.
-        - **Voice Messages**: Agent supports receiving and sending voice messages.
-    - **Google Chat**: Integration as an app in Google Chat spaces.
+- **Multi-Channel Messenger Support**:
+    - **14+ Channels**: Connect your agent to Telegram, Discord, WhatsApp (Meta), Slack, Signal, iMessage (BlueBubbles), MS Teams, Google Chat, Matrix, Nextcloud Talk, Nostr, Tlon/Urbit, Zalo, and WebChat.
+    - **Smart Sorting & Searching**: Easily manage your communication channels with integrated search filters and automated grouping by status.
+    - **Resilient Connections**: Improved stability for messaging gateways (like Telegram), featuring automatic connection recovery and conflict resolution.
+    - **DM Policies**: Granular control over who can message your bot (Pairing, Allowlist, Open, Disabled).
+    - **Voice Messages**: Supports receiving and sending voice messages on compatible channels (like Telegram).
+    - **Centralized Gateway**: All messages are routed through a single high-performance server.
 - **Automated Agent Scheduling**:
     - **Cron-based Automation**: Create custom agents with specialized skills and schedule them using unix-style cron expressions (e.g., every 5 minutes).
-    - **Real-time UI Sync**: New agents and configuration changes are broadcasted immediately to the UI for a seamless experience.
+    - **Real-time UI Sync**: New agents and reconfiguration changes are broadcasted immediately to the UI for a seamless experience.
+    - **Interactive Error Recovery**: Resume long-running agent tasks after hits like rate-limits with manual "Continue" buttons directly in the UI.
 - **Privacy & Security**:
     - **Human-In-The-Loop (HITL)**: Sensitive actions (file system, terminal, web access) require explicit user confirmation via interactive **YES / NO buttons** in the chat.
     - **Security Audit Logs**: Track and review all security-relevant actions and events directly in the UI.
     - **Prompt Hardening**: Advanced system prompts protect the agent from jailbreaks and instructions that attempt to bypass security rules.
     - **Network Restriction**: Complete isolation of the agent's web tools when high security is enabled to prevent unauthorized data exfiltration.
     - **Secure Vault**: API keys, agent configurations, and memory settings are encrypted with AES-256-GCM and stored only on your machine.
+    - **AI Provider Search & Masking**: Sensitive API keys are masked by default and can be easily managed with a dedicated search filter.
     - **Encrypted Database**: Chat sessions and avatars are stored in a local Hive database with additional encryption.
     - **Avatar Management**: Images are stored directly in the database for maximum privacy.
     - **Self-hosted**: Full control over your data and codebase.

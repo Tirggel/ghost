@@ -47,11 +47,24 @@ class TelegramChannel extends Channel {
 
   @override
   Future<void> connect() async {
-    if (isConnected) return;
+    if (_teledart != null) {
+      await disconnect();
+    }
 
     final user = await Telegram(token).getMe();
     _teledart = TeleDart(token, Event(user.username!));
-    _teledart!.start();
+
+    // Use runZonedGuarded to catch unhandled async errors from teledart's polling loop
+    runZonedGuarded(() {
+      _teledart!.start();
+    }, (Object error, StackTrace stack) {
+      final errorStr = error.toString();
+      if (errorStr.contains('409') || errorStr.contains('Conflict')) {
+        _log.warning('Telegram background 409 Conflict caught. This instance should terminate.');
+      } else {
+        _log.severe('Telegram background error: $error', error, stack);
+      }
+    });
 
     _subscription = _teledart!.onMessage().listen((msg) {
       if (_handler != null && (msg.text != null || msg.voice != null)) {
@@ -83,9 +96,14 @@ class TelegramChannel extends Channel {
   @override
   Future<void> disconnect() async {
     await _subscription?.cancel();
-    _teledart?.stop();
-    _teledart = null;
     _subscription = null;
+    
+    if (_teledart != null) {
+      _teledart!.stop();
+      _teledart = null;
+      // Give the HTTP client a moment to release long-polling connections
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
     _log.info('Telegram bot disconnected');
   }
 

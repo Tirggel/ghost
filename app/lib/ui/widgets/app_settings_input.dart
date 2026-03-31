@@ -42,6 +42,8 @@ class AppSettingsInput extends StatelessWidget {
   final String? importTooltip;
   final VoidCallback? onImport;
   final bool translateTitle;
+  final bool translateSubtitle;
+  final Widget? extraChild;
 
   const AppSettingsInput({
     super.key,
@@ -67,13 +69,15 @@ class AppSettingsInput extends StatelessWidget {
     this.importTooltip,
     this.onImport,
     this.translateTitle = true,
+    this.translateSubtitle = true,
+    this.extraChild,
   });
 
   @override
   Widget build(BuildContext context) {
     return AppSettingsTile(
       title: translateTitle ? title.tr() : title,
-      subtitle: subtitle?.tr(),
+      subtitle: translateSubtitle ? subtitle?.tr() : subtitle,
       leading: leading,
       onTap: onEdit,
       trailing: Row(
@@ -159,6 +163,11 @@ class AppSettingsInput extends StatelessWidget {
                       style: const TextStyle(fontSize: AppConstants.fontSizeBody),
                       onSubmitted: (_) => onSave(),
                     ),
+                  ),
+                if (extraChild != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: extraChild!,
                   ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,

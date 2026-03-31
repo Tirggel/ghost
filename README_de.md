@@ -1,7 +1,7 @@
-# Ghost 👻
+# Ghost
 
 <p align="center">
-  <img src="app/assets/icons/logo/ghost-large.png" width="150" alt="Ghost Logo">
+  <img src="app/assets/icons/logo/ghost.png" width="150" alt="Ghost Logo">
 </p>
 
 > [!WARNING]
@@ -70,7 +70,8 @@ Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistent
 ### 📚 Weiterführende Dokumentation
 - **[Skills Development Guide](docs/SKILLS_GUIDE_DE.md)**: Erfahre, wie du eigene KI-Skills erstellst und paketierst.
 - **[STT & TTS Setup](docs/STT_TTS_SETUP_DE.md)**: Konfiguriere lokale Spracherkennung und -synthese.
-- **[RPC API Reference](docs/RPC_API_REFERENCE_DE.md)**: Detaillierte Dokumentation der JSON-RPC 2.0 WebSocket-API.
+- **[Multi-Channel Setup](docs/CHANNELS_DE.md)**: Detaillierte Anleitung für Telegram, Discord, WhatsApp & Co.
+- **[RPC API Referenz](docs/RPC_API_REFERENCE_DE.md)**: Dokumentation der JSON-RPC 2.0 Schnittstelle.
 - **[Docker Setup Guide](docs/DOCKER_SETUP.md)**: Deployment und Verwaltung via Docker.
 
 ---
@@ -97,19 +98,24 @@ Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistent
     - **Websuche**: Integrierte Websuche via DuckDuckGo.
     - **Dateisystem**: Vollständiger Zugriff zum Lesen, Schreiben und Verwalten lokaler Dateien.
     - **GitHub**: Integration zur Verwaltung von Repositories und Issues.
-- **Sichere Kommunikation**:
-    - **Telegram Bot**: Steuere deinen Agenten sicher von unterwegs.
-      - **Sprachnachrichten**: Der Agent unterstützt den Empfang und den Versand von Sprachnachrichten.
-    - **Google Chat**: Integration als App in Google Chat Räumen.
+- **Multi-Messenger-Unterstützung**:
+    - **14+ Kanäle**: Verbinde deinen Agenten mit Telegram, Discord, WhatsApp (Meta), Slack, Signal, iMessage (BlueBubbles), MS Teams, Google Chat, Matrix, Nextcloud Talk, Nostr, Tlon/Urbit, Zalo und WebChat.
+    - **Intelligente Suche & Sortierung**: Verwalte deine Kommunikationskanäle mühelos mit integrierten Suchfiltern und automatischer Gruppierung nach Status.
+    - **Resiliente Verbindungen**: Verbesserte Stabilität für Messaging-Gateways (wie Telegram) durch automatische Verbindungswiederherstellung und Konfliktlösung.
+    - **DM-Richtlinien**: Granulare Kontrolle darüber, wer deinem Bot schreiben darf (Pairing, Allowlist, Open, Disabled).
+    - **Sprachnachrichten**: Unterstützt das Empfangen und Senden von Sprachnachrichten auf kompatiblen Kanälen (wie Telegram).
+    - **Zentrales Gateway**: Alle Nachrichten werden über einen einzigen Hochleistungsserver geroutet.
 - **Automatisierte Agenten-Zeitpläne**:
     - **Cron-basierte Automatisierung**: Erstelle eigene Agenten mit spezialisierten Skills und plane deren Ausführung mittels Unix-Cron-Ausdrücken (z.B. alle 5 Minuten).
     - **Echtzeit-UI-Synchronisierung**: Neue Agenten und Konfigurationsänderungen werden sofort an das UI übertragen für ein nahtloses Erlebnis.
+    - **Interaktive Fehlerbehebung**: Setze langlaufende Agenten-Tasks nach Fehlern wie Rate-Limits per manuellen "Weiter"-Button direkt im Chat fort.
 - **Privacy & Security**:
     - **Human-In-The-Loop (HITL)**: Sensible Aktionen (Dateisystem, Terminal, Web-Zugriff) müssen über interaktive **JA / NEIN Buttons** direkt im Chat bestätigt werden.
     - **Sicherheits-Audit-Protokolle**: Verfolge und überprüfe alle sicherheitsrelevanten Aktionen und Ereignisse direkt in der Benutzeroberfläche.
     - **Prompt-Härtung**: Fortschrittliche System-Prompts schützen den Agenten vor Jailbreaks und Anweisungen, die versuchen Sicherheitsregeln zu umgehen.
     - **Netzwerk-Einschränkung**: Komplette Isolation der Web-Tools des Agenten bei hoher Sicherheitsstufe, um unbefugte Datenabflüsse zu verhindern.
     - **Sicherer Tresor**: API-Schlüssel, Agenten-Konfigurationen und Memory-Einstellungen sind mit AES-256-GCM verschlüsselt und nur auf deinem Rechner gespeichert.
+    - **KI-Anbieter-Suche & Maskierung**: Sensible API-Schlüssel werden standardmäßig maskiert und können einfach über einen Filter gefunden werden.
     - **Verschlüsselte Datenbank**: Chat-Sitzungen und Avatare werden in einer lokalen Hive-Datenbank mit zusätzlicher Verschlüsselung gespeichert.
     - **Avatar-Management**: Bilder werden direkt in der Datenbank gespeichert, um maximale Privatsphäre zu gewährleisten.
     - **Selbstgehostet**: Volle Kontrolle über deine Daten und die Codebasis.

@@ -11,7 +11,6 @@ import '../widgets/setup_wizard/wizard_step_provider.dart';
 import '../widgets/setup_wizard/wizard_step_user.dart';
 import '../widgets/setup_wizard/wizard_step_identity.dart';
 import '../widgets/setup_wizard/wizard_step_workspace.dart';
-import '../widgets/setup_wizard/wizard_step_telegram.dart';
 import '../widgets/app_styles.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/setup_wizard/wizard_step_indicator.dart';
@@ -30,7 +29,7 @@ class SetupWizardScreen extends ConsumerStatefulWidget {
 class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
     with TickerProviderStateMixin {
   final _pageController = PageController();
-  static const int _totalSteps = 6;
+  static const int _totalSteps = 5;
 
   // Controllers are still needed for AppFormField/TextField
   final _apiKeyCtrl = TextEditingController();
@@ -45,7 +44,6 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
   final _identNotesCtrl = TextEditingController();
   final _identAvatarCtrl = TextEditingController();
   final _workspaceCtrl = TextEditingController();
-  final _tgTokenCtrl = TextEditingController();
 
   // Cache-busting nonces per upload key
   final Map<String, int> _avatarNonces = {};
@@ -65,7 +63,6 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
     _identNotesCtrl.dispose();
     _identAvatarCtrl.dispose();
     _workspaceCtrl.dispose();
-    _tgTokenCtrl.dispose();
     super.dispose();
   }
 
@@ -115,25 +112,6 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
     final ws = agent.workspace ?? '';
     notifier.updateWorkspace(ws);
     _workspaceCtrl.text = ws;
-
-    // Load Telegram config
-    final channels = updatedConfig['channels'] as Map<String, dynamic>?;
-    final tgConfig = channels?['telegram'] as Map<String, dynamic>?;
-    if (tgConfig != null && tgConfig['enabled'] == true) {
-      try {
-        final client = ref.read(gatewayClientProvider);
-        final res = await client.call('config.getTelegramToken');
-        final token = res['token'] as String? ?? '';
-        if (token.isNotEmpty) {
-          notifier.updateTgToken(token);
-          _tgTokenCtrl.text = token;
-          await notifier.verifyTelegram();
-        }
-      } catch (e) {
-        // ignore: avoid_print
-        print('Error restoring Telegram token: $e');
-      }
-    }
 
     // Sync other controllers
     final currentState = ref.read(setupWizardProvider);
@@ -188,9 +166,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
       case 2:
       case 3:
       case 4:
-        return true; // User / Identity / Workspace: optional
-      case 5:
-        return true; // Telegram: optional, Save always enabled
+        return true; // Workspace: optional
       default:
         return true;
     }
@@ -244,10 +220,6 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
                 WizardStepWorkspace(
                   state: state,
                   workspaceController: _workspaceCtrl,
-                ),
-                WizardStepTelegram(
-                  state: state,
-                  tgTokenController: _tgTokenCtrl,
                 ),
               ],
             ),
