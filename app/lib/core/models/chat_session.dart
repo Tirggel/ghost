@@ -10,6 +10,10 @@ class ChatSession {
   final DateTime? lastActiveAt;
 
 
+  final int inputTokens;
+  final int outputTokens;
+
+
   ChatSession({
     required this.id,
     this.title,
@@ -20,6 +24,8 @@ class ChatSession {
     this.agentId,
     this.createdAt,
     this.lastActiveAt,
+    this.inputTokens = 0,
+    this.outputTokens = 0,
   });
 
 
@@ -38,6 +44,8 @@ class ChatSession {
       lastActiveAt: json['lastActiveAt'] != null 
           ? DateTime.tryParse(json['lastActiveAt'] as String) 
           : null,
+      inputTokens: json['inputTokens'] as int? ?? 0,
+      outputTokens: json['outputTokens'] as int? ?? 0,
     );
 
   }
@@ -53,6 +61,8 @@ class ChatSession {
       'agentId': agentId,
       'createdAt': createdAt?.toIso8601String(),
       'lastActiveAt': lastActiveAt?.toIso8601String(),
+      'inputTokens': inputTokens,
+      'outputTokens': outputTokens,
     };
 
   }
@@ -68,6 +78,8 @@ class ChatSession {
       case 'agentId': return agentId;
       case 'createdAt': return createdAt;
       case 'lastActiveAt': return lastActiveAt;
+      case 'inputTokens': return inputTokens;
+      case 'outputTokens': return outputTokens;
       default: return null;
 
     }

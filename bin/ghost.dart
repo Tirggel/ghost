@@ -28,7 +28,7 @@ import 'package:ghost/channels/imessage.dart';
 import 'package:ghost/channels/ms_teams.dart';
 import 'package:ghost/channels/nextcloud_talk.dart';
 import 'package:ghost/channels/matrix.dart';
-import 'package:ghost/channels/nostr.dart';
+
 import 'package:ghost/channels/tlon.dart';
 import 'package:ghost/channels/zalo.dart';
 import 'package:ghost/channels/webchat.dart';
@@ -409,21 +409,7 @@ class GatewayCommand extends Command<void> {
         }
       }
 
-      // Nostr
-      if (config.channels.nostr.enabled) {
-        final relayUrl = config.channels.nostr.settings['apiUrl'] as String?;
-        final pubKey = config.channels.nostr.settings['pubKey'] as String?;
-        final privKey = config.channels.nostr.settings['token'] as String?;
-        if (relayUrl != null && pubKey != null) {
-          await channelManager.addChannel(NostrChannel(
-            relayUrl: relayUrl,
-            publicKeyHex: pubKey,
-            privateKeyHex: privKey,
-          ));
-        } else {
-          print('⚠️  Nostr enabled but relay URL or public key is missing.');
-        }
-      }
+
 
       // Tlon / Urbit
       if (config.channels.tlon.enabled) {

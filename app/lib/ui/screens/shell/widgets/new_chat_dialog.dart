@@ -34,7 +34,7 @@ class _NewChatDialogState extends ConsumerState<NewChatDialog> {
 
   Future<void> _checkLocalProviders() async {
     for (final p in AppConstants.aiProviders) {
-      if (p['id'] == 'ollama' || p['id'] == 'vllm' || p['id'] == 'litellm') {
+      if (p['id'] == 'ollama' || p['id'] == 'vllm' || p['id'] == 'litellm' || p['id'] == 'lmstudio') {
         try {
           final models = await ref.read(configProvider.notifier).listModels(p['id']!, null);
           if (models.isNotEmpty && mounted) {
@@ -77,7 +77,7 @@ class _NewChatDialogState extends ConsumerState<NewChatDialog> {
 
     final activeProviders = AppConstants.aiProviders.where((p) {
       final id = p['id']!;
-      if (id == 'ollama' || id == 'vllm' || id == 'litellm') {
+      if (id == 'ollama' || id == 'vllm' || id == 'litellm' || id == 'lmstudio') {
         return _activeLocalProviders.contains(id);
       }
       final keyName = id == 'google' ? 'google_api_key' : '${id}_api_key';
@@ -128,7 +128,7 @@ class _NewChatDialogState extends ConsumerState<NewChatDialog> {
                         width: 18,
                         height: 18,
                         errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.psychology, size: AppConstants.iconSizeSmall),
+                            const Icon(Icons.psychology, size: AppConstants.iconSizeSmall, color: AppColors.primary),
                       ),
                       const SizedBox(width: 8),
                       Text(p['label']!, style: const TextStyle(fontSize: 13)),

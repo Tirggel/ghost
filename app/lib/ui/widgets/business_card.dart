@@ -54,9 +54,8 @@ class BusinessCard extends StatefulWidget {
   State<BusinessCard> createState() => _BusinessCardState();
 }
 
-class _BusinessCardState extends State<BusinessCard> {
+class _BusinessCardState extends State<BusinessCard> with SettingsSaveMixin {
   late bool _isEditing;
-  bool _isSaving = false;
 
   @override
   void initState() {
@@ -72,20 +71,14 @@ class _BusinessCardState extends State<BusinessCard> {
   }
 
   Future<void> _handleSave() async {
-    setState(() => _isSaving = true);
-    try {
+    await handleSave(() async {
       await widget.onSave();
       if (mounted) {
         setState(() {
           _isEditing = false;
-          _isSaving = false;
         });
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
-    }
+    });
   }
 
   @override
@@ -218,7 +211,7 @@ class _BusinessCardState extends State<BusinessCard> {
                 ),
               if (_isEditing)
                 IconButton(
-                  icon: _isSaving
+                  icon: isSaveLoading
                       ? const SizedBox(
                           width: 20,
                           height: 20,
@@ -228,7 +221,7 @@ class _BusinessCardState extends State<BusinessCard> {
                           ),
                         )
                       : const Icon(Icons.save, color: AppColors.primary),
-                  onPressed: _isSaving ? null : _handleSave,
+                  onPressed: isSaveLoading ? null : _handleSave,
                   tooltip: 'common.save'.tr(),
                 ),
               IconButton(
@@ -237,7 +230,7 @@ class _BusinessCardState extends State<BusinessCard> {
                   size: 20,
                   color: _isEditing ? AppColors.textDim : AppColors.primary,
                 ),
-                onPressed: _isSaving ? null : _toggleEdit,
+                onPressed: isSaveLoading ? null : _toggleEdit,
                 tooltip: (_isEditing ? 'common.cancel' : 'common.edit').tr(),
               ),
             ],

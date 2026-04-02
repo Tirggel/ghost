@@ -21,7 +21,7 @@ class MemoryTab extends ConsumerStatefulWidget {
   ConsumerState<MemoryTab> createState() => _MemoryTabState();
 }
 
-class _MemoryTabState extends ConsumerState<MemoryTab> {
+class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
   late bool _standardEnabled;
   late bool _ragEnabled;
   late String _embeddingProvider;
@@ -68,7 +68,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       if (service == 'telegram') continue;
 
       final isLocal =
-          service == 'ollama' || service == 'vllm' || service == 'litellm';
+          service == 'ollama' || service == 'vllm' || service == 'litellm' || service == 'lmstudio';
       final storageKey = isLocal ? '${service}_base_url' : '${service}_api_key';
       final isDetected = config.detectedLocalProviders.any(
         (dp) => dp['id'] == service,
@@ -350,16 +350,16 @@ class _MemoryTabState extends ConsumerState<MemoryTab> {
       onBack: widget.onBack,
       onNext: widget.onNext,
       onSave: () async {
-        await ref.read(configProvider.notifier).updateMemory({
-          'enabled': _standardEnabled,
-          'ragEnabled': _ragEnabled,
-          'embeddingProvider': _embeddingProvider,
-          'embeddingModel': _embeddingModel,
-        });
-        if (mounted) {
-          AppSnackBar.showSuccess(context, 'settings.memory.saved'.tr());
-        }
+        await handleSave(() async {
+          await ref.read(configProvider.notifier).updateMemory({
+            'enabled': _standardEnabled,
+            'ragEnabled': _ragEnabled,
+            'embeddingProvider': _embeddingProvider,
+            'embeddingModel': _embeddingModel,
+          });
+        }, successMessage: 'settings.memory.saved'.tr());
       },
+      isSaveLoading: isSaveLoading,
       children: [
         const AppSectionHeader('settings.memory.standard_section', large: true),
         Padding(

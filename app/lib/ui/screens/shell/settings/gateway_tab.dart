@@ -8,6 +8,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/constants.dart';
 import '../../../../core/gateway.dart';
 import '../../../../providers/gateway_provider.dart';
+import '../../../../providers/usage_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_dialogs.dart';
 
@@ -242,6 +243,8 @@ class _GatewayTabState extends ConsumerState<GatewayTab> {
         ? AppColors.success
         : AppColors.error;
 
+    final tokenUsage = ref.watch(tokenUsageProvider);
+
     return Wrap(
       spacing: 12,
       runSpacing: 12,
@@ -278,6 +281,25 @@ class _GatewayTabState extends ConsumerState<GatewayTab> {
           icon: Icons.lock_outline_rounded,
           label: 'settings.gateway.stat_auth',
           value: authMode?.toString() ?? '—',
+        ),
+        _StatCard(
+          icon: Icons.upload_file_rounded,
+          label: 'settings.gateway.stat_input_tokens',
+          value: tokenUsage.totalInputTokens.toString(),
+          trailing: tokenUsage.totalInputTokens > 0
+              ? IconButton(
+                  icon: const Icon(Icons.refresh_rounded, size: 14),
+                  onPressed: () => ref.read(tokenUsageProvider.notifier).reset(),
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                )
+              : null,
+        ),
+        _StatCard(
+          icon: Icons.download_done_rounded,
+          label: 'settings.gateway.stat_output_tokens',
+          value: tokenUsage.totalOutputTokens.toString(),
         ),
       ],
     );
@@ -516,18 +538,20 @@ class _StatCard extends StatelessWidget {
   final Color? iconColor;
   final String label;
   final String value;
+  final Widget? trailing;
 
   const _StatCard({
     required this.icon,
     required this.label,
     required this.value,
     this.iconColor,
+    this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 150,
+      width: 156,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -536,7 +560,13 @@ class _StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: iconColor ?? AppColors.textDim),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, size: 16, color: iconColor ?? AppColors.textDim),
+              if (trailing != null) trailing!,
+            ],
+          ),
           const SizedBox(height: 8),
           Text(
             label.tr().toUpperCase(),

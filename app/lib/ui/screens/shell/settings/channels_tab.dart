@@ -200,40 +200,51 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
 
     if (channelId == 'googleChat') {
       inputFields = [
-        AppSettingsInputField(
-          controller: _getController(channelId, 'serviceAccountJsonPath', settings['serviceAccountJsonPath'] ?? ''),
-          label: 'settings.channels.gchat_sa_label',
-          hint: 'settings.channels.gchat_sa_hint',
-        ),
-        AppSettingsInputField(
-          controller: _getController(channelId, 'projectId', settings['projectId'] ?? ''),
-          label: 'settings.channels.gchat_project_label',
-          hint: 'settings.channels.gchat_project_hint',
-        ),
-        AppSettingsInputField(
-          controller: _getController(channelId, 'subscriptionId', settings['subscriptionId'] ?? ''),
-          label: 'settings.channels.gchat_sub_label',
-          hint: 'settings.channels.gchat_sub_hint',
-        ),
+        if (policy != 'disabled')
+          AppSettingsInputField(
+            controller: _getController(channelId, 'serviceAccountJsonPath', settings['serviceAccountJsonPath'] ?? ''),
+            label: 'settings.channels.gchat_sa_label',
+            hint: 'settings.channels.gchat_sa_hint',
+          ),
+        if (policy != 'disabled')
+          AppSettingsInputField(
+            controller: _getController(channelId, 'projectId', settings['projectId'] ?? ''),
+            label: 'settings.channels.gchat_project_label',
+            hint: 'settings.channels.gchat_project_hint',
+          ),
+        if (policy != 'disabled')
+          AppSettingsInputField(
+            controller: _getController(channelId, 'subscriptionId', settings['subscriptionId'] ?? ''),
+            label: 'settings.channels.gchat_sub_label',
+            hint: 'settings.channels.gchat_sub_hint',
+          ),
       ];
       onSave = () => _saveGenericChannelConfig(channelId);
     } else if (channelId == 'telegram') {
-      inputFields = [
-        AppSettingsInputField(
-          controller: _getController(channelId, 'botToken', settings['botToken'] ?? ''),
-          label: 'settings.channels.tg_token_label',
-          hint: 'settings.channels.tg_token_hint',
-        ),
-      ];
+      if (policy != 'disabled') {
+        inputFields = [
+          AppSettingsInputField(
+            controller: _getController(channelId, 'botToken', settings['botToken'] ?? ''),
+            label: 'settings.channels.tg_token_label',
+            hint: 'settings.channels.tg_token_hint',
+          ),
+        ];
+      } else {
+        inputFields = [];
+      }
       onSave = _saveTelegramConfig;
     } else {
-      inputFields = [
-        AppSettingsInputField(
-          controller: _getController(channelId, 'token', settings['token'] ?? ''),
-          label: 'settings.channels.config_label',
-          hint: 'settings.channels.config_hint',
-        ),
-      ];
+      if (policy != 'disabled') {
+        inputFields = [
+          AppSettingsInputField(
+            controller: _getController(channelId, 'token', settings['token'] ?? ''),
+            label: 'settings.channels.config_label',
+            hint: 'settings.channels.config_hint',
+          ),
+        ];
+      } else {
+        inputFields = [];
+      }
       onSave = () => _saveGenericChannelConfig(channelId);
     }
 
@@ -257,12 +268,25 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
       );
     }
 
-    Widget leadingWidget;
-    if (channelId == 'telegram') {
-      leadingWidget = const Icon(Icons.telegram, color: AppColors.primary);
-    } else {
-      leadingWidget = Image.asset(iconPath, width: 24, height: 24);
-    }
+    final Widget leadingWidget = Image.asset(
+      iconPath,
+      width: AppConstants.integrationIconSize,
+      height: AppConstants.integrationIconSize,
+      errorBuilder: (context, error, stackTrace) {
+        if (channelId == 'telegram') {
+          return const Icon(
+            Icons.telegram,
+            color: AppColors.primary,
+            size: AppConstants.integrationIconSize,
+          );
+        }
+        return const Icon(
+          Icons.chat_bubble_outline,
+          color: AppColors.primary,
+          size: AppConstants.integrationIconSize,
+        );
+      },
+    );
 
     final policyDropdown = AppDropdownField<String>(
       label: 'settings.channels.dm_policy',

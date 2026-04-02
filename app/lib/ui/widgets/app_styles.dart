@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants.dart';
 import 'settings_sub_nav_bar.dart';
+import 'app_snackbar.dart';
 
 // ---------------------------------------------------------------------------
 // AppInputDecoration
@@ -1117,6 +1118,60 @@ void showAppErrorDialog(BuildContext context, String message) {
     context: context,
     builder: (ctx) => AppErrorDialog(message: message),
   );
+}
+
+// ---------------------------------------------------------------------------
+// SettingsSaveMixin — standardized saving logic for settings tabs
+// ---------------------------------------------------------------------------
+
+/// Mixin to provide consistent save-operation lifecycle management.
+///
+/// Use it in your `State` classes:
+/// ```dart
+/// class _MyTabState extends ConsumerState<MyTab> with SettingsSaveMixin {
+///   ...
+///   @override
+///   Widget build(BuildContext context) {
+///     return AppSettingsPage(
+///       onSave: () => handleSave(_saveAction),
+///       isSaveLoading: isSaveLoading,
+///       ...
+///     );
+///   }
+/// }
+/// ```
+mixin SettingsSaveMixin<T extends StatefulWidget> on State<T> {
+  bool _isSaving = false;
+  
+  /// Whether a save operation is currently in progress.
+  bool get isSaveLoading => _isSaving;
+
+  /// Handles the save operation with loading state, error reporting and success notification.
+  Future<void> handleSave(
+    Future<void> Function() saveAction, {
+    String? successMessage,
+  }) async {
+    if (_isSaving) return;
+    
+    setState(() => _isSaving = true);
+    try {
+      await saveAction();
+      if (mounted) {
+        AppSnackBar.showSuccess(
+          context, 
+          successMessage ?? 'common.saved'.tr(),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppErrorDialog(context, e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

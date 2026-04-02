@@ -13,7 +13,6 @@ icons = {
     'msteams': 'microsoft.com/en-us/microsoft-teams/group-chat-software',
     'nextcloud': 'nextcloud.com',
     'matrix': 'matrix.org',
-    'nostr': 'nostr.com',
     'tlon': 'tlon.io',
     'zalo': 'zalo.me',
     'webchat': 'openclaw.ai',

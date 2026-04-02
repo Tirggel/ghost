@@ -127,13 +127,30 @@ class SetupWizardNotifier extends Notifier<SetupWizardState> {
   void updateProvider(String? provider) {
     state = state.copyWith(
       selectedProvider: provider,
-      keyVerified: provider == 'ollama',
+      keyVerified: provider == 'ollama' || provider == 'lmstudio',
       keyError: null,
       models: [],
       selectedModel: null,
     );
-    if (provider == 'ollama') {
-      fetchOllamaModels();
+    if (provider == 'ollama' || provider == 'lmstudio') {
+      fetchLocalModels(provider!);
+    }
+  }
+
+  Future<void> fetchLocalModels(String provider) async {
+    state = state.copyWith(loadingModels: true);
+    try {
+      final models = await ref
+          .read(configProvider.notifier)
+          .listModels(provider, null);
+      state = state.copyWith(
+        loadingModels: false,
+        keyVerified: true,
+        models: models,
+        selectedModel: models.isNotEmpty ? models.first : null,
+      );
+    } catch (_) {
+      state = state.copyWith(loadingModels: false);
     }
   }
 
@@ -170,20 +187,7 @@ class SetupWizardNotifier extends Notifier<SetupWizardState> {
   }
 
   Future<void> fetchOllamaModels() async {
-    state = state.copyWith(loadingModels: true);
-    try {
-      final models = await ref
-          .read(configProvider.notifier)
-          .listModels('ollama', null);
-      state = state.copyWith(
-        loadingModels: false,
-        keyVerified: true,
-        models: models,
-        selectedModel: models.isNotEmpty ? models.first : null,
-      );
-    } catch (_) {
-      state = state.copyWith(loadingModels: false);
-    }
+    return fetchLocalModels('ollama');
   }
 
   void updateSelectedModel(String? model) {

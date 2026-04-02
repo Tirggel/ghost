@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'gateway_provider.dart';
 import 'hitl_provider.dart';
+import 'usage_provider.dart';
 import '../core/models/chat_message.dart';
 
 class ChatState {
@@ -97,6 +98,49 @@ class ChatNotifier extends Notifier<Map<String, ChatState>> {
         final current = _getState(sessionId);
         final messageData = msg['params']['message'] as Map<String, dynamic>;
         final message = ChatMessage.fromJson(messageData);
+
+        // --- Deep Token Usage Extraction ---
+        try {
+          int input = 0;
+          int output = 0;
+
+          void findTokens(dynamic obj) {
+            if (obj is Map) {
+              for (final entry in obj.entries) {
+                final key = entry.key.toString().toLowerCase();
+                final val = entry.value;
+
+                if (val is int || val is double || val is String && int.tryParse(val) != null) {
+                  final num = int.tryParse(val.toString()) ?? 0;
+                  if (num > 0) {
+                    if (key.contains('token')) {
+                      if (key.contains('input') || key.contains('prompt') || key.contains('context')) {
+                        if (num > input) input = num;
+                      } else if (key.contains('output') || key.contains('completion') || key.contains('generated')) {
+                        if (num > output) output = num;
+                      }
+                    }
+                  }
+                } else if (val is Map || val is List) {
+                  findTokens(val);
+                }
+              }
+            } else if (obj is List) {
+              for (final item in obj) {
+                findTokens(item);
+              }
+            }
+          }
+
+          findTokens(msg);
+
+          if (input > 0 || output > 0) {
+            ref.read(tokenUsageProvider.notifier).addUsage(input, output);
+            ref
+                .read(sessionsProvider.notifier)
+                .updateTokenUsage(sessionId, input, output);
+          }
+        } catch (_) {}
 
         // Auto-set HITL pending ONLY when backend explicitly flags it
         final isHitlPending =

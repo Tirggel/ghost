@@ -15,6 +15,11 @@ import '../sessions/manager.dart';
 import 'channel.dart';
 import 'envelope.dart';
 import 'telegram.dart';
+import 'discord.dart';
+import 'slack.dart';
+import 'whatsapp.dart';
+import 'google_chat.dart';
+import 'matrix.dart';
 
 final _log = Logger('Ghost.ChannelManager');
 
@@ -48,33 +53,115 @@ class ChannelManager {
     }
   }
 
-  /// Update or start the Telegram channel.
-  Future<void> updateTelegram(String botName, {String? token}) async {
-    if (_updatingChannels.contains('telegram')) {
-      _log.info('Telegram update already in progress, skipping...');
+  /// Update or start a channel generic handler.
+  Future<void> updateChannel(String type, bool enabled,
+      {Map<String, dynamic>? settings}) async {
+    if (!enabled) {
+      if (_channels.containsKey(type)) {
+        _log.info('Channel $type disabled, removing...');
+        await removeChannel(type);
+      }
       return;
     }
-    _updatingChannels.add('telegram');
+
+    final storageKey =
+        type == 'telegram' ? 'telegram_bot_token' : '${type}_token';
+    final token = await storage.get(storageKey);
+
+    if (token == null || token.isEmpty) {
+      if (_channels.containsKey(type)) {
+        _log.warning('Channel $type: Token cleared in vault, disconnecting.');
+        await removeChannel(type);
+      }
+      return;
+    }
+
+    if (_updatingChannels.contains(type)) return;
+    _updatingChannels.add(type);
 
     try {
-      final effectiveToken = token ?? await storage.get('telegram_bot_token');
-      if (effectiveToken == null || effectiveToken.isEmpty) {
-        _log.warning('Attempted to start Telegram without token');
-        return;
+      // Check if instance is already running
+      if (_channels.containsKey(type)) {
+        _log.info(
+            'Channel $type is already running. Disconnecting before re-connecting...');
+        await removeChannel(type);
+
+        // Telegram is particularly sensitive to "409 Conflict" (multiple instances).
+        // It needs more time for the server to recognize the old connection as closed.
+        final delayMs = type == 'telegram' ? 2000 : 800;
+        await Future<void>.delayed(Duration(milliseconds: delayMs));
       }
 
-      await removeChannel('telegram');
-      // Give a small breathing room for the OS/Network to release sockets
-      await Future<void>.delayed(const Duration(milliseconds: 500));
+      Channel? channel;
+      final s = settings ?? {};
 
-      await addChannel(TelegramChannel(
-        token: effectiveToken,
-        botName: botName,
-      ));
-      _log.info('Telegram channel updated/started for $botName');
+      switch (type) {
+        case 'telegram':
+          channel = TelegramChannel(
+            token: token,
+            botName: s['botName'] as String? ?? 'GhostBot',
+          );
+          break;
+        case 'discord':
+          channel = DiscordChannel(
+            botToken: token,
+            botName: s['botName'] as String? ?? 'Ghost',
+          );
+          break;
+        case 'slack':
+          channel = SlackChannel(
+            botToken: token,
+            signingSecret: s['signingSecret'] as String?,
+            botName: s['botName'] as String? ?? 'Ghost',
+          );
+          break;
+        case 'whatsapp':
+          channel = WhatsAppChannel(
+            apiToken: token,
+            phoneNumberId: s['phoneNumberId'] as String? ?? '',
+            verifyToken: s['verifyToken'] as String? ?? 'ghost_verify',
+          );
+          break;
+        case 'googleChat':
+          channel = GoogleChatChannel(
+            serviceAccountJsonPath: token,
+            projectId: s['projectId'] as String? ?? '',
+            subscriptionId: s['subscriptionId'] as String? ?? '',
+          );
+          break;
+        case 'matrix':
+          channel = MatrixChannel(
+            accessToken: token,
+            homeserverUrl: s['homeserverUrl'] as String? ?? 'https://matrix.org',
+            userId: s['userId'] as String? ?? '',
+          );
+          break;
+        case 'signal':
+        case 'webchat':
+        case 'imessage':
+        case 'msTeams':
+        case 'nextcloudTalk':
+        case 'tlon':
+        case 'zalo':
+          _log.warning('Channel type $type placeholder in manager');
+          break;
+        default:
+          _log.warning('Channel type $type update not fully implemented yet');
+      }
+
+      if (channel != null) {
+        await addChannel(channel);
+        _log.info('Channel $type updated/started');
+      }
     } finally {
-      _updatingChannels.remove('telegram');
+      _updatingChannels.remove(type);
     }
+  }
+
+  /// Update or start the Telegram channel.
+  Future<void> updateTelegram(String botName, {String? token}) async {
+    // Forward to generic update
+    await updateChannel('telegram', true, settings: {'botName': botName});
   }
 
   /// Add and start a channel.
@@ -83,6 +170,16 @@ class ChannelManager {
 
     channel.onMessage((envelope) {
       unawaited(_handleIncomingMessage(channel, envelope));
+    });
+
+    channel.onError((message) {
+      _log.severe('Terminal error from channel ${channel.displayName}: $message');
+      _connectionErrors[channel.type] = message;
+      unawaited(removeChannel(channel.type));
+      gateway?.broadcast('gateway.error', {
+        'message': message,
+        'channelType': channel.type,
+      });
     });
 
     _connectionErrors.remove(channel.type);
@@ -156,9 +253,6 @@ class ChannelManager {
       case 'matrix':
         cConfig = channelsConfig.matrix;
         break;
-      case 'nostr':
-        cConfig = channelsConfig.nostr;
-        break;
       case 'tlon':
         cConfig = channelsConfig.tlon;
         break;
@@ -168,8 +262,17 @@ class ChannelManager {
     }
 
     if (cConfig == null || cConfig.dmPolicy == DmPolicy.disabled) {
-      _log.info(
-          'Message ignored: Channel disabled or no config for ${channel.type}');
+      final logMsg =
+          'Message ignored: Channel disabled or no config for ${channel.type}';
+      _log.info(logMsg);
+
+      if (cConfig?.dmPolicy == DmPolicy.disabled) {
+        await channel.sendMessage(
+          peerId: envelope.senderId,
+          groupId: envelope.groupId,
+          content: _tr('message_ignored', args: {'channel': channel.type}),
+        );
+      }
       return;
     }
 
@@ -180,8 +283,7 @@ class ChannelManager {
         await channel.sendMessage(
           peerId: envelope.senderId,
           groupId: envelope.groupId,
-          content:
-              '🔒 Access denied. Your ID: `${envelope.senderId}` is not on the allowlist.',
+          content: _tr('access_denied', args: {'id': envelope.senderId}),
         );
         return;
       }
@@ -211,7 +313,6 @@ class ChannelManager {
               nextcloudTalk:
                   channel.type == 'nextcloudTalk' ? updatedConfig : null,
               matrix: channel.type == 'matrix' ? updatedConfig : null,
-              nostr: channel.type == 'nostr' ? updatedConfig : null,
               tlon: channel.type == 'tlon' ? updatedConfig : null,
               zalo: channel.type == 'zalo' ? updatedConfig : null,
               googleChat: channel.type == 'googleChat' ? updatedConfig : null,
@@ -230,8 +331,7 @@ class ChannelManager {
             await channel.sendMessage(
               peerId: envelope.senderId,
               groupId: envelope.groupId,
-              content:
-                  '✅ Authenticator verified. You may now chat with the agent.',
+              content: _tr('auth_verified'),
             );
             return;
           } else {
@@ -239,8 +339,7 @@ class ChannelManager {
             await channel.sendMessage(
               peerId: envelope.senderId,
               groupId: envelope.groupId,
-              content:
-                  '🔒 Authentication required. Please enter your pairing code.\n(Your ID: `${envelope.senderId}`)',
+              content: _tr('auth_required', args: {'id': envelope.senderId}),
             );
             return;
           }
@@ -254,6 +353,27 @@ class ChannelManager {
       peerId: envelope.senderId,
       groupId: envelope.groupId,
     );
+
+    // Set title for Telegram sessions
+    if (envelope.channelType == 'telegram') {
+      final agentName = agentManager.config.identity.name;
+      final expectedTitle = '$agentName und Telegram';
+      if (session.title != expectedTitle) {
+        session.title = expectedTitle;
+        // Persist via system message
+        await sessionManager.addMessage(
+          sessionId: session.id,
+          role: 'system',
+          content: 'session_rename',
+          metadata: {'title': expectedTitle},
+        );
+        // Broadcast update to UI
+        gateway?.broadcast('agent.session_updated', {
+          'sessionId': session.id,
+          'title': expectedTitle,
+        });
+      }
+    }
 
     // 2. Add user message to session
     await sessionManager.addMessage(
@@ -343,5 +463,41 @@ class ChannelManager {
         content: 'Sorry, I encountered an error: $e',
       );
     }
+  }
+
+  String _tr(String key, {Map<String, String>? args}) {
+    final language = agentManager.config.user.language;
+
+    final enStrings = {
+      'message_ignored':
+          'Message ignored: Channel disabled or no config for {channel}',
+      'access_denied':
+          '🔒 Access denied. Your ID: `{id}` is not on the allowlist.',
+      'auth_verified':
+          '✅ Authenticator verified. You may now chat with the agent.',
+      'auth_required':
+          '🔒 Authentication required. Please enter your pairing code.\n(Your ID: `{id}`)'
+    };
+
+    final deStrings = {
+      'message_ignored':
+          'Nachricht ignoriert: Kanal deaktiviert oder keine Konfiguration für {channel}',
+      'access_denied':
+          '🔒 Zugriff verweigert. Ihre ID: `{id}` steht nicht auf der Erlaubnisliste.',
+      'auth_verified':
+          '✅ Authentifizierung erfolgreich. Sie können nun mit dem Agenten sprechen.',
+      'auth_required':
+          '🔒 Authentifizierung erforderlich. Bitte geben Sie Ihren Koppelungscode ein.\n(Ihre ID: `{id}`)'
+    };
+
+    final strings = (language == 'de') ? deStrings : enStrings;
+    var message = strings[key] ?? key;
+
+    if (args != null) {
+      for (final entry in args.entries) {
+        message = message.replaceAll('{${entry.key}}', entry.value);
+      }
+    }
+    return message;
   }
 }

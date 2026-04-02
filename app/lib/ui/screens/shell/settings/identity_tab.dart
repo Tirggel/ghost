@@ -20,7 +20,7 @@ class IdentityTab extends ConsumerStatefulWidget {
   ConsumerState<IdentityTab> createState() => _IdentityTabState();
 }
 
-class _IdentityTabState extends ConsumerState<IdentityTab> {
+class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixin {
   final _controllers = <String, TextEditingController>{};
   String? _selectedProvider;
   String? _selectedModel;
@@ -63,7 +63,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> {
 
   Future<void> _checkLocalProviders() async {
     for (final p in AppConstants.aiProviders) {
-      if (p['id'] == 'ollama' || p['id'] == 'vllm' || p['id'] == 'litellm') {
+      if (p['id'] == 'ollama' || p['id'] == 'vllm' || p['id'] == 'litellm' || p['id'] == 'lmstudio') {
         try {
           final models = await ref
               .read(configProvider.notifier)
@@ -100,28 +100,28 @@ class _IdentityTabState extends ConsumerState<IdentityTab> {
   }
 
   Future<void> _save() async {
-    final avatar = _controllers['avatar']!.text;
-    final identityConfig = {
-      'name': _controllers['name']!.text,
-      'creature': _controllers['creature']!.text,
-      'vibe': _controllers['vibe']!.text,
-      'emoji': _controllers['emoji']!.text,
-      'notes': _controllers['notes']!.text,
-      'avatar': avatar.startsWith('blob:') ? '' : avatar,
-    };
-    await ref.read(configProvider.notifier).updateIdentity(identityConfig);
-    await ref.read(configProvider.notifier).updateAgentSkills(_mainAgentSkills);
+    await handleSave(() async {
+      final avatar = _controllers['avatar']!.text;
+      final identityConfig = {
+        'name': _controllers['name']!.text,
+        'creature': _controllers['creature']!.text,
+        'vibe': _controllers['vibe']!.text,
+        'emoji': _controllers['emoji']!.text,
+        'notes': _controllers['notes']!.text,
+        'avatar': avatar.startsWith('blob:') ? '' : avatar,
+      };
+      await ref.read(configProvider.notifier).updateIdentity(identityConfig);
+      await ref
+          .read(configProvider.notifier)
+          .updateAgentSkills(_mainAgentSkills);
 
-    if (_selectedProvider != null && _selectedModel != null) {
-      await ref.read(configProvider.notifier).updateAgent({
-        'provider': _selectedProvider,
-        'model': _selectedModel,
-      });
-    }
-
-    if (mounted) {
-      AppSnackBar.showSuccess(context, 'settings.identity.saved'.tr());
-    }
+      if (_selectedProvider != null && _selectedModel != null) {
+        await ref.read(configProvider.notifier).updateAgent({
+          'provider': _selectedProvider,
+          'model': _selectedModel,
+        });
+      }
+    }, successMessage: 'settings.identity.saved'.tr());
   }
 
   @override
@@ -153,7 +153,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> {
 
     final availableProviders = AppConstants.aiProviders.where((p) {
       final id = p['id']!;
-      if (id == 'ollama' || id == 'vllm' || id == 'litellm') {
+      if (id == 'ollama' || id == 'vllm' || id == 'litellm' || id == 'lmstudio') {
         return _activeLocalProviders.contains(id);
       }
       final keyName = id == 'google' ? 'google_api_key' : '${id}_api_key';
@@ -168,6 +168,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> {
       onBack: widget.onBack,
       onNext: widget.onNext,
       onSave: _save,
+      isSaveLoading: isSaveLoading,
       children: [
         BusinessCard(
           title: 'settings.identity.section',

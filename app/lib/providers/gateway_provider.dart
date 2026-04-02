@@ -254,12 +254,34 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
       // Combine server + pending
       // Combine server + pending and sort by last active (newest first)
       final combined = [...serverSessions, ..._pending];
-      combined.sort((a, b) {
+
+      // MERGE: Preserve local token counts if server has 0
+      final updated = combined.map((s) {
+        final existing = state.where((old) => old.id == s.id).firstOrNull;
+        if (existing != null) {
+          return ChatSession(
+            id: s.id,
+            title: s.title,
+            model: s.model,
+            provider: s.provider,
+            messageCount: s.messageCount,
+            agentName: s.agentName,
+            agentId: s.agentId,
+            createdAt: s.createdAt,
+            lastActiveAt: s.lastActiveAt,
+            inputTokens: s.inputTokens > 0 ? s.inputTokens : existing.inputTokens,
+            outputTokens: s.outputTokens > 0 ? s.outputTokens : existing.outputTokens,
+          );
+        }
+        return s;
+      }).toList();
+
+      updated.sort((a, b) {
         final dateA = a.lastActiveAt ?? a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
         final dateB = b.lastActiveAt ?? b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
         return dateB.compareTo(dateA); // Newest first
       });
-      state = combined;
+      state = updated;
 
     } catch (e) {
       // Refresh failed
@@ -374,6 +396,27 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
         return s;
       }).toList();
     } catch (_) {}
+  }
+
+  void updateTokenUsage(String sessionId, int input, int output) {
+    state = state.map((s) {
+      if (s.id == sessionId) {
+        return ChatSession(
+          id: s.id,
+          title: s.title,
+          model: s.model,
+          provider: s.provider,
+          messageCount: s.messageCount,
+          agentName: s.agentName,
+          agentId: s.agentId,
+          createdAt: s.createdAt,
+          lastActiveAt: s.lastActiveAt,
+          inputTokens: s.inputTokens + input,
+          outputTokens: s.outputTokens + output,
+        );
+      }
+      return s;
+    }).toList();
   }
 }
 

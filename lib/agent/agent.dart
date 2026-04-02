@@ -85,9 +85,14 @@ class Agent {
     try {
       final history =
           await sessionManager.getHistory(sessionId, maxMessages: 20);
+      // Filter out internal system messages (like session rename events)
+      // which are not intended for the LLM.
+      final fullHistory =
+          history.where((m) => m.role != 'system').toList();
+
       final messages = shouldSendChatHistory
-          ? history
-          : (history.isNotEmpty ? [history.last] : <Message>[]);
+          ? fullHistory
+          : (fullHistory.isNotEmpty ? [fullHistory.last] : <Message>[]);
 
       // --- Sentinel: HITL decline recorded silently, no LLM call needed ---
       if (content.trim() == '__HITL_DECLINED__') {

@@ -4,7 +4,6 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
-import '../../../widgets/app_snackbar.dart';
 
 class BrowserTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -15,7 +14,7 @@ class BrowserTab extends ConsumerStatefulWidget {
   ConsumerState<BrowserTab> createState() => _BrowserTabState();
 }
 
-class _BrowserTabState extends ConsumerState<BrowserTab> {
+class _BrowserTabState extends ConsumerState<BrowserTab> with SettingsSaveMixin {
   late bool _browserHeadless;
 
   @override
@@ -25,12 +24,11 @@ class _BrowserTabState extends ConsumerState<BrowserTab> {
   }
 
   Future<void> _save() async {
-    await ref.read(configProvider.notifier).updateTools({
-      'browserHeadless': _browserHeadless,
+    await handleSave(() async {
+      await ref.read(configProvider.notifier).updateTools({
+        'browserHeadless': _browserHeadless,
+      });
     });
-    if (mounted) {
-      AppSnackBar.showSuccess(context, 'common.saved'.tr());
-    }
   }
 
   @override
@@ -91,6 +89,7 @@ class _BrowserTabState extends ConsumerState<BrowserTab> {
       onBack: widget.onBack,
       onSave: _save,
       onNext: widget.onNext,
+      isSaveLoading: isSaveLoading,
     );
   }
 }

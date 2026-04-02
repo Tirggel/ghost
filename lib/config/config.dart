@@ -608,7 +608,7 @@ enum DmPolicy { pairing, allowlist, open, disabled }
 class ChannelConfig {
   const ChannelConfig({
     this.enabled = false,
-    this.dmPolicy = DmPolicy.pairing,
+    this.dmPolicy = DmPolicy.disabled,
     this.allowFrom = const [],
     this.settings = const {},
   });
@@ -618,7 +618,7 @@ class ChannelConfig {
       enabled: json['enabled'] as bool? ?? false,
       dmPolicy: DmPolicy.values.firstWhere(
         (p) => p.name == (json['dmPolicy'] as String?),
-        orElse: () => DmPolicy.pairing,
+        orElse: () => DmPolicy.disabled,
       ),
       allowFrom: (json['allowFrom'] as List<dynamic>?)
               ?.map((e) => e as String)
@@ -668,7 +668,6 @@ class ChannelsConfig {
     this.msTeams = const ChannelConfig(),
     this.nextcloudTalk = const ChannelConfig(),
     this.matrix = const ChannelConfig(),
-    this.nostr = const ChannelConfig(),
     this.tlon = const ChannelConfig(),
     this.zalo = const ChannelConfig(),
   });
@@ -708,9 +707,6 @@ class ChannelsConfig {
       matrix: json['matrix'] != null
           ? ChannelConfig.fromJson(json['matrix'] as Map<String, dynamic>)
           : const ChannelConfig(),
-      nostr: json['nostr'] != null
-          ? ChannelConfig.fromJson(json['nostr'] as Map<String, dynamic>)
-          : const ChannelConfig(),
       tlon: json['tlon'] != null
           ? ChannelConfig.fromJson(json['tlon'] as Map<String, dynamic>)
           : const ChannelConfig(),
@@ -731,7 +727,6 @@ class ChannelsConfig {
   final ChannelConfig msTeams;
   final ChannelConfig nextcloudTalk;
   final ChannelConfig matrix;
-  final ChannelConfig nostr;
   final ChannelConfig tlon;
   final ChannelConfig zalo;
 
@@ -747,7 +742,6 @@ class ChannelsConfig {
         'msTeams': msTeams.toJson(),
         'nextcloudTalk': nextcloudTalk.toJson(),
         'matrix': matrix.toJson(),
-        'nostr': nostr.toJson(),
         'tlon': tlon.toJson(),
         'zalo': zalo.toJson(),
       };
@@ -764,7 +758,6 @@ class ChannelsConfig {
     ChannelConfig? msTeams,
     ChannelConfig? nextcloudTalk,
     ChannelConfig? matrix,
-    ChannelConfig? nostr,
     ChannelConfig? tlon,
     ChannelConfig? zalo,
   }) {
@@ -780,7 +773,6 @@ class ChannelsConfig {
       msTeams: msTeams ?? this.msTeams,
       nextcloudTalk: nextcloudTalk ?? this.nextcloudTalk,
       matrix: matrix ?? this.matrix,
-      nostr: nostr ?? this.nostr,
       tlon: tlon ?? this.tlon,
       zalo: zalo ?? this.zalo,
     );

@@ -57,14 +57,18 @@ class WizardStepProvider extends ConsumerWidget {
               apiKeyController.clear();
             },
           ),
-          if (state.selectedProvider == 'ollama') ...[
+          if (state.selectedProvider == 'ollama' || state.selectedProvider == 'lmstudio') ...[
             const SizedBox(height: 16),
-            WizardInfoCard(text: 'wizard.ollama_no_key'.tr()),
+            WizardInfoCard(
+              text: state.selectedProvider == 'ollama'
+                  ? 'wizard.ollama_no_key'.tr()
+                  : 'wizard.lmstudio_no_key'.tr(),
+            ),
             const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: state.loadingModels
                   ? null
-                  : () => notifier.fetchOllamaModels(),
+                  : () => notifier.fetchLocalModels(state.selectedProvider!),
               icon: const Icon(Icons.refresh, size: 16),
               label: Text('wizard.fetch_models'.tr()),
               style: ElevatedButton.styleFrom(

@@ -262,6 +262,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 children: [
                   ModelInfoBadge(sessionId: widget.sessionId),
                   const SizedBox(height: 4),
+                  if (currentSession != null &&
+                      (currentSession.inputTokens > 0 ||
+                          currentSession.outputTokens > 0)) ...[
+                    Text(
+                      'Tokens: ${currentSession.inputTokens} / ${currentSession.outputTokens}',
+                      style: const TextStyle(
+                        color: AppColors.textDim,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
                   const ConnectionStatusWidget(),
                 ],
               ),

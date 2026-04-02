@@ -17,7 +17,7 @@ class FilesystemTab extends ConsumerStatefulWidget {
   ConsumerState<FilesystemTab> createState() => _FilesystemTabState();
 }
 
-class _FilesystemTabState extends ConsumerState<FilesystemTab> {
+class _FilesystemTabState extends ConsumerState<FilesystemTab> with SettingsSaveMixin {
   final _controller = TextEditingController();
 
   @override
@@ -33,10 +33,9 @@ class _FilesystemTabState extends ConsumerState<FilesystemTab> {
   }
 
   Future<void> _save() async {
-    await ref.read(configProvider.notifier).updateAgentWorkspace(_controller.text);
-    if (mounted) {
-      AppSnackBar.showSuccess(context, 'settings.workspace.saved'.tr());
-    }
+    await handleSave(() async {
+      await ref.read(configProvider.notifier).updateAgentWorkspace(_controller.text);
+    }, successMessage: 'settings.workspace.saved'.tr());
   }
 
   @override
@@ -52,6 +51,7 @@ class _FilesystemTabState extends ConsumerState<FilesystemTab> {
       onBack: widget.onBack,
       onNext: widget.onNext,
       onSave: _save,
+      isSaveLoading: isSaveLoading,
       children: [
         const AppSectionHeader('settings.workspace.section', large: true),
         Text(

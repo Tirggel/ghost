@@ -33,6 +33,9 @@ abstract class Channel {
   /// Register a callback for incoming messages.
   void onMessage(void Function(Envelope envelope) handler);
 
+  /// Register a callback for terminal channel errors.
+  void onError(void Function(String message) handler) {}
+
   /// Get the connection status info.
   Map<String, dynamic> getStatus() => {
         'type': type,

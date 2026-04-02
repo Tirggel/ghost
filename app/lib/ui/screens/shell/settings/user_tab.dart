@@ -17,7 +17,7 @@ class UserTab extends ConsumerStatefulWidget {
   ConsumerState<UserTab> createState() => _UserTabState();
 }
 
-class _UserTabState extends ConsumerState<UserTab> {
+class _UserTabState extends ConsumerState<UserTab> with SettingsSaveMixin {
   final _controllers = <String, TextEditingController>{};
   int _avatarNonce = 0;
 
@@ -51,18 +51,17 @@ class _UserTabState extends ConsumerState<UserTab> {
   }
 
   Future<void> _save() async {
-    final avatar = _controllers['avatar']!.text;
-    final config = {
-      'name': _controllers['name']!.text,
-      'callSign': _controllers['callSign']!.text,
-      'pronouns': _controllers['pronouns']!.text,
-      'notes': _controllers['notes']!.text,
-      'avatar': avatar.startsWith('blob:') ? '' : avatar,
-    };
-    await ref.read(configProvider.notifier).updateUser(config);
-    if (mounted) {
-      AppSnackBar.showSuccess(context, 'settings.user.saved'.tr());
-    }
+    await handleSave(() async {
+      final avatar = _controllers['avatar']!.text;
+      final config = {
+        'name': _controllers['name']!.text,
+        'callSign': _controllers['callSign']!.text,
+        'pronouns': _controllers['pronouns']!.text,
+        'notes': _controllers['notes']!.text,
+        'avatar': avatar.startsWith('blob:') ? '' : avatar,
+      };
+      await ref.read(configProvider.notifier).updateUser(config);
+    }, successMessage: 'settings.user.saved'.tr());
   }
 
   @override
@@ -244,6 +243,10 @@ class _UserTabState extends ConsumerState<UserTab> {
   }
 
   Widget _buildNavButtons() {
-    return AppSettingsNavBar(onSave: _save, onNext: widget.onNext);
+    return AppSettingsNavBar(
+      onSave: _save,
+      onNext: widget.onNext,
+      isSaveLoading: isSaveLoading,
+    );
   }
 }

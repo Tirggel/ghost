@@ -20,7 +20,8 @@ class ProfileTab extends ConsumerStatefulWidget {
   ConsumerState<ProfileTab> createState() => _ProfileTabState();
 }
 
-class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProviderStateMixin {
+class _ProfileTabState extends ConsumerState<ProfileTab> 
+    with SingleTickerProviderStateMixin, SettingsSaveMixin {
   final _controllers = <String, TextEditingController>{};
   int _avatarNonce = 0;
 
@@ -57,22 +58,21 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
   }
 
   Future<void> _save() async {
-    final avatar = _controllers['avatar']!.text;
-    final langCode = context.locale.languageCode;
-    
-    final config = {
-      'name': _controllers['name']!.text,
-      'callSign': _controllers['callSign']!.text,
-      'pronouns': _controllers['pronouns']!.text,
-      'notes': _controllers['notes']!.text,
-      'avatar': avatar.startsWith('blob:') ? '' : avatar,
-      'language': langCode,
-    };
-    
-    await ref.read(configProvider.notifier).updateUser(config);
-    if (mounted) {
-      AppSnackBar.showSuccess(context, 'settings.user.saved'.tr());
-    }
+    await handleSave(() async {
+      final avatar = _controllers['avatar']!.text;
+      final langCode = context.locale.languageCode;
+
+      final config = {
+        'name': _controllers['name']!.text,
+        'callSign': _controllers['callSign']!.text,
+        'pronouns': _controllers['pronouns']!.text,
+        'notes': _controllers['notes']!.text,
+        'avatar': avatar.startsWith('blob:') ? '' : avatar,
+        'language': langCode,
+      };
+
+      await ref.read(configProvider.notifier).updateUser(config);
+    }, successMessage: 'settings.user.saved'.tr());
   }
 
   @override
@@ -97,6 +97,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> with SingleTickerProvid
       onBack: currentIndex == 0 ? widget.onBack : () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(0, 0),
       onNext: currentIndex == 0 ? () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(0, 1) : widget.onNext,
       onSave: _save,
+      isSaveLoading: isSaveLoading,
       body: IndexedStack(
         index: currentIndex,
         children: [

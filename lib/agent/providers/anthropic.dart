@@ -71,9 +71,11 @@ class AnthropicProvider implements AIModelProvider {
       'messages': messages
           .map((m) {
             final role = m.role == 'assistant' ? 'assistant' : 'user';
-            
-            if (role == 'user' && m.attachments.isNotEmpty) {
-              final parts = <Map<String, dynamic>>[];
+
+            final parts = <Map<String, dynamic>>[];
+
+            // Handle images/attachments for user messages
+            if (m.role == 'user' && m.attachments.isNotEmpty) {
               for (final a in m.attachments) {
                 if (a.mimeType.startsWith('image/')) {
                   parts.add({
@@ -86,15 +88,52 @@ class AnthropicProvider implements AIModelProvider {
                   });
                 }
               }
-              if (m.content.isNotEmpty) {
-                parts.add({'type': 'text', 'text': m.content});
-              }
-              return {'role': role, 'content': parts};
             }
-            
+
+            // Handle text content
+            if (m.content.isNotEmpty) {
+              parts.add({'type': 'text', 'text': m.content});
+            }
+
+            // Handle tool calls in assistant messages
+            if (m.role == 'assistant' && m.metadata.containsKey('tool_calls')) {
+              final calls = m.metadata['tool_calls'] as List<dynamic>;
+              for (final call in calls) {
+                final c = call as Map<String, dynamic>;
+                parts.add({
+                  'type': 'tool_use',
+                  'id': c['id'],
+                  'name': c['name'],
+                  'input': c['arguments'],
+                });
+              }
+            }
+
+            // Handle tool outputs as tool_result content (Anthropic requirement)
+            if (m.role == 'tool') {
+              return {
+                'role': 'user',
+                'content': [
+                  {
+                    'type': 'tool_result',
+                    'tool_use_id': m.metadata['tool_call_id'],
+                    'content': m.content,
+                    'is_error': m.metadata['is_error'] ?? false,
+                  }
+                ]
+              };
+            }
+
+            // If we have no parts (e.g. empty assistant message), ensure at least one part exists
+            if (parts.isEmpty && m.role == 'assistant') {
+              parts.add({'type': 'text', 'text': ''});
+            }
+
             return {
               'role': role,
-              'content': m.content,
+              'content': parts.length == 1 && parts[0]['type'] == 'text'
+                  ? parts[0]['text']
+                  : parts,
             };
           })
           .toList(),

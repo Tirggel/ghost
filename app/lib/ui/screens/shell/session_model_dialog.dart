@@ -96,7 +96,7 @@ class _SessionModelDialogState extends ConsumerState<SessionModelDialog> {
     final vaultKeys = config.vaultKeys;
 
     final activeProviders = AppConstants.aiProviders.where((p) {
-      if (p['id'] == 'ollama' || p['id'] == 'vllm' || p['id'] == 'litellm') {
+      if (p['id'] == 'ollama' || p['id'] == 'vllm' || p['id'] == 'litellm' || p['id'] == 'lmstudio') {
         // For simplicity in this dialog, we show them all,
         // but real list might be filtered by backend.
         return true;

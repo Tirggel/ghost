@@ -9,6 +9,7 @@ class AppConstants {
 
   // UI Constants
   static const double settingsIconSize = 20.0;
+  static const double integrationIconSize = 30.0;
   static const double indicatorSizeSmall = 6.0;
   static const double iconSizeTiny = 16.0;
   static const double iconSizeSmall = 18.0;
@@ -54,8 +55,10 @@ class AppConstants {
   static const double fontSizeTitle = 16.0; // settings section headers
   static const double fontSizeLead = 20.0; // wizard step titles
   static const double fontSizeHeading = 22.0; // sidebar app name
-  static const double fontSizeLabelTiny = 11.0; // All-caps section labels / small titles
-  static const double fontSizeSidebarLabel = 12.0; // Labels in sidebar items (sessions, folders, settings)
+  static const double fontSizeLabelTiny =
+      11.0; // All-caps section labels / small titles
+  static const double fontSizeSidebarLabel =
+      12.0; // Labels in sidebar items (sessions, folders, settings)
   static const double fontSizeDisplay = 28.0; // wizard header title
 
   static const double avatarRadius = 28.0;
@@ -78,6 +81,7 @@ class AppConstants {
       'icon': 'huggingface-color.png',
     },
     {'id': 'litellm', 'label': 'LiteLLM (Local)', 'icon': 'litellm.png'},
+    {'id': 'lmstudio', 'label': 'LM Studio (Local)', 'icon': 'lmstudio.png'},
     {'id': 'minimax', 'label': 'MiniMax', 'icon': 'minimax-color.png'},
     {'id': 'mistral', 'label': 'Mistral AI', 'icon': 'mistral-color.png'},
     {'id': 'moonshot', 'label': 'Moonshot (Kimi)', 'icon': 'moonshot.png'},
@@ -104,25 +108,56 @@ class AppConstants {
       orElse: () => {},
     );
     final icon = provider['icon'];
-    if (icon == null) return ''; 
+    if (icon == null) return '';
     return 'assets/icons/llm/$icon';
   }
 
   static const List<Map<String, String>> chatChannels = [
-    {'id': 'whatsapp', 'label': 'settings.channels.whatsapp', 'icon': 'whatsapp.png'},
-    {'id': 'telegram', 'label': 'settings.channels.telegram', 'icon': 'telegram.png'},
-    {'id': 'discord', 'label': 'settings.channels.discord', 'icon': 'discord.png'},
+    {
+      'id': 'whatsapp',
+      'label': 'settings.channels.whatsapp',
+      'icon': 'whatsapp.png',
+    },
+    {
+      'id': 'telegram',
+      'label': 'settings.channels.telegram',
+      'icon': 'telegram.png',
+    },
+    {
+      'id': 'discord',
+      'label': 'settings.channels.discord',
+      'icon': 'discord.png',
+    },
     {'id': 'slack', 'label': 'settings.channels.slack', 'icon': 'slack.png'},
     {'id': 'signal', 'label': 'settings.channels.signal', 'icon': 'signal.png'},
-    {'id': 'imessage', 'label': 'settings.channels.imessage', 'icon': 'imessage.png'},
-    {'id': 'msTeams', 'label': 'settings.channels.msteams', 'icon': 'msteams.png'},
-    {'id': 'nextcloudTalk', 'label': 'settings.channels.nextcloud', 'icon': 'nextcloudtalk.png'},
+    {
+      'id': 'imessage',
+      'label': 'settings.channels.imessage',
+      'icon': 'imessage.png',
+    },
+    {
+      'id': 'msTeams',
+      'label': 'settings.channels.msteams',
+      'icon': 'msteams.png',
+    },
+    {
+      'id': 'nextcloudTalk',
+      'label': 'settings.channels.nextcloud',
+      'icon': 'nextcloudtalk.png',
+    },
     {'id': 'matrix', 'label': 'settings.channels.matrix', 'icon': 'matrix.png'},
-    {'id': 'nostr', 'label': 'settings.channels.nostr', 'icon': 'nostr.png'},
     {'id': 'tlon', 'label': 'settings.channels.tlon', 'icon': 'tlon.png'},
     {'id': 'zalo', 'label': 'settings.channels.zalo', 'icon': 'zalo.png'},
-    {'id': 'webchat', 'label': 'settings.channels.webchat', 'icon': 'webchat.png'},
-    {'id': 'googleChat', 'label': 'settings.channels.googlechat', 'icon': 'google.png'},
+    {
+      'id': 'webchat',
+      'label': 'settings.channels.webchat',
+      'icon': 'webchat.png',
+    },
+    {
+      'id': 'googleChat',
+      'label': 'settings.channels.googlechat',
+      'icon': 'google.png',
+    },
   ];
 
   static String getChannelIcon(String id) {
@@ -131,7 +166,7 @@ class AppConstants {
       orElse: () => {},
     );
     final icon = channel['icon'];
-    if (icon == null) return ''; 
+    if (icon == null) return '';
     return 'assets/icons/channels/$icon';
   }
 

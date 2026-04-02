@@ -46,6 +46,7 @@ class ConfigRouter {
       await _migrateMemoryToVault();
       await _migrateCustomAgentsToVault();
       await _migrateAdditionalConfigsToVault();
+      await _enforceChannelTokenConsistency();
 
       // We'll read the latest from disk to be sure
       final config = await loadConfig(configPath);
@@ -513,23 +514,27 @@ class ConfigRouter {
 
       // Generalize token handling for all channels
       for (final channelId in params.keys) {
-        // Skip keys that are not channel IDs if any
         final channelParams = params[channelId];
         if (channelParams is! Map<String, dynamic>) continue;
 
         final settings = channelParams['settings'] as Map<String, dynamic>?;
+        final storageKey =
+            channelId == 'telegram' ? 'telegram_bot_token' : '${channelId}_token';
+
         if (settings != null) {
-          // Find any field that looks like a token/secret
-          // Currently, Telegram uses 'botToken', others use 'token'
           final tokenKey = channelId == 'telegram' ? 'botToken' : 'token';
           final token = settings[tokenKey] as String?;
+
           if (token != null && token.isNotEmpty) {
-            final storageKey = channelId == 'telegram'
-                ? 'telegram_bot_token'
-                : '${channelId}_token';
             await storage.set(storageKey, token);
             _log.info('Updated $storageKey in vault');
             // Remove from settings so it's not saved plain in config.json
+            channelParams['settings'] = Map<String, dynamic>.from(settings)
+              ..remove(tokenKey);
+          } else if (token == "") {
+            // Explicitly cleared in UI
+            await storage.remove(storageKey);
+            _log.info('Cleared $storageKey from vault (token cleared in UI)');
             channelParams['settings'] = Map<String, dynamic>.from(settings)
               ..remove(tokenKey);
           }
@@ -538,9 +543,6 @@ class ConfigRouter {
         // Handle deletion if channel is disabled
         final enabled = channelParams['enabled'] as bool?;
         if (enabled == false) {
-          final storageKey = channelId == 'telegram'
-              ? 'telegram_bot_token'
-              : '${channelId}_token';
           await storage.remove(storageKey);
           _log.info('Cleared $storageKey from vault (channel disabled)');
         }
@@ -563,7 +565,6 @@ class ConfigRouter {
         msTeams: parse('msTeams', currentChannels.msTeams),
         nextcloudTalk: parse('nextcloudTalk', currentChannels.nextcloudTalk),
         matrix: parse('matrix', currentChannels.matrix),
-        nostr: parse('nostr', currentChannels.nostr),
         tlon: parse('tlon', currentChannels.tlon),
         zalo: parse('zalo', currentChannels.zalo),
         webchat: parse('webchat', currentChannels.webchat),
@@ -573,13 +574,42 @@ class ConfigRouter {
       await _saveChannelsToVault(updatedChannels);
       await saveConfig(config, configPath);
 
-      // Reconnect telegram if updated
-      if (params['telegram'] != null && updatedChannels.telegram.enabled) {
-        final botName =
-            updatedChannels.telegram.settings['botName'] as String? ??
-                'GhostBot';
-        await channelManager.updateTelegram(botName);
+      // Reconnect/Update channels only if settings/token/enabled changed
+      for (final channelId in params.keys) {
+        final channelParams = params[channelId];
+        if (channelParams is! Map<String, dynamic>) continue;
+
+        final oldConfig = _getChannelConfigById(currentChannels, channelId);
+        final newConfig = _getChannelConfigById(updatedChannels, channelId);
+        if (newConfig == null) continue;
+
+        // Check if token was updated in this specific request params
+        final settings = channelParams['settings'] as Map<String, dynamic>?;
+        final tokenKey = channelId == 'telegram' ? 'botToken' : 'token';
+        final hasNewTokenInParams = settings != null &&
+            settings[tokenKey] != null &&
+            (settings[tokenKey] as String).isNotEmpty;
+
+        final enabledChanged = oldConfig?.enabled != newConfig.enabled;
+        // Compare relevant settings (ignoring token which is stripped and checked separately)
+        final settingsChanged =
+            jsonEncode(oldConfig?.settings) != jsonEncode(newConfig.settings);
+
+        if (enabledChanged || settingsChanged || hasNewTokenInParams) {
+          _log.info(
+              'Restarting channel $channelId due to configuration change (Enabled: $enabledChanged, Settings: $settingsChanged, Token: $hasNewTokenInParams)');
+          await channelManager.updateChannel(
+            channelId,
+            newConfig.enabled,
+            settings: newConfig.settings,
+          );
+        } else {
+          _log.info(
+              'Channel $channelId configuration unchanged or non-critical, skipping restart');
+        }
       }
+
+      await _syncAgentManagerConfig();
 
       return {
         'status': 'ok',
@@ -1355,5 +1385,117 @@ class ConfigRouter {
     await agentManager.updateConfig(consolidated);
     agentManager.notifyConfigChanged();
     _log.info('AgentManager synchronized with consolidated configuration');
+  }
+
+  ChannelConfig? _getChannelConfigById(ChannelsConfig channels, String id) {
+    switch (id) {
+      case 'telegram':
+        return channels.telegram;
+      case 'discord':
+        return channels.discord;
+      case 'whatsapp':
+        return channels.whatsapp;
+      case 'slack':
+        return channels.slack;
+      case 'googleChat':
+        return channels.googleChat;
+      case 'signal':
+        return channels.signal;
+      case 'imessage':
+        return channels.imessage;
+      case 'msTeams':
+        return channels.msTeams;
+      case 'nextcloudTalk':
+        return channels.nextcloudTalk;
+      case 'matrix':
+        return channels.matrix;
+      case 'tlon':
+        return channels.tlon;
+      case 'zalo':
+        return channels.zalo;
+      case 'webchat':
+        return channels.webchat;
+      default:
+        return null;
+    }
+  }
+
+  ChannelsConfig _setChannelConfigById(
+      ChannelsConfig channels, String id, ChannelConfig config) {
+    return channels.copyWith(
+      telegram: id == 'telegram' ? config : null,
+      discord: id == 'discord' ? config : null,
+      whatsapp: id == 'whatsapp' ? config : null,
+      slack: id == 'slack' ? config : null,
+      googleChat: id == 'googleChat' ? config : null,
+      signal: id == 'signal' ? config : null,
+      imessage: id == 'imessage' ? config : null,
+      msTeams: id == 'msTeams' ? config : null,
+      nextcloudTalk: id == 'nextcloudTalk' ? config : null,
+      matrix: id == 'matrix' ? config : null,
+      tlon: id == 'tlon' ? config : null,
+      zalo: id == 'zalo' ? config : null,
+      webchat: id == 'webchat' ? config : null,
+    );
+  }
+
+  Future<void> _enforceChannelTokenConsistency() async {
+    try {
+      final config = await loadConfig(configPath);
+      final currentChannels = await _loadChannelsFromVault() ?? config.channels;
+
+      final channelTypes = [
+        'telegram',
+        'discord',
+        'slack',
+        'whatsapp',
+        'googleChat',
+        'matrix',
+        'signal',
+        'webchat',
+        'imessage',
+        'msTeams',
+        'nextcloudTalk',
+        'tlon',
+        'zalo'
+      ];
+
+      bool changed = false;
+      ChannelsConfig updatedChannels = currentChannels;
+
+      for (final type in channelTypes) {
+        final channelConfig = _getChannelConfigById(currentChannels, type);
+        if (channelConfig != null) {
+          final storageKey =
+              type == 'telegram' ? 'telegram_bot_token' : '${type}_token';
+          final token = await storage.get(storageKey);
+
+          if (token == null || token.isEmpty) {
+            if (channelConfig.enabled ||
+                channelConfig.dmPolicy != DmPolicy.disabled) {
+              _log.warning(
+                  'Channel $type has no token but is not fully disabled. Enforcing disabled state.');
+              final newChanConfig = channelConfig.copyWith(
+                enabled: false,
+                dmPolicy: DmPolicy.disabled,
+              );
+              updatedChannels =
+                  _setChannelConfigById(updatedChannels, type, newChanConfig);
+              changed = true;
+
+              // Also update manager in case it was running
+              await channelManager.updateChannel(type, false);
+            }
+          }
+        }
+      }
+
+      if (changed) {
+        await _saveChannelsToVault(updatedChannels);
+        await saveConfig(config, configPath);
+      }
+    } catch (e) {
+      _log.warning('Enforcing channel token consistency failed: $e');
+    }
   }
 }

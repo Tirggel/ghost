@@ -70,10 +70,9 @@ class GeminiProvider extends AIModelProvider {
     );
 
     final history = _convertToGeminiHistory(messages);
-    final lastMsg = history.isEmpty ? Content.text(' ') : history.removeLast();
 
     final response = await generativeModel.generateContent(
-      [lastMsg],
+      history,
       generationConfig: GenerationConfig(
         maxOutputTokens: maxTokens,
         temperature: temperature,

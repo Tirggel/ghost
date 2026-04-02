@@ -210,7 +210,7 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
       }
 
       final isLocalProvider =
-          service == 'ollama' || service == 'vllm' || service == 'litellm';
+          service == 'ollama' || service == 'vllm' || service == 'litellm' || service == 'lmstudio';
 
       late String storageKey;
       if (service == 'telegram') {
@@ -258,7 +258,7 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
     final label = p['label']!;
     final service = p['id']!;
     final isLocalProvider =
-        service == 'ollama' || service == 'vllm' || service == 'litellm';
+        service == 'ollama' || service == 'vllm' || service == 'litellm' || service == 'lmstudio';
 
     late String storageKey;
     if (service == 'telegram') {
@@ -317,18 +317,18 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
     if (iconPath.isEmpty) {
       return const Icon(
         Icons.psychology,
-        size: AppConstants.iconSizeMedium,
+        size: AppConstants.integrationIconSize,
         color: AppConstants.iconColorPrimary,
       );
     }
     return Image.asset(
       iconPath,
-      width: 20,
-      height: 20,
+      width: AppConstants.integrationIconSize,
+      height: AppConstants.integrationIconSize,
       errorBuilder: (context, error, stackTrace) => const Icon(
         Icons.psychology,
-        size: AppConstants.iconSizeMedium,
-        color: AppConstants.iconColorPrimary,
+        size: AppConstants.integrationIconSize,
+        color: AppColors.primary,
       ),
     );
   }

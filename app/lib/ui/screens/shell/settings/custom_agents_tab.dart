@@ -135,7 +135,7 @@ class CustomAgentCard extends ConsumerStatefulWidget {
   ConsumerState<CustomAgentCard> createState() => _CustomAgentCardState();
 }
 
-class _CustomAgentCardState extends ConsumerState<CustomAgentCard> {
+class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with SettingsSaveMixin {
   final _controllers = <String, TextEditingController>{};
   String? _selectedProvider;
   String? _selectedModel;
@@ -218,25 +218,29 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> {
   }
 
   Future<void> _save() async {
-    final newAgentData = {
-      'id': widget.agent['id'] ?? const Uuid().v4(),
-      'name': _controllers['name']!.text.trim(),
-      'avatar': _controllers['avatar']!.text.trim(),
-      'provider': _selectedProvider,
-      'model': _selectedModel,
-      'cronSchedule': _controllers['cronSchedule']!.text.trim(),
-      'cronMessage': _controllers['cronMessage']!.text.trim(),
-      'skills': _selectedSkills,
-      'enabled': _enabled,
-      'shouldSendChatHistory': _sendChatHistory,
-    };
+    await handleSave(() async {
+      final newAgentData = {
+        'id': widget.agent['id'] ?? const Uuid().v4(),
+        'name': _controllers['name']!.text.trim(),
+        'avatar': _controllers['avatar']!.text.trim(),
+        'provider': _selectedProvider,
+        'model': _selectedModel,
+        'cronSchedule': _controllers['cronSchedule']!.text.trim(),
+        'cronMessage': _controllers['cronMessage']!.text.trim(),
+        'skills': _selectedSkills,
+        'enabled': _enabled,
+        'shouldSendChatHistory': _sendChatHistory,
+      };
 
-    if (widget.isNew) {
-      await ref.read(configProvider.notifier).addCustomAgent(newAgentData);
-      widget.onSaved?.call();
-    } else {
-      await ref.read(configProvider.notifier).updateCustomAgent(newAgentData);
-    }
+      if (widget.isNew) {
+        await ref.read(configProvider.notifier).addCustomAgent(newAgentData);
+        if (mounted) {
+          widget.onSaved?.call();
+        }
+      } else {
+        await ref.read(configProvider.notifier).updateCustomAgent(newAgentData);
+      }
+    }, successMessage: 'settings.agents.saved'.tr());
   }
 
   @override
@@ -245,7 +249,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> {
     final availableProviders = AppConstants.aiProviders.where((p) {
       final id = p['id']!;
       if (id == _selectedProvider) return true;
-      final isLocal = id == 'ollama' || id == 'vllm' || id == 'litellm';
+      final isLocal = id == 'ollama' || id == 'vllm' || id == 'litellm' || id == 'lmstudio';
       final storageKey = isLocal ? '${id}_base_url' : '${id}_api_key';
       return vaultKeys.contains(storageKey);
     }).toList();

@@ -11,7 +11,6 @@ channels = [
     ('msteams', '#6264A7'),
     ('nextcloudtalk', '#0082C9'),
     ('matrix', '#000000'),
-    ('nostr', '#7B40A3'),
     ('tlon', '#000000'),
     ('zalo', '#0068FF'),
     ('webchat', '#6C757D')

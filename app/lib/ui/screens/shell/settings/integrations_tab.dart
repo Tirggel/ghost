@@ -245,7 +245,11 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
         if (authState == null) ...[
           AppSettingsInput(
             title: 'settings.integrations.google_section',
-            leading: Image.asset(AppConstants.getProviderIcon('google'), width: 24, height: 24),
+            leading: Image.asset(
+              AppConstants.getProviderIcon('google'),
+              width: AppConstants.integrationIconSize,
+              height: AppConstants.integrationIconSize,
+            ),
             isEditing: _editingOAuthField == 'google_workspace',
             isAlreadySet: kIsWeb 
                 ? vaultKeys.contains('google_client_id_web')

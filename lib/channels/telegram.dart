@@ -25,6 +25,7 @@ class TelegramChannel extends Channel {
   TeleDart? _teledart;
   StreamSubscription<dynamic>? _subscription;
   void Function(Envelope envelope)? _handler;
+  void Function(String message)? _errorHandler;
 
   @override
   String get type => 'telegram';
@@ -47,50 +48,80 @@ class TelegramChannel extends Channel {
 
   @override
   Future<void> connect() async {
-    if (_teledart != null) {
-      await disconnect();
-    }
+    await _connectWithRetry();
+  }
 
-    final user = await Telegram(token).getMe();
-    _teledart = TeleDart(token, Event(user.username!));
-
-    // Use runZonedGuarded to catch unhandled async errors from teledart's polling loop
-    runZonedGuarded(() {
-      _teledart!.start();
-    }, (Object error, StackTrace stack) {
-      final errorStr = error.toString();
-      if (errorStr.contains('409') || errorStr.contains('Conflict')) {
-        _log.warning('Telegram background 409 Conflict caught. This instance should terminate.');
-      } else {
-        _log.severe('Telegram background error: $error', error, stack);
+  Future<void> _connectWithRetry([int attempt = 1]) async {
+    try {
+      if (_teledart != null) {
+        await disconnect();
       }
-    });
 
-    _subscription = _teledart!.onMessage().listen((msg) {
-      if (_handler != null && (msg.text != null || msg.voice != null)) {
-        if (msg.voice != null) {
-          _handleVoiceMessage(msg);
+      final user = await Telegram(token).getMe();
+      _teledart = TeleDart(token, Event(user.username!));
+
+      // Use runZonedGuarded to catch unhandled async errors from teledart's polling loop
+      runZonedGuarded(() {
+        _teledart!.start();
+      }, (Object error, StackTrace stack) {
+        final errorStr = error.toString();
+        if (errorStr.contains('409') || errorStr.contains('Conflict')) {
+          _log.warning(
+              'Telegram background 409 Conflict caught for @${user.username}.');
+          if (attempt < 3) {
+            _log.info(
+                'Attempting automatic reconnect in 4 seconds (Attempt $attempt/3)...');
+            Future<void>.delayed(
+                const Duration(seconds: 4), () => _connectWithRetry(attempt + 1));
+          } else {
+            _log.severe(
+                'Telegram 409 Conflict persisted after 3 attempts. Terminating channel instance...');
+            disconnect();
+            _errorHandler?.call(
+                'Telegram 409 Conflict: Mehrere Bot-Instanzen laufen mit demselben Token. Diese Instanz wurde getrennt.');
+          }
         } else {
-          final envelope = Envelope(
-            id: msg.messageId.toString(),
-            channelType: 'telegram',
-            senderId: msg.from!.id.toString(),
-            groupId:
-                msg.chat.id != msg.from!.id ? msg.chat.id.toString() : null,
-            content: msg.text!,
-            timestamp: DateTime.fromMillisecondsSinceEpoch(msg.date * 1000),
-            metadata: {
-              'username': msg.from!.username,
-              'firstName': msg.from!.firstName,
-              'chatTitle': msg.chat.title,
-            },
-          );
-          _handler!(envelope);
+          _log.severe('Telegram background error: $error', error, stack);
+        }
+      });
+
+      _subscription = _teledart!.onMessage().listen((msg) {
+        if (_handler != null && (msg.text != null || msg.voice != null)) {
+          if (msg.voice != null) {
+            _handleVoiceMessage(msg);
+          } else {
+            final envelope = Envelope(
+              id: msg.messageId.toString(),
+              channelType: 'telegram',
+              senderId: msg.from!.id.toString(),
+              groupId:
+                  msg.chat.id != msg.from!.id ? msg.chat.id.toString() : null,
+              content: msg.text!,
+              timestamp: DateTime.fromMillisecondsSinceEpoch(msg.date * 1000),
+              metadata: {
+                'username': msg.from!.username,
+                'firstName': msg.from!.firstName,
+                'chatTitle': msg.chat.title,
+              },
+            );
+            _handler!(envelope);
+          }
+        }
+      });
+
+      _log.info('Telegram bot @${user.username} connected');
+    } catch (e) {
+      final errorStr = e.toString();
+      if (errorStr.contains('409') || errorStr.contains('Conflict')) {
+        if (attempt < 3) {
+          _log.warning(
+              'Telegram 409 Conflict during connection. Retrying in 4s (Attempt $attempt/3)...');
+          await Future.delayed(const Duration(seconds: 4));
+          return _connectWithRetry(attempt + 1);
         }
       }
-    });
-
-    _log.info('Telegram bot @${user.username} connected');
+      rethrow;
+    }
   }
 
   @override
@@ -200,5 +231,10 @@ class TelegramChannel extends Channel {
   @override
   void onMessage(void Function(Envelope envelope) handler) {
     _handler = handler;
+  }
+
+  @override
+  void onError(void Function(String message) handler) {
+    _errorHandler = handler;
   }
 }
