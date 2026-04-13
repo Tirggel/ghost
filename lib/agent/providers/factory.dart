@@ -52,6 +52,7 @@ class ProviderFactory {
         model.startsWith('qwen/') ||
         model.startsWith('xiaomi/') ||
         model.startsWith('ollama/') ||
+        model.startsWith('ipex-llm/') ||
         model.startsWith('vllm/') ||
         model.startsWith('litellm/') ||
         model.startsWith('openai/') ||
@@ -114,6 +115,7 @@ class ProviderFactory {
             ? 'deepseek'
             : _resolveProvider(model, null);
       case 'ollama':
+      case 'ipex-llm':
       case 'vllm':
       case 'litellm':
         return hint;
@@ -121,6 +123,18 @@ class ProviderFactory {
       default:
         return hint;
     }
+  }
+
+  static String _normalizeUrl(String url, String defaultUrl) {
+    String effective = url.isNotEmpty ? url : defaultUrl;
+    if (!effective.contains('/v1')) {
+      effective = effective.endsWith('/') ? '${effective}v1' : '$effective/v1';
+    }
+    // Remove trailing slash if present after /v1
+    if (effective.endsWith('/')) {
+      effective = effective.substring(0, effective.length - 1);
+    }
+    return effective;
   }
 
   static Future<AIModelProvider> create({
@@ -216,7 +230,6 @@ class ProviderFactory {
           providerId: 'xai',
         );
 
-
       case 'qwen':
         final apiKey = await storage.get('qwen_api_key') ?? '';
         return OpenAIProvider(
@@ -271,10 +284,8 @@ class ProviderFactory {
         );
 
       case 'vllm':
-        // Local vLLM server — no API key required. Supports embeddings when appropriate model is loaded.
         final baseUrl = await storage.get('vllm_base_url') ?? '';
-        final effectiveUrl =
-            baseUrl.isNotEmpty ? baseUrl : 'http://localhost:8000/v1';
+        final effectiveUrl = _normalizeUrl(baseUrl, 'http://localhost:8000/v1');
         return OpenAIProvider(
           apiKey: 'vllm',
           model: model,
@@ -299,13 +310,37 @@ class ProviderFactory {
       case 'ollama':
         final baseUrl = await storage.get('ollama_base_url') ?? '';
         final effectiveUrl =
-            baseUrl.isNotEmpty ? baseUrl : 'http://localhost:11434/v1';
+            _normalizeUrl(baseUrl, 'http://localhost:11434/v1');
         return OpenAIProvider(
           apiKey: 'ollama',
           model: model,
           baseUrl: effectiveUrl,
           displayName: 'Ollama',
           providerId: 'ollama',
+        );
+
+      case 'ipex-llm':
+        final baseUrl = await storage.get('ipex-llm_base_url') ?? '';
+        final effectiveUrl =
+            _normalizeUrl(baseUrl, 'http://localhost:11435/v1');
+        return OpenAIProvider(
+          apiKey: 'ipex-llm',
+          model: model,
+          baseUrl: effectiveUrl,
+          displayName: 'IPEX-LLM (Intel)',
+          providerId: 'ipex-llm',
+        );
+
+      case 'lmstudio':
+        final baseUrl = await storage.get('lmstudio_base_url') ?? '';
+        final effectiveUrl =
+            _normalizeUrl(baseUrl, 'http://localhost:1234/v1');
+        return OpenAIProvider(
+          apiKey: 'lmstudio',
+          model: model,
+          baseUrl: effectiveUrl,
+          displayName: 'LM Studio (Local)',
+          providerId: 'lmstudio',
         );
 
       case 'minimax':
@@ -354,7 +389,16 @@ class ProviderFactory {
     required String apiKey,
     String? baseUrl,
   }) async {
+    _log.info('Listing models for provider: $provider (baseUrl: $baseUrl, apiKey: ${apiKey.startsWith('http') ? '[URL]' : '***'})');
     List<String> models;
+    
+    // Auto-detect if apiKey is actually a baseUrl (common for local providers in UI)
+    if (baseUrl == null || baseUrl.isEmpty) {
+      if (apiKey.startsWith('http')) {
+        baseUrl = apiKey;
+      }
+    }
+
     switch (provider) {
       case 'anthropic':
         models = await AnthropicProvider.listModels(apiKey);
@@ -370,12 +414,23 @@ class ProviderFactory {
         models = await OpenAIProvider.listModels(apiKey,
             baseUrl: 'https://openrouter.ai/api/v1');
         break;
+      case 'lmstudio':
+        final effectiveUrl =
+            _normalizeUrl(baseUrl ?? '', 'http://localhost:1234/v1');
+        models =
+            await OpenAIProvider.listModels('lmstudio', baseUrl: effectiveUrl);
+        break;
       case 'ollama':
-        final effectiveUrl = baseUrl != null && baseUrl.isNotEmpty
-            ? baseUrl
-            : 'http://localhost:11434/v1';
+        final effectiveUrl =
+            _normalizeUrl(baseUrl ?? '', 'http://localhost:11434/v1');
         models =
             await OpenAIProvider.listModels('ollama', baseUrl: effectiveUrl);
+        break;
+      case 'ipex-llm':
+        final effectiveUrl =
+            _normalizeUrl(baseUrl ?? '', 'http://localhost:11435/v1');
+        models =
+            await OpenAIProvider.listModels('ipex-llm', baseUrl: effectiveUrl);
         break;
       case 'mistral':
         models = await OpenAIProvider.listModels(apiKey,
@@ -507,6 +562,13 @@ class ProviderFactory {
     required String apiKey,
     String? baseUrl,
   }) async {
+    // Auto-detect if apiKey is actually a baseUrl (common for local providers in UI)
+    if (baseUrl == null || baseUrl.isEmpty) {
+      if (apiKey.startsWith('http')) {
+        baseUrl = apiKey;
+      }
+    }
+
     switch (provider) {
       case 'anthropic':
         await AnthropicProvider(apiKey: apiKey).testConnection();
@@ -604,6 +666,23 @@ class ProviderFactory {
             : 'http://localhost:11434/v1';
         await OpenAIProvider(
           apiKey: 'ollama',
+          baseUrl: effectiveUrl,
+        ).testConnection();
+        break;
+      case 'ipex-llm':
+        final effectiveUrl = baseUrl != null && baseUrl.isNotEmpty
+            ? baseUrl
+            : 'http://localhost:11435/v1';
+        await OpenAIProvider(
+          apiKey: 'ipex-llm',
+          baseUrl: effectiveUrl,
+        ).testConnection();
+        break;
+      case 'lmstudio':
+        final effectiveUrl =
+            _normalizeUrl(baseUrl ?? '', 'http://localhost:1234/v1');
+        await OpenAIProvider(
+          apiKey: 'lmstudio',
           baseUrl: effectiveUrl,
         ).testConnection();
         break;

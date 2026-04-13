@@ -237,7 +237,7 @@ class _ModelSearchDialogState extends State<_ModelSearchDialog> {
               style: const TextStyle(color: AppColors.white, fontSize: 13),
               decoration:
                   AppInputDecoration.compact(
-                    hint: 'sidebar.search_placeholder',
+                    hint: 'sidebar.search_placeholder'.tr(),
                   ).copyWith(
                     prefixIcon: const Icon(
                       Icons.search,

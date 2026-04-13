@@ -34,7 +34,7 @@ class _NewChatDialogState extends ConsumerState<NewChatDialog> {
 
   Future<void> _checkLocalProviders() async {
     for (final p in AppConstants.aiProviders) {
-      if (p['id'] == 'ollama' || p['id'] == 'vllm' || p['id'] == 'litellm' || p['id'] == 'lmstudio') {
+      if (p['id'] == 'ollama' || p['id'] == 'ipex-llm' || p['id'] == 'vllm' || p['id'] == 'litellm' || p['id'] == 'lmstudio') {
         try {
           final models = await ref.read(configProvider.notifier).listModels(p['id']!, null);
           if (models.isNotEmpty && mounted) {
@@ -75,13 +75,12 @@ class _NewChatDialogState extends ConsumerState<NewChatDialog> {
     final config = ref.watch(configProvider);
     final vaultKeys = config.vaultKeys;
 
-    final activeProviders = AppConstants.aiProviders.where((p) {
+    final activeProviders = config.getAvailableProviders(AppConstants.aiProviders).where((p) {
       final id = p['id']!;
-      if (id == 'ollama' || id == 'vllm' || id == 'litellm' || id == 'lmstudio') {
+      if (id == 'ollama' || id == 'ipex-llm' || id == 'vllm' || id == 'litellm' || id == 'lmstudio') {
         return _activeLocalProviders.contains(id);
       }
-      final keyName = id == 'google' ? 'google_api_key' : '${id}_api_key';
-      return vaultKeys.contains(keyName);
+      return true;
     }).toList();
 
     return AppAlertDialog(
@@ -117,21 +116,20 @@ class _NewChatDialogState extends ConsumerState<NewChatDialog> {
                 value: _selectedProvider,
                 hint: 'settings.new_chat.choose_provider',
                 items: activeProviders.map((p) => p['id']!).toList(),
-                displayValue: (v) => activeProviders.firstWhere((p) => p['id'] == v)['label']!,
+                displayValue: (v) => AppConstants.getProviderLabel(v),
                 itemBuilder: (id) {
-                  final p = activeProviders.firstWhere((p) => p['id'] == id);
                   return Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Image.asset(
-                        AppConstants.getProviderIcon(p['id']!),
+                        AppConstants.getProviderIcon(id),
                         width: 18,
                         height: 18,
                         errorBuilder: (context, error, stackTrace) =>
                             const Icon(Icons.psychology, size: AppConstants.iconSizeSmall, color: AppColors.primary),
                       ),
                       const SizedBox(width: 8),
-                      Text(p['label']!, style: const TextStyle(fontSize: 13)),
+                      Text(AppConstants.getProviderLabel(id), style: const TextStyle(fontSize: 13)),
                     ],
                   );
                 },

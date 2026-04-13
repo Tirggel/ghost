@@ -45,7 +45,7 @@ class WizardStepWorkspace extends ConsumerWidget {
                     onChanged: notifier.updateWorkspace,
                     onSubmitted: (val) => notifier.updateWorkspace(val),
                     decoration: AppInputDecoration.compact(
-                      hint: 'wizard.workspace_hint',
+                      hint: 'wizard.workspace_hint'.tr(),
                     ).copyWith(
                       prefixIcon: const Icon(
                         AppConstants.folderIcon,

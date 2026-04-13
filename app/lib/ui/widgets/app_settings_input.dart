@@ -40,6 +40,8 @@ class AppSettingsInput extends StatelessWidget {
   final String? addTooltip;
   final String? verifySaveTooltip;
   final String? importTooltip;
+  final Map<String, String>? hintArgs;
+  final Map<String, String>? labelTextArgs;
   final VoidCallback? onImport;
   final bool translateTitle;
   final bool translateSubtitle;
@@ -67,6 +69,8 @@ class AppSettingsInput extends StatelessWidget {
     this.addTooltip,
     this.verifySaveTooltip,
     this.importTooltip,
+    this.hintArgs,
+    this.labelTextArgs,
     this.onImport,
     this.translateTitle = true,
     this.translateSubtitle = true,
@@ -141,7 +145,7 @@ class AppSettingsInput extends StatelessWidget {
                           controller: input.controller,
                           obscureText: input.obscureText,
                           decoration: AppInputDecoration.compact(
-                            hint: input.hint,
+                            hint: input.hint.tr(),
                           ).copyWith(
                             labelText: input.label.tr(),
                           ),
@@ -156,9 +160,9 @@ class AppSettingsInput extends StatelessWidget {
                       controller: controller!,
                       obscureText: obscureText,
                       decoration: AppInputDecoration.compact(
-                        hint: hint,
+                        hint: hint?.tr(namedArgs: hintArgs),
                       ).copyWith(
-                        labelText: labelText?.tr(),
+                        labelText: labelText?.tr(namedArgs: labelTextArgs),
                       ),
                       style: const TextStyle(fontSize: AppConstants.fontSizeBody),
                       onSubmitted: (_) => onSave(),

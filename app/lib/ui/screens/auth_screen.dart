@@ -41,7 +41,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         // Sync language to backend settings
         if (mounted) {
           final langCode = context.locale.languageCode;
-          await ref.read(configProvider.notifier).updateUser({'language': langCode});
+          await ref.read(configProvider.notifier).updateUser({
+            'language': langCode,
+          });
         }
         // Navigation is handled by the main screen listener
       } else {
@@ -61,11 +63,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       body: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 400),
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(AppConstants.spacingLarge),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border, width: 0.5),
             boxShadow: [
               BoxShadow(
                 color: AppColors.overlayBackground,
@@ -78,20 +80,41 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                '👻 ${AppConstants.appName}',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
+              Row(
+                children: [
+                  Image.asset(AppConstants.logoGhost, height: 55, width: 55),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        AppConstants.appName.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                          height: 1.1,
+                        ),
+                      ),
+                      Text(
+                        'auth.tagline'.tr(),
+                        style: const TextStyle(
+                          color: AppColors.textDim,
+                          fontSize: AppConstants.fontSizeCaption,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppConstants.spacingTiny),
               Text(
                 'auth.subtitle'.tr(),
                 style: const TextStyle(color: AppColors.textDim),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppConstants.spacingMedium),
               AppFormField.text(
                 controller: _tokenController,
                 label: 'auth.token_label',
@@ -100,10 +123,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 onSubmitted: (_) => _handleConnect(),
               ),
               if (_error != null) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: AppConstants.spacingMedium),
                 Text(_error!, style: const TextStyle(color: AppColors.error)),
               ],
-              const SizedBox(height: 32),
+              const SizedBox(height: AppConstants.spacingMedium),
               AppSaveButton(
                 onPressed: _handleConnect,
                 label: 'auth.connect',
@@ -111,9 +134,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 icon: Icons.login,
                 expand: true,
               ),
-              const SizedBox(height: 24),
-              const Divider(color: AppColors.border),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppConstants.spacingMedium),
+
+              const SizedBox(height: AppConstants.spacingSmall),
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -135,7 +158,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           .setFlag('en', e),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppConstants.spacingTiny),
                   AppLanguageTile(
                     label: 'settings.language.de'.tr(),
                     sublabel: 'Deutsch',

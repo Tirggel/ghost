@@ -78,7 +78,7 @@ For new users, Ghost now includes an interactive **Setup Wizard** which is trigg
 
 ## 🌟 Features
 
-- **Multi-Model Support**: Use Anthropic (Claude), OpenAI (GPT), Google (Gemini), DeepSeek, Mistral, Groq, Together AI, Perplexity, X.AI (Grok), or local models via Ollama and OpenRouter.
+- **Multi-Model Support**: Use Anthropic (Claude), OpenAI (GPT), Google (Gemini), DeepSeek, Mistral, Groq, Together AI, Perplexity, X.AI (Grok), or local models via **LM Studio**, Ollama, and OpenRouter.
 - **Memory Engine (RAG & Standard)**: Expand your agent's knowledge through local vector and keyword storage.
     - **Standard Memory**: Keyword-based, encrypted local memory (Hive). Information is stored securely and retrieved via exact matches.
     - **RAG Memory (ObjectBox)**: Retrieval-Augmented Generation with semantic vector search, powered by a high-performance local ObjectBox database.
@@ -99,7 +99,7 @@ For new users, Ghost now includes an interactive **Setup Wizard** which is trigg
     - **File System**: Full access to read, write, and manage local files.
     - **GitHub**: Integration for managing repositories and issues.
 - **Multi-Channel Messenger Support**:
-    - **14+ Channels**: Connect your agent to Telegram, Discord, WhatsApp (Meta), Slack, Signal, iMessage (BlueBubbles), MS Teams, Google Chat, Matrix, Nextcloud Talk, Nostr, Tlon/Urbit, Zalo, and WebChat.
+    - **13 Channels**: Connect your agent to Telegram, Discord, WhatsApp (Meta), Slack, Signal, iMessage (BlueBubbles), MS Teams, Google Chat, Matrix, Nextcloud Talk, Tlon/Urbit, Zalo, and WebChat.
     - **Smart Sorting & Searching**: Easily manage your communication channels with integrated search filters and automated grouping by status.
     - **Resilient Connections**: Improved stability for messaging gateways (like Telegram), featuring automatic connection recovery and conflict resolution.
     - **DM Policies**: Granular control over who can message your bot (Pairing, Allowlist, Open, Disabled).
@@ -116,6 +116,7 @@ For new users, Ghost now includes an interactive **Setup Wizard** which is trigg
     - **Network Restriction**: Complete isolation of the agent's web tools when high security is enabled to prevent unauthorized data exfiltration.
     - **Secure Vault**: API keys, agent configurations, and memory settings are encrypted with AES-256-GCM and stored only on your machine.
     - **AI Provider Search & Masking**: Sensitive API keys are masked by default and can be easily managed with a dedicated search filter.
+- **Token Usage Tracking**: Monitor input and output tokens for every session to keep track of AI usage and costs.
     - **Encrypted Database**: Chat sessions and avatars are stored in a local Hive database with additional encryption.
     - **Avatar Management**: Images are stored directly in the database for maximum privacy.
     - **Self-hosted**: Full control over your data and codebase.
@@ -123,6 +124,7 @@ For new users, Ghost now includes an interactive **Setup Wizard** which is trigg
     - **Clean Design**: A minimalist and intuitive interface for a distraction-free experience.
     - **Code Rendering**: Highlights and formats code blocks for easy reading.
     - **Settings Hub**: Centrally manage all your configurations, including a dedicated Gateway tab.
+- **Gateway Status & Live Logs**: Real-time monitoring of gateway performance, connected clients, and system logs directly in the app.
 
 
 ---

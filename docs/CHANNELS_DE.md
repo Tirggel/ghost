@@ -1,6 +1,6 @@
 # 📱 Leitfaden zur Multi-Channel-Unterstützung
 
-Ghost unterstützt 14 verschiedene Kommunikationskanäle, so dass Sie von Ihren bevorzugten Messaging-Apps aus mit Ihrem KI-Assistenten interagieren können. In diesem Leitfaden wird die Einrichtung der einzelnen Kanäle erläutert.
+Ghost unterstützt 13 verschiedene Kommunikationskanäle, so dass Sie von Ihren bevorzugten Messaging-Apps aus mit Ihrem KI-Assistenten interagieren können. In diesem Leitfaden wird die Einrichtung der einzelnen Kanäle erläutert.
 
 ## 🗝️ Allgemeine Konfiguration
 Alle Kanäle werden über die Registerkarte **Einstellungen → Kanäle** in der Ghost App konfiguriert. Token und empfindliche Schlüssel werden sicher in Ihrem lokalen verschlüsselten Tresor gespeichert.
@@ -93,21 +93,14 @@ Kompatibel mit jedem Matrix-Homeserver (Synapse usw.).
   2. Rufen Sie ein **Access Token** über den Matrix API Login ab.
   3. Geben Sie die **Homeserver-URL**, die **User-ID** (@ghost:...) und das **Access Token** ein.
 
-### 11. Nostr
-Verbindung über dezentrale Relays.
-- **Einrichtung**:
-  1. Erzeugen Sie ein Nostr-Schlüsselpaar (npub/nsec).
-  2. Geben Sie eine **Relay-URL** (z. B. `wss://relay.damus.io`) und Ihren **Public Key** (Hex-Format) ein.
-  3. Geben Sie Ihren **Private Key** (Hex) an, wenn der Bot antworten soll (Antworten sind derzeit Kind-1-Notizen).
-
-### 12. Tlon / Urbit
+### 11. Tlon / Urbit
 Verbindet sich mit Ihrem Urbit-Ship.
 - **Einrichtung**:
   1. Betreiben Sie ein Urbit-Ship.
   2. Rufen Sie Ihren Session-**+code** ab (über `|code` im Dojo).
   3. Geben Sie die **Ship-URL**, den **Ship-Namen** (~sampel-palnet) und den **+code** ein.
 
-### 13. Zalo (Vietnam)
+### 12. Zalo (Vietnam)
 Verwendet die Zalo Official Account (OA) API.
 - **Einrichtung**:
   1. Erstellen Sie einen Zalo OA unter [oa.zalo.me](https://oa.zalo.me).
@@ -115,7 +108,7 @@ Verwendet die Zalo Official Account (OA) API.
   3. Generieren Sie ein **langlebiges Access Token** und notieren Sie sich Ihre **OA-ID**.
   4. Setzen Sie den Webhook auf `https://<ihr-host>/webhooks/zalo`.
 
-### 14. WebChat
+### 13. WebChat
 Der interne browserbasierte Chat.
 - **Einrichtung**: Automatisch aktiviert, wenn Sie das Gateway starten.
 - **Nutzung**: Verwenden Sie den integrierten Chat in der Ghost App oder das Webinterface.

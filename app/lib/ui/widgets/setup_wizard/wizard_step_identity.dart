@@ -44,8 +44,10 @@ class WizardStepIdentity extends ConsumerWidget {
         children: [
           if (state.selectedProvider != null && state.selectedModel != null)
             WizardSummaryBadge(
-              label:
-                  '${state.selectedProvider} / ${state.selectedModel!.contains('/') ? state.selectedModel!.split('/').last : state.selectedModel!}',
+              iconPath: AppConstants.getProviderIcon(state.selectedProvider!),
+              label: state.selectedModel!.contains('/')
+                  ? state.selectedModel!.split('/').last
+                  : state.selectedModel!,
             ),
           WizardStepHeader(text: 'wizard.identity_desc'.tr()),
           AppFormField.text(

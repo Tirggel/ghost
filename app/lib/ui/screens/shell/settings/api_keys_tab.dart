@@ -8,6 +8,7 @@ import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_settings_input.dart';
 import '../../../widgets/app_dialogs.dart';
 import '../../../widgets/app_snackbar.dart';
+import '../../../../core/error_formatter.dart';
 
 class ApiKeysTab extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
@@ -24,7 +25,6 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
   String? _visibleKeyProvider;
   final _searchController = TextEditingController();
   String _searchQuery = '';
-
   @override
   void initState() {
     super.initState();
@@ -44,27 +44,12 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
     super.dispose();
   }
 
-  TextEditingController _getApiController(String service, AppConfig config) {
-    return _controllers.putIfAbsent(
-      service,
-      () {
-        final controller = TextEditingController();
-        // Pre-fill with detected URL if it's a local provider
-        final detected = config.detectedLocalProviders.firstWhere(
-          (dp) => dp['id'] == service,
-          orElse: () => <String, String>{},
-        );
-        if (detected.containsKey('url')) {
-          controller.text = detected['url']!;
-        }
-        return controller;
-      },
-    );
+  TextEditingController _getApiController(String service) {
+    return _controllers.putIfAbsent(service, () => TextEditingController());
   }
 
-
   Future<void> _verifyAndSaveKey(String service, String label) async {
-    final key = _getApiController(service, ref.read(configProvider)).text.trim();
+    final key = _getApiController(service).text.trim();
     if (key.isEmpty) return;
 
     setState(() => _verifyingKey[service] = true);
@@ -76,27 +61,34 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
     if (result['status'] == 'ok') {
       try {
         await ref.read(configProvider.notifier).setKey(service, key);
-        _getApiController(service, ref.read(configProvider)).clear();
-        setState(() => _visibleKeyProvider = null);
+        _getApiController(service).clear();
+
+        setState(() {
+          _visibleKeyProvider = null;
+        });
         if (mounted) {
           AppSnackBar.showSuccess(
             context,
-            'settings.api_keys.key_saved'.tr(namedArgs: {'label': 'providers.$service'.tr()}),
+            'settings.api_keys.key_saved'.tr(
+              namedArgs: {'label': 'providers.$service'.tr()},
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
-          final message = e is Map ? e['message']?.toString() ?? e.toString() : e.toString();
+          final message = e is Map
+              ? e['message']?.toString() ?? e.toString()
+              : e.toString();
           showAppErrorDialog(context, message);
         }
       }
     } else {
       if (mounted) {
-        _getApiController(service, ref.read(configProvider)).clear();
+        _getApiController(service).clear();
         AppSnackBar.showError(
           context,
           'settings.api_keys.verification_failed_content'.tr(
-            namedArgs: {'message': result['message'].toString()},
+            namedArgs: {'message': ErrorFormatter.format(result['message'])},
           ),
         );
       }
@@ -105,27 +97,27 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
 
   Future<void> _deleteApiKey(String service, String label) async {
     final config = ref.read(configProvider);
-    
+
     // Check if provider is used by main agent
     final isUsedByMain = config.agent.provider == service;
-    
+
     // Check if provider is used by any custom agent
-    final isUsedByCustom = config.customAgents.any((agent) => 
-        (agent as Map<String, dynamic>)['provider'] == service);
+    final isUsedByCustom = config.customAgents.any(
+      (agent) => (agent as Map<String, dynamic>)['provider'] == service,
+    );
 
     if (isUsedByMain || isUsedByCustom) {
       if (mounted) {
-        showAppErrorDialog(
-          context, 
-          'settings.api_keys.delete_error_used'.tr()
-        );
+        showAppErrorDialog(context, 'settings.api_keys.delete_error_used'.tr());
       }
       return;
     }
 
     final confirmed = await AppAlertDialog.showConfirmation(
       context: context,
-      title: 'settings.api_keys.delete_key_title'.tr(namedArgs: {'label': 'providers.$service'.tr()}),
+      title: 'settings.api_keys.delete_key_title'.tr(
+        namedArgs: {'label': 'providers.$service'.tr()},
+      ),
       content: 'settings.api_keys.delete_key_content'.tr(
         namedArgs: {'label': 'providers.$service'.tr()},
       ),
@@ -139,12 +131,16 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
         if (mounted) {
           AppSnackBar.showSuccess(
             context,
-            'settings.api_keys.key_removed'.tr(namedArgs: {'label': 'providers.$service'.tr()}),
+            'settings.api_keys.key_removed'.tr(
+              namedArgs: {'label': 'providers.$service'.tr()},
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
-          final message = e is Map ? e['message']?.toString() ?? e.toString() : e.toString();
+          final message = e is Map
+              ? e['message']?.toString() ?? e.toString()
+              : e.toString();
           showAppErrorDialog(context, message);
         }
       }
@@ -174,13 +170,19 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
           controller: _searchController,
           style: const TextStyle(color: AppColors.white, fontSize: 13),
           decoration: AppInputDecoration.compact(
-            hint: 'settings.api_keys.search_placeholder',
-            prefixIcon:
-                const Icon(Icons.search, size: 18, color: AppColors.textDim),
+            hint: 'settings.api_keys.search_placeholder'.tr(),
+            prefixIcon: const Icon(
+              Icons.search,
+              size: 18,
+              color: AppColors.textDim,
+            ),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
-                    icon: const Icon(Icons.clear,
-                        size: 18, color: AppColors.textDim),
+                    icon: const Icon(
+                      Icons.clear,
+                      size: 18,
+                      color: AppColors.textDim,
+                    ),
                     onPressed: () => _searchController.clear(),
                   )
                 : null,
@@ -209,21 +211,7 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
         continue;
       }
 
-      final isLocalProvider =
-          service == 'ollama' || service == 'vllm' || service == 'litellm' || service == 'lmstudio';
-
-      late String storageKey;
-      if (service == 'telegram') {
-        storageKey = 'telegram_bot_token';
-      } else if (isLocalProvider) {
-        storageKey = '${service}_base_url';
-      } else {
-        storageKey = '${service}_api_key';
-      }
-
-      final detected = config.detectedLocalProviders.any((dp) => dp['id'] == service);
-
-      if (vaultKeys.contains(storageKey) || detected) {
+      if (config.isProviderConfigured(service)) {
         active.add(p);
       } else {
         inactive.add(p);
@@ -237,69 +225,76 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
     final widgets = <Widget>[];
 
     if (active.isNotEmpty) {
-      widgets.addAll(active.map((p) => _buildProviderTile(p, vaultKeys, config)));
+      widgets.addAll(
+        active.map((p) => _buildProviderTile(p, vaultKeys, config)),
+      );
     }
 
     if (inactive.isNotEmpty) {
       if (active.isNotEmpty) {
         widgets.add(const SizedBox(height: 32));
-        widgets.add(const Padding(
-          padding: EdgeInsets.only(bottom: 12),
-          child: AppSectionLabel('settings.api_keys.other_providers'),
-        ));
+        widgets.add(
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: AppSectionLabel('settings.api_keys.other_providers'),
+          ),
+        );
       }
-      widgets.addAll(inactive.map((p) => _buildProviderTile(p, vaultKeys, config)));
+      widgets.addAll(
+        inactive.map((p) => _buildProviderTile(p, vaultKeys, config)),
+      );
     }
 
     return widgets;
   }
 
-  Widget _buildProviderTile(Map<String, String> p, Set<String> vaultKeys, AppConfig config) {
+  Widget _buildProviderTile(
+    Map<String, String> p,
+    Set<String> vaultKeys,
+    AppConfig config,
+  ) {
     final label = p['label']!;
     final service = p['id']!;
-    final isLocalProvider =
-        service == 'ollama' || service == 'vllm' || service == 'litellm' || service == 'lmstudio';
+    final isLocalProvider = AppConstants.isLocalProvider(service);
 
-    late String storageKey;
-    if (service == 'telegram') {
-      storageKey = 'telegram_bot_token';
-    } else if (isLocalProvider) {
-      storageKey = '${service}_base_url';
-    } else {
-      storageKey = '${service}_api_key';
-    }
-
-    final isAlreadySet = vaultKeys.contains(storageKey);
+    final isAlreadySet = config.isProviderConfigured(service);
     final isVerifying = _verifyingKey[service] ?? false;
     final isEditing = _visibleKeyProvider == service;
 
+    // For auto-detected local providers, show the detected URL as subtitle
+    final detectedEntry = isLocalProvider
+        ? config.detectedLocalProviders
+              .where((dp) => dp['id'] == service)
+              .firstOrNull
+        : null;
+    final detectedUrl = detectedEntry?['url'];
+
     return AppSettingsInput(
       title: 'providers.$service',
-      subtitle: (isLocalProvider && !isEditing)
-          ? (isAlreadySet
-              ? 'settings.api_keys.custom_url'
-              : (config.detectedLocalProviders.any((dp) => dp['id'] == service)
-                  ? 'settings.api_keys.detected_url'
-                  : 'settings.api_keys.default_url'))
+      subtitle: isLocalProvider && detectedUrl != null && !vaultKeys.contains('${service}_base_url')
+          ? detectedUrl
           : null,
+      translateSubtitle: false,
       leading: _buildProviderIcon(service),
-      controller: _getApiController(service, config),
+      controller: _getApiController(service),
       isEditing: isEditing || (!isAlreadySet && _visibleKeyProvider == service),
       isAlreadySet: isAlreadySet,
       isVerifying: isVerifying,
-      obscureText: !isLocalProvider && !isEditing,
+      obscureText: false,
       hint: isLocalProvider
           ? 'settings.api_keys.base_url_hint'
           : 'settings.api_keys.key_hint',
-      labelText: isLocalProvider
-          ? 'settings.api_keys.base_url_label'
+      hintArgs: isLocalProvider
+          ? {'port': _getDefaultPort(service).toString()}
           : null,
       onEdit: () async {
         final key = await ref.read(configProvider.notifier).getKey(service);
         if (mounted) {
-          if (key != null) {
-            _getApiController(service, config).text = key;
-          }
+          final controller = _getApiController(service);
+          // Pre-fill with stored key, or detected URL if no key saved yet
+          controller.text = (key != null && key.isNotEmpty)
+              ? key
+              : (detectedUrl ?? '');
           setState(() => _visibleKeyProvider = service);
         }
       },
@@ -310,6 +305,15 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
       deleteTooltip: 'settings.api_keys.delete_tooltip',
       verifySaveTooltip: 'settings.api_keys.verify_save_tooltip',
     );
+  }
+
+  int _getDefaultPort(String service) {
+    if (service == 'ollama') return 11434;
+    if (service == 'lmstudio') return 1234;
+    if (service == 'ipex-llm') return 11435;
+    if (service == 'vllm') return 8000;
+    if (service == 'litellm') return 4000;
+    return 80;
   }
 
   Widget _buildProviderIcon(String id) {

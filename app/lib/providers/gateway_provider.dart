@@ -201,9 +201,6 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
                 createdAt: s.createdAt,
                 lastActiveAt: s.lastActiveAt,
               );
-
-
-
             }
             return s;
           }).toList();
@@ -269,20 +266,29 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
             agentId: s.agentId,
             createdAt: s.createdAt,
             lastActiveAt: s.lastActiveAt,
-            inputTokens: s.inputTokens > 0 ? s.inputTokens : existing.inputTokens,
-            outputTokens: s.outputTokens > 0 ? s.outputTokens : existing.outputTokens,
+            inputTokens: s.inputTokens > 0
+                ? s.inputTokens
+                : existing.inputTokens,
+            outputTokens: s.outputTokens > 0
+                ? s.outputTokens
+                : existing.outputTokens,
           );
         }
         return s;
       }).toList();
 
       updated.sort((a, b) {
-        final dateA = a.lastActiveAt ?? a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final dateB = b.lastActiveAt ?? b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final dateA =
+            a.lastActiveAt ??
+            a.createdAt ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final dateB =
+            b.lastActiveAt ??
+            b.createdAt ??
+            DateTime.fromMillisecondsSinceEpoch(0);
         return dateB.compareTo(dateA); // Newest first
       });
       state = updated;
-
     } catch (e) {
       // Refresh failed
     }
@@ -322,8 +328,6 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
         createdAt: old.createdAt,
         lastActiveAt: old.lastActiveAt,
       );
-
-
     }
 
     try {
@@ -346,7 +350,6 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
             createdAt: s.createdAt,
             lastActiveAt: s.lastActiveAt,
           );
-
         }
         return s;
       }).toList();
@@ -702,7 +705,9 @@ class ConfigNotifier extends Notifier<AppConfig> {
   Future<String?> getChannelToken(String channelId) async {
     final client = ref.read(gatewayClientProvider);
     try {
-      final result = await client.call('config.getChannelToken', {'channelId': channelId});
+      final result = await client.call('config.getChannelToken', {
+        'channelId': channelId,
+      });
       return result['token'] as String?;
     } catch (_) {
       return null;
@@ -874,8 +879,8 @@ class GatewayLogEntry {
 
 final gatewayLogsProvider =
     NotifierProvider<GatewayLogsNotifier, List<GatewayLogEntry>>(() {
-  return GatewayLogsNotifier();
-});
+      return GatewayLogsNotifier();
+    });
 
 class GatewayLogsNotifier extends Notifier<List<GatewayLogEntry>> {
   static const int _maxLogs = 500;
@@ -891,7 +896,9 @@ class GatewayLogsNotifier extends Notifier<List<GatewayLogEntry>> {
       if (msg['method'] == 'gateway.log') {
         final params = msg['params'];
         if (params != null) {
-          final entry = GatewayLogEntry.fromJson(params as Map<String, dynamic>);
+          final entry = GatewayLogEntry.fromJson(
+            params as Map<String, dynamic>,
+          );
           final next = [...state, entry];
           state = (next.length > _maxLogs)
               ? next.sublist(next.length - _maxLogs)

@@ -100,10 +100,10 @@ class MainApp extends ConsumerWidget {
         if (s == ConnectionStatus.authenticated) {
           return const ShellScreen();
         }
-        
+
         // If we've been trying to connect for a while and failed, show the error with an escape hatch
         if (s == ConnectionStatus.error) {
-           return LoadingScreen(
+          return LoadingScreen(
             status: s,
             onAction: () => ref.read(authTokenProvider.notifier).logout(),
             actionLabel: 'auth.back_to_login'.tr(),

@@ -1,6 +1,6 @@
 # 📱 Multi-Channel Support Guide
 
-Ghost supports 14 different communication channels, allowing you to interact with your AI assistant from your favorite messaging apps. This guide explains how to set up each channel.
+Ghost supports 13 different communication channels, allowing you to interact with your AI assistant from your favorite messaging apps. This guide explains how to set up each channel.
 
 ## 🗝️ General Configuration
 All channels are configured via the **Settings → Channels** tab in the Ghost App. Tokens and sensitive keys are stored securely in your local encrypted vault.
@@ -93,21 +93,14 @@ Compatible with any Matrix homeserver (Synapse, etc.).
   2. Get an **Access Token** via the Matrix API login.
   3. Enter the **Homeserver URL**, **User ID** (@ghost:...), and **Access Token**.
 
-### 11. Nostr
-Connects via decentralized relays.
-- **Setup**:
-  1. Generate a Nostr key pair (npub/nsec).
-  2. Enter a **Relay URL** (e.g., `wss://relay.damus.io`) and your **Public Key** (Hex format).
-  3. Provide your **Private Key** (Hex) if you want the bot to reply (replies are currently kind 1 notes).
-
-### 12. Tlon / Urbit
+### 11. Tlon / Urbit
 Connects to your Urbit ship.
 - **Setup**:
   1. Run an Urbit ship.
   2. Get your session **+code** (via `|code` in dojo).
   3. Enter the **Ship URL**, **Ship Name** (~sampel-palnet), and **+code**.
 
-### 13. Zalo (Vietnam)
+### 12. Zalo (Vietnam)
 Uses the Zalo Official Account (OA) API.
 - **Setup**:
   1. Create a Zalo OA at [oa.zalo.me](https://oa.zalo.me).
@@ -115,7 +108,7 @@ Uses the Zalo Official Account (OA) API.
   3. Generate a **Long-lived Access Token** and note your **OA ID**.
   4. Set the Webhook to `https://<your-host>/webhooks/zalo`.
 
-### 14. WebChat
+### 13. WebChat
 The internal browser-based chat.
 - **Setup**: Automatically enabled when you start the Gateway.
 - **Usage**: Use the build-in chat in the Ghost App or the web interface.

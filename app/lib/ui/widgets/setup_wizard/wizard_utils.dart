@@ -26,14 +26,18 @@ class WizardStepHeader extends StatelessWidget {
   }
 }
 
-class WizardInfoCard extends StatelessWidget {
-  final IconData icon;
-  final String text;
+enum WizardStatus { info, success, error }
 
-  const WizardInfoCard({
+class WizardStatusCard extends StatelessWidget {
+  final IconData? icon;
+  final String text;
+  final WizardStatus status;
+
+  const WizardStatusCard({
     super.key,
-    this.icon = Icons.info_outline,
+    this.icon,
     required this.text,
+    this.status = WizardStatus.info,
   });
 
   @override
@@ -41,23 +45,50 @@ class WizardInfoCard extends StatelessWidget {
     // Watch context.locale to ensure rebuild on language change
     context.locale;
 
+    Color borderColor;
+    Color backgroundColor;
+    Color textColor;
+    IconData displayIcon;
+
+    switch (status) {
+      case WizardStatus.success:
+        borderColor = AppColors.success.withValues(alpha: 0.5);
+        backgroundColor = AppColors.success.withValues(alpha: 0.05);
+        textColor = AppColors.success;
+        displayIcon = icon ?? Icons.check_circle_outline;
+        break;
+      case WizardStatus.error:
+        borderColor = AppColors.errorDark.withValues(alpha: 0.5);
+        backgroundColor = AppColors.errorDark.withValues(alpha: 0.05);
+        textColor = AppColors.errorDark;
+        displayIcon = icon ?? Icons.error_outline;
+        break;
+      case WizardStatus.info:
+        borderColor = AppColors.border;
+        backgroundColor = AppColors.surface;
+        textColor = AppColors.textDim;
+        displayIcon = icon ?? Icons.info_outline;
+        break;
+    }
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: AppColors.textDim),
-          const SizedBox(width: 8),
+          Icon(displayIcon, size: 16, color: textColor),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textDim,
+              style: TextStyle(
+                fontSize: 13,
+                color: textColor,
+                fontWeight: status != WizardStatus.info ? FontWeight.w500 : FontWeight.normal,
               ),
             ),
           ),
@@ -78,6 +109,9 @@ class WizardVerificationField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final bool obscureText;
 
+  final String? verifyLabel;
+  final String? verifiedLabel;
+
   const WizardVerificationField({
     super.key,
     required this.controller,
@@ -88,7 +122,9 @@ class WizardVerificationField extends StatelessWidget {
     required this.onVerify,
     this.error,
     this.onChanged,
-    this.obscureText = true,
+    this.obscureText = false,
+    this.verifyLabel,
+    this.verifiedLabel,
   });
 
   @override
@@ -113,7 +149,7 @@ class WizardVerificationField extends StatelessWidget {
                 child: TextField(
                   controller: controller,
                   obscureText: obscureText,
-                  decoration: AppInputDecoration.compact(hint: hint),
+                  decoration: AppInputDecoration.compact(hint: hint.tr()),
                   style: const TextStyle(fontSize: 13),
                   onChanged: onChanged,
                   onSubmitted: (_) => onVerify(),
@@ -145,33 +181,13 @@ class WizardVerificationField extends StatelessWidget {
                 ),
                 child: Text(
                   isVerified
-                      ? 'wizard.key_verified'.tr()
-                      : 'wizard.verify_key'.tr(),
+                      ? (verifiedLabel ?? 'wizard.key_verified'.tr())
+                      : (verifyLabel ?? 'wizard.verify_key'.tr()),
                   style: const TextStyle(fontSize: 12),
                 ),
               ),
           ],
         ),
-        if (error != null) ...[
-          const SizedBox(height: 6),
-          Text(
-            error!,
-            style: const TextStyle(color: AppColors.errorDark, fontSize: 12),
-          ),
-        ],
-        if (isVerified) ...[
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              const Icon(Icons.check_circle, color: AppColors.success, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                'wizard.key_verified_desc'.tr(), // Generic verified text
-                style: const TextStyle(color: AppColors.success, fontSize: 13),
-              ),
-            ],
-          ),
-        ],
       ],
     );
   }
@@ -180,11 +196,13 @@ class WizardVerificationField extends StatelessWidget {
 class WizardSummaryBadge extends StatelessWidget {
   final String label;
   final IconData icon;
+  final String? iconPath;
 
   const WizardSummaryBadge({
     super.key,
     required this.label,
     this.icon = Icons.smart_toy,
+    this.iconPath,
   });
 
   @override
@@ -202,8 +220,18 @@ class WizardSummaryBadge extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: AppColors.primary),
-          const SizedBox(width: 8),
+          if (iconPath != null)
+            Image.asset(
+              iconPath!,
+              width: 14,
+              height: 14,
+              errorBuilder:
+                  (context, error, stackTrace) =>
+                      Icon(icon, size: 14, color: AppColors.primary),
+            )
+          else
+            Icon(icon, size: 14, color: AppColors.primary),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               label,

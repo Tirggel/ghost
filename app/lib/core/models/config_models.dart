@@ -1,3 +1,5 @@
+import '../constants.dart';
+
 class UserConfig {
   final String name;
   final String? callSign;
@@ -382,6 +384,23 @@ class AppConfig {
 
   List<String> get vaultKeys =>
       (vault['keys'] as List<dynamic>?)?.cast<String>() ?? [];
+
+  bool isProviderConfigured(String provider) {
+    if (AppConstants.isLocalProvider(provider)) {
+      final isAlreadySet = vaultKeys.contains('${provider}_base_url');
+      final isDetected =
+          detectedLocalProviders.any((dp) => dp['id'] == provider);
+      return isAlreadySet || isDetected;
+    }
+    final keyName = provider == 'google' ? 'google_api_key' : '${provider}_api_key';
+    return vaultKeys.contains(keyName);
+  }
+
+  List<Map<String, String>> getAvailableProviders(
+    List<Map<String, String>> allProviders,
+  ) {
+    return allProviders.where((p) => isProviderConfigured(p['id']!)).toList();
+  }
 
   dynamic operator [](String key) {
     switch (key) {

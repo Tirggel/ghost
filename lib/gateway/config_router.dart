@@ -136,6 +136,7 @@ class ConfigRouter {
             .where((k) =>
                 k.endsWith('_api_key') ||
                 k == 'ollama_base_url' ||
+                k == 'ipex-llm_base_url' ||
                 k == 'vllm_base_url' ||
                 k == 'litellm_base_url')
             .toList();
@@ -213,9 +214,21 @@ class ConfigRouter {
 
       try {
         final isLocal =
-            service == 'ollama' || service == 'vllm' || service == 'litellm';
-        final apiKeyToTest = isLocal ? service : key;
-        final baseUrlToTest = isLocal ? key : null;
+            service == 'ollama' || service == 'ipex-llm' || service == 'vllm' || service == 'litellm' || service == 'lmstudio';
+        
+        String? baseUrlToTest;
+        String apiKeyToTest = key;
+
+        if (isLocal) {
+          if (key.startsWith('http')) {
+            baseUrlToTest = key;
+            apiKeyToTest = service;
+          } else if (key.isEmpty) {
+            final storageKey = _getStorageKey(service);
+            baseUrlToTest = await storage.get(storageKey);
+            apiKeyToTest = service;
+          }
+        }
 
         await ProviderFactory.testKey(
           provider: service,
@@ -300,16 +313,20 @@ class ConfigRouter {
         // If apiKey/baseUrl is empty, try to get it from storage
         String? baseUrl;
         final isLocal =
-            provider == 'ollama' || provider == 'vllm' || provider == 'litellm';
+            provider == 'ollama' || provider == 'ipex-llm' || provider == 'vllm' || provider == 'litellm' || provider == 'lmstudio';
 
-        if (apiKey == null || apiKey.isEmpty) {
+        if (isLocal) {
+          if (apiKey != null && apiKey.startsWith('http')) {
+            baseUrl = apiKey;
+            apiKey = provider;
+          } else if (apiKey == null || apiKey.isEmpty) {
+            final storageKey = _getStorageKey(provider);
+            baseUrl = await storage.get(storageKey);
+            apiKey = provider;
+          }
+        } else if (apiKey == null || apiKey.isEmpty) {
           final storageKey = _getStorageKey(provider);
           apiKey = await storage.get(storageKey);
-          if (isLocal) {
-            baseUrl = apiKey;
-            apiKey =
-                provider; // For local providers, api key is usually just their name
-          }
         }
 
         if (apiKey == null || apiKey.isEmpty) {
@@ -341,7 +358,7 @@ class ConfigRouter {
       try {
         String? baseUrl;
         final isLocal =
-            provider == 'ollama' || provider == 'vllm' || provider == 'litellm';
+            provider == 'ollama' || provider == 'ipex-llm' || provider == 'vllm' || provider == 'litellm' || provider == 'lmstudio';
 
         if (apiKey == null || apiKey.isEmpty) {
           final storageKey = _getStorageKey(provider);
@@ -350,6 +367,9 @@ class ConfigRouter {
             baseUrl = apiKey;
             apiKey = provider;
           }
+        } else if (isLocal && apiKey.startsWith('http')) {
+          baseUrl = apiKey;
+          apiKey = provider;
         }
 
         if (apiKey == null || apiKey.isEmpty) {
@@ -518,8 +538,9 @@ class ConfigRouter {
         if (channelParams is! Map<String, dynamic>) continue;
 
         final settings = channelParams['settings'] as Map<String, dynamic>?;
-        final storageKey =
-            channelId == 'telegram' ? 'telegram_bot_token' : '${channelId}_token';
+        final storageKey = channelId == 'telegram'
+            ? 'telegram_bot_token'
+            : '${channelId}_token';
 
         if (settings != null) {
           final tokenKey = channelId == 'telegram' ? 'botToken' : 'token';
@@ -885,7 +906,8 @@ class ConfigRouter {
     });
 
     // 19. Update security config
-    gateway.rpcRegistry.register('config.updateSecurity', (params, context) async {
+    gateway.rpcRegistry.register('config.updateSecurity',
+        (params, context) async {
       if (params == null) throw ProtocolError('Missing params');
 
       final config = await loadConfig(configPath);
@@ -896,10 +918,14 @@ class ConfigRouter {
           (e) => e.name == (params['level'] as String? ?? current.level.name),
           orElse: () => current.level,
         ),
-        humanInTheLoop: params['humanInTheLoop'] as bool? ?? current.humanInTheLoop,
-        promptHardening: params['promptHardening'] as bool? ?? current.promptHardening,
-        restrictNetwork: params['restrictNetwork'] as bool? ?? current.restrictNetwork,
-        promptAnalyzers: params['promptAnalyzers'] as bool? ?? current.promptAnalyzers,
+        humanInTheLoop:
+            params['humanInTheLoop'] as bool? ?? current.humanInTheLoop,
+        promptHardening:
+            params['promptHardening'] as bool? ?? current.promptHardening,
+        restrictNetwork:
+            params['restrictNetwork'] as bool? ?? current.restrictNetwork,
+        promptAnalyzers:
+            params['promptAnalyzers'] as bool? ?? current.promptAnalyzers,
       );
 
       await saveConfig(config.copyWith(security: updated), configPath);
@@ -915,8 +941,10 @@ class ConfigRouter {
 
     final checks = {
       'ollama': 'http://localhost:11434/v1',
+      'ipex-llm': 'http://localhost:11435/v1',
       'vllm': 'http://localhost:8000/v1',
       'litellm': 'http://localhost:4000/v1',
+      'lmstudio': 'http://localhost:1234/v1',
     };
 
     for (final entry in checks.entries) {
@@ -947,6 +975,13 @@ class ConfigRouter {
       return 'google_client_id_desktop';
     }
     if (service == 'google_client_secret') return 'google_client_secret';
+    if (service == 'ollama' ||
+        service == 'ipex-llm' ||
+        service == 'vllm' ||
+        service == 'litellm' ||
+        service == 'lmstudio') {
+      return '${service}_base_url';
+    }
     return '${service}_api_key';
   }
 

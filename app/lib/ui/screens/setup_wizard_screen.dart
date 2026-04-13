@@ -88,18 +88,22 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
     // We don't pre-fill with defaults anymore to keep them "hidden"
     // Only load if they actually exist in the config already
     if (user.name.isNotEmpty) notifier.updateUserName(user.name);
-    if ((user.callSign ?? '').isNotEmpty) notifier.updateUserCallSign(user.callSign!);
-    if ((user.pronouns ?? '').isNotEmpty) notifier.updateUserPronouns(user.pronouns);
+    if ((user.callSign ?? '').isNotEmpty)
+      notifier.updateUserCallSign(user.callSign!);
+    if ((user.pronouns ?? '').isNotEmpty)
+      notifier.updateUserPronouns(user.pronouns);
     if ((user.notes ?? '').isNotEmpty) notifier.updateUserNotes(user.notes!);
     if (user.avatar != null) notifier.updateUserAvatar(user.avatar);
 
     final ident = updatedConfig.identity;
     // We don't pre-fill with defaults to keep them "hidden"
-    if (ident.name != 'Ghost' && ident.name.isNotEmpty) notifier.updateIdentName(ident.name);
-    if ((ident.creature ?? '').isNotEmpty && ident.creature != 'Digital Ghost') {
+    if (ident.name != 'Ghost' && ident.name.isNotEmpty)
+      notifier.updateIdentName(ident.name);
+    if ((ident.creature ?? '').isNotEmpty &&
+        ident.creature != 'Digital Ghost') {
       notifier.updateIdentCreature(ident.creature!);
     }
-    if ((ident.vibe ?? '').isNotEmpty && 
+    if ((ident.vibe ?? '').isNotEmpty &&
         ident.vibe != 'Friendly, analytical, and economically accountable') {
       notifier.updateIdentVibe(ident.vibe!);
     }
@@ -172,7 +176,6 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
     }
   }
 
-
   // ---- Build ----
 
   @override
@@ -180,6 +183,13 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
     // Watch locale to ensure rebuild of tabs and header on language change
     context.locale;
     final state = ref.watch(setupWizardProvider);
+
+    // Sync API key controller if state changes from outside (e.g. provider detection)
+    ref.listen(setupWizardProvider.select((s) => s.apiKey), (prev, next) {
+      if (next != _apiKeyCtrl.text) {
+        _apiKeyCtrl.text = next ?? '';
+      }
+    });
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -192,10 +202,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
               physics: const NeverScrollableScrollPhysics(),
               children: [
                 const WizardStepLanguage(),
-                WizardStepProvider(
-                  state: state,
-                  apiKeyController: _apiKeyCtrl,
-                ),
+                WizardStepProvider(state: state, apiKeyController: _apiKeyCtrl),
                 WizardStepUser(
                   state: state,
                   nameController: _userNameCtrl,
@@ -203,7 +210,8 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
                   notesController: _userNotesCtrl,
                   avatarController: _userAvatarCtrl,
                   avatarNonce: _avatarNonces['user_avatar'] ?? 0,
-                  onPickAvatar: () => _pickAvatar(_userAvatarCtrl, 'user_avatar'),
+                  onPickAvatar: () =>
+                      _pickAvatar(_userAvatarCtrl, 'user_avatar'),
                 ),
                 WizardStepIdentity(
                   state: state,
@@ -234,30 +242,50 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(32, 40, 32, 24),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-      ),
+      decoration: const BoxDecoration(color: AppColors.surface),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text(
-                AppConstants.appName,
-                style: TextStyle(
-                  fontSize: AppConstants.fontSizeDisplay,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
+              Row(
+                children: [
+                  Image.asset(AppConstants.logoGhost, height: 60, width: 60),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        AppConstants.appName.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: AppConstants.fontSizeDisplay,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                          height: 1.1,
+                        ),
+                      ),
+                      Text(
+                        'wizard.tagline'.tr(),
+                        style: const TextStyle(
+                          color: AppColors.textDim,
+                          fontSize: AppConstants.fontSizeCaption,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
               Text(
-                'wizard.step_of'.tr(namedArgs: {
-                  'current': (state.currentStep + 1).toString(),
-                  'total': _totalSteps.toString(),
-                }),
+                'wizard.step_of'.tr(
+                  namedArgs: {
+                    'current': (state.currentStep + 1).toString(),
+                    'total': _totalSteps.toString(),
+                  },
+                ),
                 style: const TextStyle(
                   color: AppColors.textDim,
                   fontSize: AppConstants.fontSizeLabelTiny,
@@ -284,7 +312,6 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
     );
   }
 
-
   Widget _buildNavButtons(SetupWizardState state) {
     final isLast = state.currentStep == _totalSteps - 1;
     return Container(
@@ -308,14 +335,14 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
             onPressed: state.saving
                 ? null
                 : _canGoNext(state)
-                    ? (isLast ? _save : _goNext)
-                    : null,
+                ? (isLast ? _save : _goNext)
+                : null,
             isPrimary: true,
             label: state.saving
                 ? 'wizard.saving'
                 : isLast
-                    ? 'wizard.save'
-                    : 'wizard.next',
+                ? 'wizard.save'
+                : 'wizard.next',
             icon: state.saving
                 ? null
                 : (isLast ? Icons.check_circle : Icons.arrow_forward),
@@ -352,7 +379,9 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
         final wsUrl = await ref.read(gatewayUrlProvider.future);
 
         final wizardNotifier = ref.read(setupWizardProvider.notifier);
-        final String? path = await ref.read(configProvider.notifier).uploadAvatar(name, bytes, wsUrl);
+        final String? path = await ref
+            .read(configProvider.notifier)
+            .uploadAvatar(name, bytes, wsUrl);
         if (path != null) {
           controller.text = path;
           if (uploadName == 'user_avatar') {

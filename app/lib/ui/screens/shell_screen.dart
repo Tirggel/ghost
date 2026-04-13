@@ -137,14 +137,8 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
 
     // 2. API Key Check
     final provider = config.agent.provider ?? 'openai';
-    final keyName = provider == 'google'
-        ? 'google_api_key'
-        : '${provider}_api_key';
 
-    if (!vaultKeys.contains(keyName) &&
-        provider != 'ollama' &&
-        provider != 'vllm' &&
-        provider != 'litellm') {
+    if (!config.isProviderConfigured(provider)) {
       errors.add(
         'settings.api_keys.startup_warning'.tr(
           namedArgs: {'provider': provider},

@@ -67,8 +67,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
       // Skip non-AI providers
       if (service == 'telegram') continue;
 
-      final isLocal =
-          service == 'ollama' || service == 'vllm' || service == 'litellm' || service == 'lmstudio';
+      final isLocal = AppConstants.isLocalProvider(service);
       final storageKey = isLocal ? '${service}_base_url' : '${service}_api_key';
       final isDetected = config.detectedLocalProviders.any(
         (dp) => dp['id'] == service,

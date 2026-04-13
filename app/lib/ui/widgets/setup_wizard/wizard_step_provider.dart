@@ -54,34 +54,37 @@ class WizardStepProvider extends ConsumerWidget {
             },
             onChanged: (val) {
               notifier.updateProvider(val);
-              apiKeyController.clear();
             },
           ),
-          if (state.selectedProvider == 'ollama' || state.selectedProvider == 'lmstudio') ...[
+          if (state.isLocalProvider) ...[
             const SizedBox(height: 16),
-            WizardInfoCard(
-              text: state.selectedProvider == 'ollama'
-                  ? 'wizard.ollama_no_key'.tr()
-                  : 'wizard.lmstudio_no_key'.tr(),
+            WizardVerificationField(
+              controller: apiKeyController,
+              label: 'settings.api_keys.base_url_label',
+              hint: 'settings.api_keys.base_url_hint',
+              isVerifying: state.loadingModels,
+              isVerified: state.keyVerified,
+              error: state.keyError,
+              onVerify: () =>
+                  notifier.fetchLocalModels(state.selectedProvider!),
+              onChanged: notifier.updateApiKey,
+              obscureText: false,
+              verifyLabel: 'wizard.verify_url'.tr(),
             ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: state.loadingModels
-                  ? null
-                  : () => notifier.fetchLocalModels(state.selectedProvider!),
-              icon: const Icon(Icons.refresh, size: 16),
-              label: Text('wizard.fetch_models'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
-                    AppConstants.buttonBorderRadius,
-                  ),
-                ),
+            if (state.keyVerified) ...[
+              const SizedBox(height: 12),
+              WizardStatusCard(
+                text: 'settings.api_keys.detected_url'.tr(),
+                status: WizardStatus.success,
               ),
-            ),
+            ],
+            if (state.keyError != null) ...[
+              const SizedBox(height: 12),
+              WizardStatusCard(
+                text: 'settings.api_keys.detection_failed'.tr(),
+                status: WizardStatus.error,
+              ),
+            ],
           ] else if (state.selectedProvider != null) ...[
             const SizedBox(height: 16),
             WizardVerificationField(
@@ -94,6 +97,17 @@ class WizardStepProvider extends ConsumerWidget {
               onVerify: notifier.verifyKey,
               onChanged: notifier.updateApiKey,
             ),
+            if (state.keyError != null) ...[
+              const SizedBox(height: 12),
+              WizardStatusCard(
+                text:
+                    state.keyError!.toLowerCase().contains('401') ||
+                        state.keyError!.toLowerCase().contains('invalid')
+                    ? 'errors.invalid_key_simple'.tr()
+                    : state.keyError!,
+                status: WizardStatus.error,
+              ),
+            ],
           ],
           if (state.keyVerified) ...[
             const SizedBox(height: 16),

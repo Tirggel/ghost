@@ -26,14 +26,12 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
   String? _selectedModel;
   List<String> _availableModels = [];
   final List<String> _mainAgentSkills = [];
-  final Set<String> _activeLocalProviders = {};
   int _avatarNonce = 0;
 
   @override
   void initState() {
     super.initState();
     _loadInitialValues();
-    _checkLocalProviders();
   }
 
   void _loadInitialValues() {
@@ -58,25 +56,6 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
 
     if (_selectedProvider != null) {
       _updateModels(_selectedProvider!);
-    }
-  }
-
-  Future<void> _checkLocalProviders() async {
-    for (final p in AppConstants.aiProviders) {
-      if (p['id'] == 'ollama' || p['id'] == 'vllm' || p['id'] == 'litellm' || p['id'] == 'lmstudio') {
-        try {
-          final models = await ref
-              .read(configProvider.notifier)
-              .listModels(p['id']!, null);
-          if (models.isNotEmpty) {
-            if (mounted) {
-              setState(() {
-                _activeLocalProviders.add(p['id']!);
-              });
-            }
-          }
-        } catch (_) {}
-      }
     }
   }
 
@@ -151,18 +130,9 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
     final config = ref.watch(configProvider);
     final vaultKeys = config.vault['keys'] as List<dynamic>? ?? [];
 
-    final availableProviders = AppConstants.aiProviders.where((p) {
-      final id = p['id']!;
-      if (id == 'ollama' || id == 'vllm' || id == 'litellm' || id == 'lmstudio') {
-        return _activeLocalProviders.contains(id);
-      }
-      final keyName = id == 'google' ? 'google_api_key' : '${id}_api_key';
-      return vaultKeys.contains(keyName);
-    }).toList();
+    final availableProviders = config.getAvailableProviders(AppConstants.aiProviders);
 
-    final availableProviderIds = availableProviders
-        .map((p) => p['id']!)
-        .toList();
+    final availableProviderIds = availableProviders.map((p) => p['id']!).toList();
 
     return AppSettingsPage(
       onBack: widget.onBack,

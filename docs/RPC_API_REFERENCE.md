@@ -22,9 +22,48 @@ If authentication is enabled, you must call `auth.login` as the first message af
 - `token`: (String) Alternatively, an existing session token.
 
 **Response:**
-```json
-{ "authenticated": true }
-```
+- `authenticated`: (Boolean)
+
+---
+
+## 🛠️ Gateway Control
+
+### `gateway.status`
+Returns the current status of the gateway server.
+**Response:**
+- `status`: "running"
+- `port`: (Int)
+- `clients`: (Int) Count of connected clients.
+- `uptime`: (Int) Seconds since start.
+- `startedAt`: (ISO String)
+
+### `gateway.methods`
+Lists all registered RPC methods.
+**Response:**
+- `methods`: (Array of Strings)
+
+### `gateway.restart`
+Restarts the gateway process.
+
+---
+
+## ⚙️ Configuration Methods
+
+### `config.get`
+Returns the complete application state.
+**Response includes:**
+- `agent`, `user`, `identity`, `integrations`, `channels`, `tools`, `security`, `customAgents`.
+- `vault.keys`: List of keys stored in the encrypted vault.
+- `tokenUsage`: Real-time token usage stats (input/output).
+
+### `config.getKey` / `config.setKey`
+Manage API keys and secrets in the vault.
+**Params:**
+- `service`: (String, e.g., "openai", "anthropic", "telegram")
+- `key`: (String)
+
+### `config.updateAgent` / `config.updateUser` / `config.updateIdentity`
+Update specific configuration blocks. All sensitive data is automatically filtered into the vault.
 
 ---
 
@@ -38,9 +77,8 @@ Sends a message to an agent.
 - `sessionId`: (String, optional) Target an existing session.
 
 **Response:**
-```json
-{ "sessionId": "...", "status": "processing" }
-```
+- `sessionId`: (String)
+- `status`: "processing"
 
 ### `agent.history`
 Retrieves the message history for a session.
@@ -107,8 +145,15 @@ Sent when the agent has finished its final response.
 ```json
 { "sessionId": "...", "message": { ... } }
 ```
+
 ### `config.changed`
 Broadcasted when the global or agent configuration has been updated. Clients should refresh their local state.
 
 ### `skills.changed`
 Broadcasted when a new skill is installed or deleted.
+
+### `gateway.error`
+Broadcasted when a background error occurs (e.g., channel connection failure).
+```json
+{ "message": "...", "channelType": "..." }
+```

@@ -78,7 +78,7 @@ Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistent
 
 ## 🌟 Funktionen
 
-- **Multi-Modell-Unterstützung**: Nutze Anthropic (Claude), OpenAI (GPT), Google (Gemini), DeepSeek, Mistral, Groq, Together AI, Perplexity, X.AI (Grok) oder lokale Modelle via Ollama und OpenRouter.
+- **Multi-Modell-Unterstützung**: Nutze Anthropic (Claude), OpenAI (GPT), Google (Gemini), DeepSeek, Mistral, Groq, Together AI, Perplexity, X.AI (Grok) oder lokale Modelle via **LM Studio**, Ollama und OpenRouter.
 - **Memory Engine (RAG & Standard)**: Erweitere das Wissen deines Agenten durch lokale Vektor- und Stichwortspeicher.
     - **Standard Memory**: Stichwortbasiertes, verschlüsseltes lokales Gedächtnis (Hive). Informationen werden sicher gespeichert und über exakte Treffer abgerufen.
     - **RAG Memory (ObjectBox)**: Retrieval-Augmented Generation mit semantischer Vektorsuche, betrieben durch eine hochleistungsfähige lokale ObjectBox-Datenbank.
@@ -99,7 +99,7 @@ Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistent
     - **Dateisystem**: Vollständiger Zugriff zum Lesen, Schreiben und Verwalten lokaler Dateien.
     - **GitHub**: Integration zur Verwaltung von Repositories und Issues.
 - **Multi-Messenger-Unterstützung**:
-    - **14+ Kanäle**: Verbinde deinen Agenten mit Telegram, Discord, WhatsApp (Meta), Slack, Signal, iMessage (BlueBubbles), MS Teams, Google Chat, Matrix, Nextcloud Talk, Nostr, Tlon/Urbit, Zalo und WebChat.
+    - **13 Kanäle**: Verbinde deinen Agenten mit Telegram, Discord, WhatsApp (Meta), Slack, Signal, iMessage (BlueBubbles), MS Teams, Google Chat, Matrix, Nextcloud Talk, Tlon/Urbit, Zalo und WebChat.
     - **Intelligente Suche & Sortierung**: Verwalte deine Kommunikationskanäle mühelos mit integrierten Suchfiltern und automatischer Gruppierung nach Status.
     - **Resiliente Verbindungen**: Verbesserte Stabilität für Messaging-Gateways (wie Telegram) durch automatische Verbindungswiederherstellung und Konfliktlösung.
     - **DM-Richtlinien**: Granulare Kontrolle darüber, wer deinem Bot schreiben darf (Pairing, Allowlist, Open, Disabled).
@@ -116,6 +116,7 @@ Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistent
     - **Netzwerk-Einschränkung**: Komplette Isolation der Web-Tools des Agenten bei hoher Sicherheitsstufe, um unbefugte Datenabflüsse zu verhindern.
     - **Sicherer Tresor**: API-Schlüssel, Agenten-Konfigurationen und Memory-Einstellungen sind mit AES-256-GCM verschlüsselt und nur auf deinem Rechner gespeichert.
     - **KI-Anbieter-Suche & Maskierung**: Sensible API-Schlüssel werden standardmäßig maskiert und können einfach über einen Filter gefunden werden.
+- **Token-Verbrauchsüberwachung**: Behalte den Überblick über Eingabe- und Ausgabe-Token jeder Sitzung, um KI-Nutzung und Kosten zu kontrollieren.
     - **Verschlüsselte Datenbank**: Chat-Sitzungen und Avatare werden in einer lokalen Hive-Datenbank mit zusätzlicher Verschlüsselung gespeichert.
     - **Avatar-Management**: Bilder werden direkt in der Datenbank gespeichert, um maximale Privatsphäre zu gewährleisten.
     - **Selbstgehostet**: Volle Kontrolle über deine Daten und die Codebasis.
@@ -123,6 +124,7 @@ Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistent
     - **Klares Design**: Eine minimalistische und intuitive Oberfläche für ein ablenkungsfreies Erlebnis.
     - **Code-Darstellung**: Hebt Code-Blöcke hervor und formatiert sie für eine bessere Lesbarkeit.
     - **Einstellungszentrale**: Verwalte alle deine Konfigurationen zentral, einschließlich eines dedizierten Gateway-Tabs.
+- **Gateway-Status & Live-Logs**: Echtzeit-Überwachung der Gateway-Leistung, verbundener Clients und Systemprotokolle direkt in der App.
 
 ---
 

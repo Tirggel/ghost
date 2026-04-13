@@ -294,6 +294,7 @@ class OpenAIProvider implements AIModelProvider {
   static Future<List<String>> listModels(String apiKey,
       {String? baseUrl}) async {
     final url = Uri.parse('${baseUrl ?? 'https://api.openai.com/v1'}/models');
+    _log.info('Fetching models from $url...');
     final response = await http.get(
       url,
       headers: {
@@ -302,10 +303,14 @@ class OpenAIProvider implements AIModelProvider {
     );
 
     if (response.statusCode == 200) {
+      _log.fine('Successfully fetched models from $url');
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final models = data['data'] as List<dynamic>;
       return models.map((m) => m['id'] as String).toList();
     }
+
+    _log.warning('Failed to fetch models from $url: ${response.statusCode} ${response.body}');
+
 
     // Fallback known models if list fails
     return [

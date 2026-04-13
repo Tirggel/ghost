@@ -6,6 +6,7 @@ class AppConstants {
 
   static const String appName = 'Ghost';
   static const String appVersion = 'v1.0.0-alpha';
+  static const String logoGhost = 'assets/icons/logo/ghost.png';
 
   // UI Constants
   static const double settingsIconSize = 20.0;
@@ -42,6 +43,13 @@ class AppConstants {
   static const double settingsPagePadding = 20.0;
   static const double settingsTopPadding = 24.0;
   static const double settingsHeaderBottomPadding = 16.0;
+
+  // Standard Spacing
+  static const double spacingTiny = 4.0;
+  static const double spacingSmall = 8.0;
+  static const double spacingMedium = 16.0;
+  static const double spacingLarge = 24.0;
+  static const double spacingExtraLarge = 32.0;
 
   static const double cardPadding = 14.0; // inner padding of selectable cards
   static const double iconBoxSize = 36.0; // step-header icon container size
@@ -80,6 +88,7 @@ class AppConstants {
       'label': 'Hugging Face',
       'icon': 'huggingface-color.png',
     },
+    {'id': 'ipex-llm', 'label': 'IPEX-LLM (Intel)', 'icon': 'ollama.png'},
     {'id': 'litellm', 'label': 'LiteLLM (Local)', 'icon': 'litellm.png'},
     {'id': 'lmstudio', 'label': 'LM Studio (Local)', 'icon': 'lmstudio.png'},
     {'id': 'minimax', 'label': 'MiniMax', 'icon': 'minimax-color.png'},
@@ -102,12 +111,27 @@ class AppConstants {
     {'id': 'zai', 'label': 'Z.AI (GLM)', 'icon': 'zai.png'},
   ];
 
-  static String getProviderIcon(String id) {
-    final provider = aiProviders.firstWhere(
+  static bool isLocalProvider(String id) {
+    return id == 'ollama' ||
+        id == 'ipex-llm' ||
+        id == 'vllm' ||
+        id == 'litellm' ||
+        id == 'lmstudio';
+  }
+
+  static Map<String, String> getProvider(String id) {
+    return aiProviders.firstWhere(
       (p) => p['id'] == id,
       orElse: () => {},
     );
-    final icon = provider['icon'];
+  }
+
+  static String getProviderLabel(String id) {
+    return getProvider(id)['label'] ?? id;
+  }
+
+  static String getProviderIcon(String id) {
+    final icon = getProvider(id)['icon'];
     if (icon == null) return '';
     return 'assets/icons/llm/$icon';
   }

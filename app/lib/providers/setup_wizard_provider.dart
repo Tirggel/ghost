@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'gateway_provider.dart';
+import '../core/error_formatter.dart';
 
 class SetupWizardState {
   final int currentStep;
@@ -18,6 +19,9 @@ class SetupWizardState {
   final String userPronouns;
   final String userNotes;
   final String? userAvatar;
+  final String? baseUrl;
+  final bool isLocalProvider;
+  final bool serviceDetected;
   final String identName;
   final String identCreature;
   final String identVibe;
@@ -43,6 +47,9 @@ class SetupWizardState {
     this.userPronouns = '',
     this.userNotes = '',
     this.userAvatar,
+    this.baseUrl,
+    this.isLocalProvider = false,
+    this.serviceDetected = false,
     this.identName = '',
     this.identCreature = '',
     this.identVibe = '',
@@ -56,56 +63,70 @@ class SetupWizardState {
 
   SetupWizardState copyWith({
     int? currentStep,
-    String? selectedProvider,
-    String? apiKey,
+    Object? selectedProvider = _sentinel,
+    Object? apiKey = _sentinel,
     bool? verifyingKey,
     bool? keyVerified,
-    String? keyError,
+    Object? keyError = _sentinel,
     List<String>? models,
-    String? selectedModel,
+    Object? selectedModel = _sentinel,
     bool? loadingModels,
     String? userName,
     String? userCallSign,
     String? userPronouns,
     String? userNotes,
-    String? userAvatar,
+    Object? userAvatar = _sentinel,
+    Object? baseUrl = _sentinel,
+    bool? isLocalProvider,
+    bool? serviceDetected,
     String? identName,
     String? identCreature,
     String? identVibe,
     String? identEmoji,
     String? identNotes,
-    String? identAvatar,
+    Object? identAvatar = _sentinel,
     String? workspace,
     bool? saving,
     String? language,
   }) {
     return SetupWizardState(
       currentStep: currentStep ?? this.currentStep,
-      selectedProvider: selectedProvider ?? this.selectedProvider,
-      apiKey: apiKey ?? this.apiKey,
+      selectedProvider: selectedProvider == _sentinel
+          ? this.selectedProvider
+          : (selectedProvider as String?),
+      apiKey: apiKey == _sentinel ? this.apiKey : (apiKey as String?),
       verifyingKey: verifyingKey ?? this.verifyingKey,
       keyVerified: keyVerified ?? this.keyVerified,
-      keyError: keyError ?? this.keyError,
+      keyError: keyError == _sentinel ? this.keyError : (keyError as String?),
       models: models ?? this.models,
-      selectedModel: selectedModel ?? this.selectedModel,
+      selectedModel: selectedModel == _sentinel
+          ? this.selectedModel
+          : (selectedModel as String?),
       loadingModels: loadingModels ?? this.loadingModels,
       userName: userName ?? this.userName,
       userCallSign: userCallSign ?? this.userCallSign,
       userPronouns: userPronouns ?? this.userPronouns,
       userNotes: userNotes ?? this.userNotes,
-      userAvatar: userAvatar ?? this.userAvatar,
+      userAvatar:
+          userAvatar == _sentinel ? this.userAvatar : (userAvatar as String?),
+      baseUrl: baseUrl == _sentinel ? this.baseUrl : (baseUrl as String?),
+      isLocalProvider: isLocalProvider ?? this.isLocalProvider,
+      serviceDetected: serviceDetected ?? this.serviceDetected,
       identName: identName ?? this.identName,
       identCreature: identCreature ?? this.identCreature,
       identVibe: identVibe ?? this.identVibe,
       identEmoji: identEmoji ?? this.identEmoji,
       identNotes: identNotes ?? this.identNotes,
-      identAvatar: identAvatar ?? this.identAvatar,
+      identAvatar:
+          identAvatar == _sentinel ? this.identAvatar : (identAvatar as String?),
       workspace: workspace ?? this.workspace,
       saving: saving ?? this.saving,
       language: language ?? this.language,
     );
   }
 }
+
+const _sentinel = Object();
 
 final setupWizardProvider =
     NotifierProvider<SetupWizardNotifier, SetupWizardState>(() {
@@ -124,38 +145,70 @@ class SetupWizardNotifier extends Notifier<SetupWizardState> {
     state = state.copyWith(language: lang);
   }
 
+  static const localProviders = ['ollama', 'ipex-llm', 'vllm', 'litellm', 'lmstudio'];
+
   void updateProvider(String? provider) {
+    final config = ref.read(configProvider);
+    final isLocal = localProviders.contains(provider);
+    
+    String? detectedUrl;
+    if (isLocal) {
+      final detectedList = config.detectedLocalProviders;
+      final detected = detectedList.firstWhere(
+        (dp) => dp['id'] == provider,
+        orElse: () => <String, String>{},
+      );
+      if (detected.containsKey('url')) {
+        detectedUrl = detected['url'];
+      } else {
+        // Fallback to standard defaults if not detected
+        if (provider == 'ollama') detectedUrl = 'http://localhost:11434';
+        if (provider == 'lmstudio') detectedUrl = 'http://localhost:1234';
+      }
+    }
+
     state = state.copyWith(
       selectedProvider: provider,
-      keyVerified: provider == 'ollama' || provider == 'lmstudio',
+      isLocalProvider: isLocal,
+      serviceDetected: false, // Don't show detected card until verified
+      baseUrl: detectedUrl,
+      apiKey: detectedUrl, // Set apiKey even if null to trigger listener
+      keyVerified: false, // Manual verification required
       keyError: null,
       models: [],
       selectedModel: null,
     );
-    if (provider == 'ollama' || provider == 'lmstudio') {
-      fetchLocalModels(provider!);
-    }
+    // Removed automatic fetchLocalModels(provider!);
   }
 
   Future<void> fetchLocalModels(String provider) async {
-    state = state.copyWith(loadingModels: true);
+    state = state.copyWith(loadingModels: true, keyError: null);
     try {
       final models = await ref
           .read(configProvider.notifier)
-          .listModels(provider, null);
+          .listModels(provider, state.baseUrl);
       state = state.copyWith(
         loadingModels: false,
-        keyVerified: true,
+        keyVerified: models.isNotEmpty,
+        serviceDetected: models.isNotEmpty, // Show success card now
         models: models,
         selectedModel: models.isNotEmpty ? models.first : null,
       );
-    } catch (_) {
-      state = state.copyWith(loadingModels: false);
+    } catch (e) {
+      state = state.copyWith(
+        loadingModels: false,
+        keyVerified: false,
+        keyError: ErrorFormatter.format(e),
+      );
     }
   }
 
   void updateApiKey(String key) {
-    state = state.copyWith(apiKey: key, keyVerified: false);
+    if (state.isLocalProvider) {
+      state = state.copyWith(baseUrl: key, apiKey: key, keyVerified: false, keyError: null);
+    } else {
+      state = state.copyWith(apiKey: key, keyVerified: false, keyError: null);
+    }
   }
 
   Future<void> verifyKey() async {
@@ -178,17 +231,14 @@ class SetupWizardNotifier extends Notifier<SetupWizardState> {
       } else {
         state = state.copyWith(
           verifyingKey: false,
-          keyError: res['message'] ?? 'Unknown error',
+          keyError: ErrorFormatter.format(res['message']),
         );
       }
     } catch (e) {
-      state = state.copyWith(verifyingKey: false, keyError: e.toString());
+      state = state.copyWith(verifyingKey: false, keyError: ErrorFormatter.format(e));
     }
   }
 
-  Future<void> fetchOllamaModels() async {
-    return fetchLocalModels('ollama');
-  }
 
   void updateSelectedModel(String? model) {
     state = state.copyWith(selectedModel: model);
@@ -241,6 +291,7 @@ class SetupWizardNotifier extends Notifier<SetupWizardState> {
     final config = ref.read(configProvider.notifier);
     try {
       if (state.selectedProvider != null && state.apiKey != null) {
+        // If local provider, apiKey holds the baseUrl
         await config.setKey(state.selectedProvider!, state.apiKey!);
       }
       if (state.selectedModel != null) {

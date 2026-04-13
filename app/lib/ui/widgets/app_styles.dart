@@ -49,7 +49,7 @@ class AppInputDecoration {
     Widget? suffixIcon,
   }) {
     return InputDecoration(
-      hintText: (hint != null && hint.isNotEmpty) ? hint.tr() : null,
+      hintText: (hint != null && hint.isNotEmpty) ? hint : null,
       hintStyle: const TextStyle(
         color: AppColors.textDim,
         fontSize: AppConstants.fontSizeSmall,
@@ -181,7 +181,7 @@ class AppFormField extends StatelessWidget {
               onChanged: onChanged,
               onSubmitted: onSubmitted,
               decoration: AppInputDecoration.compact(
-                hint: hint,
+                hint: hint.tr(),
                 prefixIcon: prefixIcon,
                 suffixIcon: suffixIcon,
               ),
@@ -408,7 +408,7 @@ class _AppDropdownDialogState<T> extends State<_AppDropdownDialog<T>> {
                 autofocus: true,
                 style: const TextStyle(color: AppColors.white, fontSize: 13),
                 decoration: AppInputDecoration.compact(
-                  hint: 'sidebar.search_placeholder',
+                  hint: 'sidebar.search_placeholder'.tr(),
                 ).copyWith(
                   prefixIcon: const Icon(
                     Icons.search,
@@ -729,6 +729,7 @@ class AppHoverCard extends StatefulWidget {
     required this.onTap,
     this.isSelected = false,
     this.margin = const EdgeInsets.only(bottom: 8),
+    this.padding,
     super.key,
   });
 
@@ -736,6 +737,7 @@ class AppHoverCard extends StatefulWidget {
   final VoidCallback onTap;
   final bool isSelected;
   final EdgeInsets margin;
+  final EdgeInsets? padding;
 
   @override
   State<AppHoverCard> createState() => _AppHoverCardState();
@@ -759,7 +761,7 @@ class _AppHoverCardState extends State<AppHoverCard> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           margin: widget.margin,
-          padding: const EdgeInsets.all(AppConstants.cardPadding),
+          padding: widget.padding ?? const EdgeInsets.all(AppConstants.cardPadding),
           decoration: BoxDecoration(
             color: active
                 ? AppColors.surfaceLight // Etwas heller bei Hover
@@ -804,6 +806,7 @@ class AppLanguageTile extends StatelessWidget {
     return AppHoverCard(
       isSelected: isSelected,
       onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
           GestureDetector(
@@ -1231,7 +1234,7 @@ class AppSettingsPage extends StatelessWidget {
             onTap: onSubTabChanged!,
           )
         else
-          const SizedBox(height: AppConstants.settingsTopPadding),
+          const SizedBox(height: AppConstants.spacingSmall),
           
         Expanded(child: content),
         

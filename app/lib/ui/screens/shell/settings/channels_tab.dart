@@ -45,7 +45,11 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
     super.dispose();
   }
 
-  TextEditingController _getController(String channelId, String fieldKey, String defaultValue) {
+  TextEditingController _getController(
+    String channelId,
+    String fieldKey,
+    String defaultValue,
+  ) {
     if (!_controllers.containsKey(channelId)) {
       _controllers[channelId] = {};
     }
@@ -58,8 +62,12 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
   Future<void> _deleteChannelConfig(String channelId, String label) async {
     final confirmed = await AppAlertDialog.showConfirmation(
       context: context,
-      title: 'settings.api_keys.delete_key_title'.tr(namedArgs: {'label': label}),
-      content: 'settings.api_keys.delete_key_content'.tr(namedArgs: {'label': label}),
+      title: 'settings.api_keys.delete_key_title'.tr(
+        namedArgs: {'label': label},
+      ),
+      content: 'settings.api_keys.delete_key_content'.tr(
+        namedArgs: {'label': label},
+      ),
       confirmLabel: 'common.delete'.tr(),
       isDestructive: true,
     );
@@ -69,7 +77,10 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
         channelId: {'enabled': false, 'settings': {}},
       });
       if (mounted) {
-        AppSnackBar.showSuccess(context, 'settings.channels.tg_disconnected_snack'.tr()); // Generic success snackbar
+        AppSnackBar.showSuccess(
+          context,
+          'settings.channels.tg_disconnected_snack'.tr(),
+        ); // Generic success snackbar
       }
     }
   }
@@ -98,9 +109,14 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
         return;
       }
 
-      final currentAllowFrom = _controllers['telegram']?['allowFrom']?.text.trim() ?? '';
+      final currentAllowFrom =
+          _controllers['telegram']?['allowFrom']?.text.trim() ?? '';
       final List<String> allowFrom = currentAllowFrom.isNotEmpty
-          ? currentAllowFrom.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList()
+          ? currentAllowFrom
+                .split(',')
+                .map((s) => s.trim())
+                .where((s) => s.isNotEmpty)
+                .toList()
           : [];
 
       await ref.read(configProvider.notifier).updateChannels({
@@ -111,9 +127,12 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
           'settings': {'botToken': token},
         },
       });
-      
+
       if (mounted) {
-        AppSnackBar.showSuccess(context, 'settings.channels.tg_connected_snack'.tr());
+        AppSnackBar.showSuccess(
+          context,
+          'settings.channels.tg_connected_snack'.tr(),
+        );
         setState(() {
           _editingState['telegram'] = false;
           _selectedPolicies.remove('telegram');
@@ -124,11 +143,14 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
         setState(() => _verifyingState['telegram'] = false);
         AppSnackBar.showError(
           context,
-          'settings.channels.tg_failed_save'.tr(namedArgs: {'error': e.toString()}),
+          'settings.channels.tg_failed_save'.tr(
+            namedArgs: {'error': e.toString()},
+          ),
         );
       }
     }
   }
+
   Future<void> _saveGenericChannelConfig(String channelId) async {
     final channelControllers = _controllers[channelId] ?? {};
     final settings = <String, dynamic>{};
@@ -141,13 +163,18 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
         settings[entry.key] = entry.value.text.trim();
       }
     }
-    
+
     // Check if at least one field is filled (excluding dm policy settings)
     final enabled = settings.values.any((v) => v.toString().isNotEmpty);
-    final List<String> allowFrom = allowFromRaw != null && allowFromRaw.isNotEmpty
-        ? allowFromRaw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList()
+    final List<String> allowFrom =
+        allowFromRaw != null && allowFromRaw.isNotEmpty
+        ? allowFromRaw
+              .split(',')
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList()
         : [];
-    
+
     try {
       await ref.read(configProvider.notifier).updateChannels({
         channelId: {
@@ -157,9 +184,12 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
           'settings': settings,
         },
       });
-      
+
       if (mounted) {
-        AppSnackBar.showSuccess(context, 'settings.channels.tg_connected_snack'.tr());
+        AppSnackBar.showSuccess(
+          context,
+          'settings.channels.tg_connected_snack'.tr(),
+        );
         setState(() {
           _editingState[channelId] = false;
           _selectedPolicies.remove(channelId);
@@ -169,7 +199,9 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
       if (mounted) {
         AppSnackBar.showError(
           context,
-          'settings.channels.tg_failed_save'.tr(namedArgs: {'error': e.toString()}),
+          'settings.channels.tg_failed_save'.tr(
+            namedArgs: {'error': e.toString()},
+          ),
         );
       }
     }
@@ -179,16 +211,27 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
 
   String _getPolicyLabel(String policy) {
     switch (policy) {
-      case 'pairing': return 'settings.channels.dm_policy_pairing'.tr();
-      case 'allowlist': return 'settings.channels.dm_policy_allowlist'.tr();
-      case 'open': return 'settings.channels.dm_policy_open'.tr();
-      case 'disabled': return 'settings.channels.dm_policy_disabled'.tr();
-      default: return policy;
+      case 'pairing':
+        return 'settings.channels.dm_policy_pairing'.tr();
+      case 'allowlist':
+        return 'settings.channels.dm_policy_allowlist'.tr();
+      case 'open':
+        return 'settings.channels.dm_policy_open'.tr();
+      case 'disabled':
+        return 'settings.channels.dm_policy_disabled'.tr();
+      default:
+        return policy;
     }
   }
 
-  Widget _buildChannelCard(String channelId, String label, String iconPath, Map<String, dynamic> configChannels) {
-    final channelConfig = configChannels[channelId] as Map<String, dynamic>? ?? {};
+  Widget _buildChannelCard(
+    String channelId,
+    String label,
+    String iconPath,
+    Map<String, dynamic> configChannels,
+  ) {
+    final channelConfig =
+        configChannels[channelId] as Map<String, dynamic>? ?? {};
     final settings = channelConfig['settings'] as Map<String, dynamic>? ?? {};
     final isEnabled = channelConfig['enabled'] == true;
     final dmPolicyStr = channelConfig['dmPolicy'] as String? ?? 'pairing';
@@ -202,19 +245,31 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
       inputFields = [
         if (policy != 'disabled')
           AppSettingsInputField(
-            controller: _getController(channelId, 'serviceAccountJsonPath', settings['serviceAccountJsonPath'] ?? ''),
+            controller: _getController(
+              channelId,
+              'serviceAccountJsonPath',
+              settings['serviceAccountJsonPath'] ?? '',
+            ),
             label: 'settings.channels.gchat_sa_label',
             hint: 'settings.channels.gchat_sa_hint',
           ),
         if (policy != 'disabled')
           AppSettingsInputField(
-            controller: _getController(channelId, 'projectId', settings['projectId'] ?? ''),
+            controller: _getController(
+              channelId,
+              'projectId',
+              settings['projectId'] ?? '',
+            ),
             label: 'settings.channels.gchat_project_label',
             hint: 'settings.channels.gchat_project_hint',
           ),
         if (policy != 'disabled')
           AppSettingsInputField(
-            controller: _getController(channelId, 'subscriptionId', settings['subscriptionId'] ?? ''),
+            controller: _getController(
+              channelId,
+              'subscriptionId',
+              settings['subscriptionId'] ?? '',
+            ),
             label: 'settings.channels.gchat_sub_label',
             hint: 'settings.channels.gchat_sub_hint',
           ),
@@ -224,7 +279,11 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
       if (policy != 'disabled') {
         inputFields = [
           AppSettingsInputField(
-            controller: _getController(channelId, 'botToken', settings['botToken'] ?? ''),
+            controller: _getController(
+              channelId,
+              'botToken',
+              settings['botToken'] ?? '',
+            ),
             label: 'settings.channels.tg_token_label',
             hint: 'settings.channels.tg_token_hint',
           ),
@@ -237,7 +296,11 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
       if (policy != 'disabled') {
         inputFields = [
           AppSettingsInputField(
-            controller: _getController(channelId, 'token', settings['token'] ?? ''),
+            controller: _getController(
+              channelId,
+              'token',
+              settings['token'] ?? '',
+            ),
             label: 'settings.channels.config_label',
             hint: 'settings.channels.config_hint',
           ),
@@ -252,13 +315,18 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
     if (policy == 'pairing') {
       inputFields.add(
         AppSettingsInputField(
-          controller: _getController(channelId, 'pairingCode', settings['pairingCode'] ?? ''),
+          controller: _getController(
+            channelId,
+            'pairingCode',
+            settings['pairingCode'] ?? '',
+          ),
           label: 'settings.channels.dm_policy_pairing_code',
           hint: 'settings.channels.dm_policy_pairing_code_hint',
         ),
       );
     } else if (policy == 'allowlist') {
-      final currentAllowFrom = (channelConfig['allowFrom'] as List<dynamic>?)?.join(', ') ?? '';
+      final currentAllowFrom =
+          (channelConfig['allowFrom'] as List<dynamic>?)?.join(', ') ?? '';
       inputFields.add(
         AppSettingsInputField(
           controller: _getController(channelId, 'allowFrom', currentAllowFrom),
@@ -305,7 +373,8 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
       padding: const EdgeInsets.only(bottom: 16.0),
       child: AppSettingsInput(
         title: label,
-        subtitle: '${'settings.channels.dm_policy'.tr()}: ${_getPolicyLabel(dmPolicyStr)}',
+        subtitle:
+            '${'settings.channels.dm_policy'.tr()}: ${_getPolicyLabel(dmPolicyStr)}',
         translateSubtitle: false,
         leading: leadingWidget,
         isEditing: isEditing,
@@ -314,7 +383,9 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
         inputs: inputFields,
         extraChild: policyDropdown,
         onEdit: () async {
-          final token = await ref.read(configProvider.notifier).getChannelToken(channelId);
+          final token = await ref
+              .read(configProvider.notifier)
+              .getChannelToken(channelId);
 
           if (mounted) {
             setState(() {
@@ -324,21 +395,37 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
               // Sync controllers with current settings to ensure they reflect the stored state
               if (channelId == 'telegram') {
                 final currentToken = token ?? settings['botToken'] ?? '';
-                _getController(channelId, 'botToken', currentToken).text = currentToken;
+                _getController(channelId, 'botToken', currentToken).text =
+                    currentToken;
               } else if (channelId == 'googleChat') {
-                for (final field in ['serviceAccountJsonPath', 'projectId', 'subscriptionId']) {
-                  _getController(channelId, field, settings[field] ?? '').text = settings[field] ?? '';
+                for (final field in [
+                  'serviceAccountJsonPath',
+                  'projectId',
+                  'subscriptionId',
+                ]) {
+                  _getController(channelId, field, settings[field] ?? '').text =
+                      settings[field] ?? '';
                 }
               } else {
                 final currentToken = token ?? settings['token'] ?? '';
-                _getController(channelId, 'token', currentToken).text = currentToken;
+                _getController(channelId, 'token', currentToken).text =
+                    currentToken;
               }
 
               if (dmPolicyStr == 'pairing') {
-                _getController(channelId, 'pairingCode', settings['pairingCode'] ?? '').text = settings['pairingCode'] ?? '';
+                _getController(
+                  channelId,
+                  'pairingCode',
+                  settings['pairingCode'] ?? '',
+                ).text = settings['pairingCode'] ?? '';
               } else if (dmPolicyStr == 'allowlist') {
-                final currentAllowFrom = (channelConfig['allowFrom'] as List<dynamic>?)?.join(', ') ?? '';
-                _getController(channelId, 'allowFrom', currentAllowFrom).text = currentAllowFrom;
+                final currentAllowFrom =
+                    (channelConfig['allowFrom'] as List<dynamic>?)?.join(
+                      ', ',
+                    ) ??
+                    '';
+                _getController(channelId, 'allowFrom', currentAllowFrom).text =
+                    currentAllowFrom;
               }
             });
           }
@@ -348,7 +435,9 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
         onCancel: () => setState(() => _editingState[channelId] = false),
         addTooltip: 'settings.api_keys.add_tooltip',
         deleteTooltip: 'settings.api_keys.delete_tooltip',
-        verifySaveTooltip: channelId == 'telegram' ? 'settings.api_keys.verify_save_tooltip' : null,
+        verifySaveTooltip: channelId == 'telegram'
+            ? 'settings.api_keys.verify_save_tooltip'
+            : null,
       ),
     );
   }
@@ -369,26 +458,34 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
               AppConstants.settingsPagePadding,
             ),
             children: [
-              const AppSectionHeader('settings.channels.section_title', large: true),
+              const AppSectionHeader(
+                'settings.channels.section_title',
+                large: true,
+              ),
               TextField(
                 controller: _searchController,
                 style: const TextStyle(color: AppColors.white, fontSize: 13),
-                decoration: AppInputDecoration.compact(
-                  hint: 'settings.channels.search_placeholder',
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 16, color: AppColors.textDim),
-                          onPressed: () => _searchController.clear(),
-                        )
-                      : null,
-                ).copyWith(
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: AppColors.textDim,
-                    size: 18,
-                  ),
-                  fillColor: AppColors.background,
-                ),
+                decoration:
+                    AppInputDecoration.compact(
+                      hint: 'settings.channels.search_placeholder'.tr(),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(
+                                Icons.clear,
+                                size: 16,
+                                color: AppColors.textDim,
+                              ),
+                              onPressed: () => _searchController.clear(),
+                            )
+                          : null,
+                    ).copyWith(
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: AppColors.textDim,
+                        size: 18,
+                      ),
+                      fillColor: AppColors.background,
+                    ),
               ),
               const SizedBox(height: 24),
               Padding(
@@ -411,15 +508,15 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
   }
 
   List<Widget> _buildChannelSections(
-    List<Map<String, String>> channels, 
-    Map<String, dynamic> channelsMap
+    List<Map<String, String>> channels,
+    Map<String, dynamic> channelsMap,
   ) {
     final active = <Map<String, String>>[];
     final inactive = <Map<String, String>>[];
 
     for (final channelData in channels) {
       final id = channelData['id']!;
-      
+
       if (_searchQuery.isNotEmpty) {
         final label = channelData['label']!.tr().toLowerCase();
         if (!label.contains(_searchQuery) && !id.contains(_searchQuery)) {
@@ -442,37 +539,44 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
     final widgets = <Widget>[];
 
     if (active.isNotEmpty) {
-      widgets.addAll(active.map((channelData) => _buildChannelCard(
-        channelData['id']!,
-        channelData['label']!,
-        AppConstants.getChannelIcon(channelData['id']!),
-        channelsMap,
-      )));
+      widgets.addAll(
+        active.map(
+          (channelData) => _buildChannelCard(
+            channelData['id']!,
+            channelData['label']!,
+            AppConstants.getChannelIcon(channelData['id']!),
+            channelsMap,
+          ),
+        ),
+      );
     }
 
     if (inactive.isNotEmpty) {
       if (active.isNotEmpty) {
         widgets.add(const SizedBox(height: 32));
-        widgets.add(const Padding(
-          padding: EdgeInsets.only(bottom: 12),
-          child: AppSectionLabel('settings.channels.other_channels'),
-        ));
+        widgets.add(
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: AppSectionLabel('settings.channels.other_channels'),
+          ),
+        );
       }
-      widgets.addAll(inactive.map((channelData) => _buildChannelCard(
-        channelData['id']!,
-        channelData['label']!,
-        AppConstants.getChannelIcon(channelData['id']!),
-        channelsMap,
-      )));
+      widgets.addAll(
+        inactive.map(
+          (channelData) => _buildChannelCard(
+            channelData['id']!,
+            channelData['label']!,
+            AppConstants.getChannelIcon(channelData['id']!),
+            channelsMap,
+          ),
+        ),
+      );
     }
 
     return widgets;
   }
 
   Widget _buildNavButtons() {
-    return AppSettingsNavBar(
-      onBack: widget.onBack,
-      onNext: widget.onNext,
-    );
+    return AppSettingsNavBar(onBack: widget.onBack, onNext: widget.onNext);
   }
 }

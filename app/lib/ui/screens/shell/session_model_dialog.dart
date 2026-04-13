@@ -95,15 +95,7 @@ class _SessionModelDialogState extends ConsumerState<SessionModelDialog> {
     final config = ref.watch(configProvider);
     final vaultKeys = config.vaultKeys;
 
-    final activeProviders = AppConstants.aiProviders.where((p) {
-      if (p['id'] == 'ollama' || p['id'] == 'vllm' || p['id'] == 'litellm' || p['id'] == 'lmstudio') {
-        // For simplicity in this dialog, we show them all,
-        // but real list might be filtered by backend.
-        return true;
-      }
-      final keyName = '${p['id']}_api_key';
-      return vaultKeys.contains(keyName);
-    }).toList();
+    final activeProviders = config.getAvailableProviders(AppConstants.aiProviders);
 
     return AppAlertDialog(
       title: Text('chat.change_model_title'.tr()),

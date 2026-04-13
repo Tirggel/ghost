@@ -245,13 +245,23 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
 
   @override
   Widget build(BuildContext context) {
-    final vaultKeys = ref.watch(configProvider).vaultKeys;
+    final config = ref.watch(configProvider);
+    final vaultKeys = config.vaultKeys;
     final availableProviders = AppConstants.aiProviders.where((p) {
       final id = p['id']!;
       if (id == _selectedProvider) return true;
-      final isLocal = id == 'ollama' || id == 'vllm' || id == 'litellm' || id == 'lmstudio';
+      final isLocal = id == 'ollama' ||
+          id == 'ipex-llm' ||
+          id == 'vllm' ||
+          id == 'litellm' ||
+          id == 'lmstudio';
       final storageKey = isLocal ? '${id}_base_url' : '${id}_api_key';
-      return vaultKeys.contains(storageKey);
+
+      final isAlreadySet = vaultKeys.contains(storageKey);
+      final isDetected =
+          config.detectedLocalProviders.any((dp) => dp['id'] == id);
+
+      return isAlreadySet || isDetected;
     }).toList();
 
     final availableProviderIds = availableProviders.map((p) => p['id']!).toList();
