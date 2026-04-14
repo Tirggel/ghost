@@ -40,17 +40,19 @@ Modelle werden in `scripts/models/` gespeichert. Falls ein Modell fehlt, versuch
 
 ## 👂 Spracherkennung (STT)
 
-Ghost nutzt **Faster-Whisper**, eine hochperformante Implementierung von OpenAIs Whisper-Modell.
+Ghost unterstützt zwei Modi für die Spracherkennung: **Gateway-Client-Seite** (Python) und **Lokale App-Diktierfunktion** (Sherpa-ONNX).
 
-### So funktioniert es:
-- Skripte befinden sich in `scripts/stt.py`.
-- Es transkribiert Audiodateien, die über Telegram gesendet oder in der App aufgenommen wurden.
+### 1. Gateway STT (Faster-Whisper)
+- **Verwendet für**: Transkription von Nachrichten, die über Telegram oder andere Messenger-Kanäle gesendet werden.
+- **Implementierung**: Python-basierte Skripte in `scripts/stt.py`.
+- **Modellgrößen**: Du kannst die Modellgrößen (tiny, base, small, medium, large-v3) in den Ghost App Einstellungen wählen.
 
-### Modell-Größen:
-Du kannst je nach Hardware verschiedene Modellgrößen wählen (tiny, base, small, medium, large-v3):
-- **Tiny/Base**: Schnell, geringere Genauigkeit (gut für einfache Befehle).
-- **Small/Medium**: Ausgewogene Leistung.
-- **Large-v3**: Höchste Genauigkeit, erfordert mehr VRAM/RAM.
+### 2. Lokale App-Diktierfunktion (Sherpa-ONNX)
+- **Verwendet für**: Direkte Echtzeit-Transkription innerhalb der Ghost Desktop App (Linux).
+- **Implementierung**: Integrierte [Sherpa-ONNX](https://github.com/k2-fsa/sherpa-onnx) Unterstützung.
+- **Modell**: Verwendet das präzise **Whisper `base`** Modell (ONNX-Format).
+- **Einrichtung**: Die App lädt beim ersten Gebrauch automatisch die erforderlichen Modelldateien (~150MB) herunter. Für diese Funktion ist keine separate Python-Einrichtung erforderlich.
+- **Features**: Optimiert für hohe Leistung und geringe Latenz auf Desktop-CPUs.
 
 ---
 

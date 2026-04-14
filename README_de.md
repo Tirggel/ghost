@@ -98,12 +98,13 @@ Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistent
     - **Websuche**: Integrierte Websuche via DuckDuckGo.
     - **Dateisystem**: Vollständiger Zugriff zum Lesen, Schreiben und Verwalten lokaler Dateien.
     - **GitHub**: Integration zur Verwaltung von Repositories und Issues.
+    - **Chat-Suche (Strg+F)**: Schnelle Suche innerhalb einer Sitzung mit Echtzeit-Hervorhebung und interaktiver Navigation.
 - **Multi-Messenger-Unterstützung**:
     - **13 Kanäle**: Verbinde deinen Agenten mit Telegram, Discord, WhatsApp (Meta), Slack, Signal, iMessage (BlueBubbles), MS Teams, Google Chat, Matrix, Nextcloud Talk, Tlon/Urbit, Zalo und WebChat.
     - **Intelligente Suche & Sortierung**: Verwalte deine Kommunikationskanäle mühelos mit integrierten Suchfiltern und automatischer Gruppierung nach Status.
-    - **Resiliente Verbindungen**: Verbesserte Stabilität für Messaging-Gateways (wie Telegram) durch automatische Verbindungswiederherstellung und Konfliktlösung.
+    - **Resiliente Verbindungen**: Verbesserte Stabilität für Messaging-Gateways (wie Telegram) durch automatische Verbindungswiederherstellung und automatische Bereinigung von Tokens/Zugangsdaten.
     - **DM-Richtlinien**: Granulare Kontrolle darüber, wer deinem Bot schreiben darf (Pairing, Allowlist, Open, Disabled).
-    - **Sprachnachrichten**: Unterstützt das Empfangen und Senden von Sprachnachrichten auf kompatiblen Kanälen (wie Telegram).
+    - **Sprachnachrichten & Lokales Diktieren**: Unterstützt das Empfangen/Senden von Sprachnachrichten und bietet eine **hochperformante lokale Offline-Diktierfunktion** (Whisper `base` via Sherpa-ONNX) direkt in der App.
     - **Zentrales Gateway**: Alle Nachrichten werden über einen einzigen Hochleistungsserver geroutet.
 - **Automatisierte Agenten-Zeitpläne**:
     - **Cron-basierte Automatisierung**: Erstelle eigene Agenten mit spezialisierten Skills und plane deren Ausführung mittels Unix-Cron-Ausdrücken (z.B. alle 5 Minuten).
@@ -117,6 +118,8 @@ Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistent
     - **Sicherer Tresor**: API-Schlüssel, Agenten-Konfigurationen und Memory-Einstellungen sind mit AES-256-GCM verschlüsselt und nur auf deinem Rechner gespeichert.
     - **KI-Anbieter-Suche & Maskierung**: Sensible API-Schlüssel werden standardmäßig maskiert und können einfach über einen Filter gefunden werden.
 - **Token-Verbrauchsüberwachung**: Behalte den Überblick über Eingabe- und Ausgabe-Token jeder Sitzung, um KI-Nutzung und Kosten zu kontrollieren.
+    - **Echtzeit-Monitoring**: Präzise Token-Zählung direkt aus den Metadaten der Modellantworten.
+    - **Gesamtverbrauch**: Integrierter "Usage Provider" zur Verfolgung des kumulativen Verbrauchs über Sitzungen hinweg.
     - **Verschlüsselte Datenbank**: Chat-Sitzungen und Avatare werden in einer lokalen Hive-Datenbank mit zusätzlicher Verschlüsselung gespeichert.
     - **Avatar-Management**: Bilder werden direkt in der Datenbank gespeichert, um maximale Privatsphäre zu gewährleisten.
     - **Selbstgehostet**: Volle Kontrolle über deine Daten und die Codebasis.

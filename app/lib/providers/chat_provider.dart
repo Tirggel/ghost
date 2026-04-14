@@ -104,35 +104,46 @@ class ChatNotifier extends Notifier<Map<String, ChatState>> {
           int input = 0;
           int output = 0;
 
-          void findTokens(dynamic obj) {
-            if (obj is Map) {
-              for (final entry in obj.entries) {
-                final key = entry.key.toString().toLowerCase();
-                final val = entry.value;
-
-                if (val is int || val is double || val is String && int.tryParse(val) != null) {
-                  final num = int.tryParse(val.toString()) ?? 0;
-                  if (num > 0) {
-                    if (key.contains('token')) {
-                      if (key.contains('input') || key.contains('prompt') || key.contains('context')) {
-                        if (num > input) input = num;
-                      } else if (key.contains('output') || key.contains('completion') || key.contains('generated')) {
-                        if (num > output) output = num;
-                      }
-                    }
-                  }
-                } else if (val is Map || val is List) {
-                  findTokens(val);
-                }
-              }
-            } else if (obj is List) {
-              for (final item in obj) {
-                findTokens(item);
-              }
-            }
+          // 1. Direct extraction from metadata
+          final metadata = messageData['metadata'] as Map<String, dynamic>?;
+          if (metadata != null && metadata['usage'] is Map) {
+            final usage = metadata['usage'] as Map;
+            input = (usage['input'] as num?)?.toInt() ?? 0;
+            output = (usage['output'] as num?)?.toInt() ?? 0;
           }
 
-          findTokens(msg);
+          // 2. Fallback: Deep extraction
+          if (input == 0 && output == 0) {
+            void findTokens(dynamic obj, [String parentKey = '']) {
+              if (obj is Map) {
+                for (final entry in obj.entries) {
+                  final key = entry.key.toString().toLowerCase();
+                  final val = entry.value;
+
+                  if (val is num || val is String && int.tryParse(val) != null) {
+                    final number = (val is num) ? val.toInt() : int.tryParse(val.toString()) ?? 0;
+                    if (number > 0) {
+                      final hasUsageContext = key.contains('token') || key.contains('usage') || parentKey.contains('usage');
+                      final isInput = key.contains('input') || key.contains('prompt') || key.contains('context');
+                      final isOutput = key.contains('output') || key.contains('completion') || key.contains('generated');
+
+                      if (hasUsageContext) {
+                        if (isInput && number > input) input = number;
+                        if (isOutput && number > output) output = number;
+                      }
+                    }
+                  } else if (val is Map || val is List) {
+                    findTokens(val, key);
+                  }
+                }
+              } else if (obj is List) {
+                for (final item in obj) {
+                  findTokens(item, parentKey);
+                }
+              }
+            }
+            findTokens(msg);
+          }
 
           if (input > 0 || output > 0) {
             ref.read(tokenUsageProvider.notifier).addUsage(input, output);

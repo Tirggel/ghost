@@ -200,6 +200,8 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
                 agentId: s.agentId,
                 createdAt: s.createdAt,
                 lastActiveAt: s.lastActiveAt,
+                inputTokens: s.inputTokens,
+                outputTokens: s.outputTokens,
               );
             }
             return s;
@@ -327,6 +329,8 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
         agentId: old.agentId,
         createdAt: old.createdAt,
         lastActiveAt: old.lastActiveAt,
+        inputTokens: old.inputTokens,
+        outputTokens: old.outputTokens,
       );
     }
 
@@ -349,6 +353,8 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
             agentId: s.agentId,
             createdAt: s.createdAt,
             lastActiveAt: s.lastActiveAt,
+            inputTokens: s.inputTokens,
+            outputTokens: s.outputTokens,
           );
         }
         return s;
@@ -373,6 +379,8 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
         agentId: old.agentId,
         createdAt: old.createdAt,
         lastActiveAt: old.lastActiveAt,
+        inputTokens: old.inputTokens,
+        outputTokens: old.outputTokens,
       );
     }
 
@@ -394,6 +402,8 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
             agentId: s.agentId,
             createdAt: s.createdAt,
             lastActiveAt: s.lastActiveAt,
+            inputTokens: s.inputTokens,
+            outputTokens: s.outputTokens,
           );
         }
         return s;

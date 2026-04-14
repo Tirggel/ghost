@@ -31,6 +31,9 @@ dependencies:
   highlight: ^0.7.0
   logging: ^1.2.0
   flutter_highlight: ^0.7.0
+  sherpa_onnx: ^1.12.36
+  record: ^6.2.0
+  archive: ^4.0.9
 
 dev_dependencies:
   flutter_test:

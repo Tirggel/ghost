@@ -98,12 +98,13 @@ For new users, Ghost now includes an interactive **Setup Wizard** which is trigg
     - **Web Search**: Integrated web search via DuckDuckGo.
     - **File System**: Full access to read, write, and manage local files.
     - **GitHub**: Integration for managing repositories and issues.
+    - **Chat Search (Ctrl+F)**: Fast in-session search with real-time highlighting and interactive navigation between matches.
 - **Multi-Channel Messenger Support**:
     - **13 Channels**: Connect your agent to Telegram, Discord, WhatsApp (Meta), Slack, Signal, iMessage (BlueBubbles), MS Teams, Google Chat, Matrix, Nextcloud Talk, Tlon/Urbit, Zalo, and WebChat.
     - **Smart Sorting & Searching**: Easily manage your communication channels with integrated search filters and automated grouping by status.
-    - **Resilient Connections**: Improved stability for messaging gateways (like Telegram), featuring automatic connection recovery and conflict resolution.
+    - **Resilient Connections**: Improved stability for messaging gateways (like Telegram), featuring automatic connection recovery and automated token/credential cleanup.
     - **DM Policies**: Granular control over who can message your bot (Pairing, Allowlist, Open, Disabled).
-    - **Voice Messages**: Supports receiving and sending voice messages on compatible channels (like Telegram).
+    - **Voice Messages & Local Dictation**: Supports receiving/sending voice messages and provides **high-performance local offline dictation** (Whisper `base` via Sherpa-ONNX) directly in the app.
     - **Centralized Gateway**: All messages are routed through a single high-performance server.
 - **Automated Agent Scheduling**:
     - **Cron-based Automation**: Create custom agents with specialized skills and schedule them using unix-style cron expressions (e.g., every 5 minutes).
@@ -117,6 +118,8 @@ For new users, Ghost now includes an interactive **Setup Wizard** which is trigg
     - **Secure Vault**: API keys, agent configurations, and memory settings are encrypted with AES-256-GCM and stored only on your machine.
     - **AI Provider Search & Masking**: Sensitive API keys are masked by default and can be easily managed with a dedicated search filter.
 - **Token Usage Tracking**: Monitor input and output tokens for every session to keep track of AI usage and costs.
+    - **Real-time Monitoring**: Accurate token counting parsed directly from model response metadata.
+    - **Cumulative Usage**: Integrated Usage Provider to track total consumption across sessions and restarts.
     - **Encrypted Database**: Chat sessions and avatars are stored in a local Hive database with additional encryption.
     - **Avatar Management**: Images are stored directly in the database for maximum privacy.
     - **Self-hosted**: Full control over your data and codebase.

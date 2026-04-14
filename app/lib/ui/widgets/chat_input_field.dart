@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../core/constants.dart';
 import '../../core/models/config_models.dart';
 import '../../providers/gateway_provider.dart';
+import '../../providers/stt_provider.dart';
 
 class ChatInputField extends ConsumerStatefulWidget {
   const ChatInputField({
@@ -26,6 +27,20 @@ class ChatInputField extends ConsumerStatefulWidget {
 
 class _ChatInputFieldState extends ConsumerState<ChatInputField> {
   final List<PlatformFile> _attachments = [];
+
+  void _toggleListening() {
+    final sttState = ref.read(sttProvider);
+    if (!sttState.isRecording && !sttState.isDownloading && !sttState.isTranscribing) {
+      widget.controller.clear();
+    }
+
+    ref.read(sttProvider.notifier).toggleRecording((text) {
+      if (text.isNotEmpty) {
+        final currentText = widget.controller.text;
+        widget.controller.text = currentText.isEmpty ? text : '$currentText $text';
+      }
+    });
+  }
 
   Future<void> _pickFiles(ModelCapabilities caps) async {
     final List<String> allowedExtensions = [];
@@ -73,6 +88,7 @@ class _ChatInputFieldState extends ConsumerState<ChatInputField> {
   Widget build(BuildContext context) {
     final capsAsync = ref.watch(currentModelCapabilitiesProvider);
     final caps = capsAsync.value ?? ModelCapabilities.textOnly();
+    final sttState = ref.watch(sttProvider);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -153,6 +169,58 @@ class _ChatInputFieldState extends ConsumerState<ChatInputField> {
                     onSubmitted: (_) => _handleSend(),
                   ),
                 ),
+                if (sttState.isDownloading)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          sttState.downloadProgress >= 1.0 
+                              ? 'Entpacke Modell...' 
+                              : 'Lade Modell... ${(sttState.downloadProgress * 100).toInt()}%',
+                          style: const TextStyle(
+                            color: AppConstants.iconColorPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            value: sttState.downloadProgress > 0 && sttState.downloadProgress < 1.0 
+                                ? sttState.downloadProgress 
+                                : null,
+                            strokeWidth: 2,
+                            color: AppConstants.iconColorPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (sttState.isTranscribing)
+                  const Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppConstants.iconColorPrimary,
+                      ),
+                    ),
+                  )
+                else
+                  IconButton(
+                    onPressed: _toggleListening,
+                    icon: Icon(
+                      sttState.isRecording ? Icons.mic : Icons.mic_none,
+                      color: sttState.isRecording ? AppConstants.iconColorError : AppColors.textDim,
+                    ),
+                    tooltip: 'Mic',
+                  ),
                 if (widget.isProcessing)
                   IconButton(
                     onPressed: widget.onStop,

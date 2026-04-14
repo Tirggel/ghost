@@ -97,6 +97,8 @@ class Session {
         'history': history.map((m) => m.toJson()).toList(),
         'createdAt': createdAt.toIso8601String(),
         'lastActiveAt': lastActiveAt.toIso8601String(),
+        'inputTokens': inputTokens,
+        'outputTokens': outputTokens,
       };
 
   /// Convert to summary (without full history) for listing.
@@ -112,5 +114,33 @@ class Session {
         'type': type.name,
         'messageCount': history.length,
         'lastActiveAt': lastActiveAt.toIso8601String(),
+        'inputTokens': inputTokens,
+        'outputTokens': outputTokens,
       };
+
+  int get inputTokens {
+    int total = 0;
+    for (final m in history) {
+      if (m.metadata.containsKey('usage')) {
+        final usage = m.metadata['usage'];
+        if (usage is Map) {
+          total += (usage['input'] as num?)?.toInt() ?? 0;
+        }
+      }
+    }
+    return total;
+  }
+
+  int get outputTokens {
+    int total = 0;
+    for (final m in history) {
+      if (m.metadata.containsKey('usage')) {
+        final usage = m.metadata['usage'];
+        if (usage is Map) {
+          total += (usage['output'] as num?)?.toInt() ?? 0;
+        }
+      }
+    }
+    return total;
+  }
 }

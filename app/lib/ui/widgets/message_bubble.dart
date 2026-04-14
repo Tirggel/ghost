@@ -24,6 +24,9 @@ class MessageBubble extends ConsumerWidget {
     this.activity,
     this.attachments,
     this.sessionId,
+    this.searchQuery = '',
+    this.matchStartIndex = 0,
+    this.activeMatchIndex = -1,
   });
 
   final String role;
@@ -34,6 +37,9 @@ class MessageBubble extends ConsumerWidget {
   final String? activity;
   final List<ChatAttachment>? attachments;
   final String? sessionId;
+  final String searchQuery;
+  final int matchStartIndex;
+  final int activeMatchIndex;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -52,6 +58,21 @@ class MessageBubble extends ConsumerWidget {
         displayContent = '⚠️ **Technischer Fehler**\n\nEin interner Fehler ist aufgetreten. Bitte versuche es erneut.';
       }
     }
+
+    // For non-user messages (assistant/markdown), inject search markers into raw text.
+    // For user messages we render highlights via RichText directly (see below).
+    if (searchQuery.isNotEmpty && !isSystem && role != 'user') {
+      int localMatchCount = 0;
+      // dotAll:false avoids multiline matches, which would insert \n inside markers
+      // and break the Markdown inline parser.
+      final queryRegex = RegExp(RegExp.escape(searchQuery), caseSensitive: false);
+      displayContent = displayContent.replaceAllMapped(queryRegex, (match) {
+        final idx = matchStartIndex + localMatchCount;
+        localMatchCount++;
+        return '\x02sm$idx\x03${match[0]}\x02em\x03';
+      });
+    }
+
     final modelName = metadata?['model'] as String?;
     final config = ref.watch(configProvider);
     final customAgents = config.customAgents;
@@ -236,25 +257,38 @@ class MessageBubble extends ConsumerWidget {
                         }).toList(),
                       ),
                     ),
-                  MarkdownBody(
-                    data: content.isEmpty && isAssistant ? '_${'chat.thinking'.tr()}_' : displayContent,
-                    builders: {
-                      'pre': CodeElementBuilder(),
-                    },
-                    styleSheet: MarkdownStyleSheet(
-                      p: TextStyle(
-                        color: role == 'assistant' && content.isEmpty ? AppColors.textDim : AppColors.textMain,
-                        height: 1.6,
-                        fontSize: 15,
+                  if (role == 'user' && searchQuery.isNotEmpty)
+                    _buildHighlightedText(
+                      displayContent,
+                      searchQuery,
+                      matchStartIndex,
+                      activeMatchIndex,
+                    )
+                  else
+                    MarkdownBody(
+                      data: content.isEmpty && isAssistant ? '_${'chat.thinking'.tr()}_' : displayContent,
+                      inlineSyntaxes: [
+                        if (searchQuery.isNotEmpty && role != 'user') SearchMatchSyntax(),
+                      ],
+                      builders: {
+                        'pre': CodeElementBuilder(),
+                        if (searchQuery.isNotEmpty && role != 'user')
+                          'search_match': SearchMatchBuilder(activeMatchIndex: activeMatchIndex),
+                      },
+                      styleSheet: MarkdownStyleSheet(
+                        p: TextStyle(
+                          color: role == 'assistant' && content.isEmpty ? AppColors.textDim : AppColors.textMain,
+                          height: 1.6,
+                          fontSize: 15,
+                        ),
+                        code: const TextStyle(
+                          backgroundColor: AppColors.surface,
+                          color: AppColors.primary,
+                          fontFamily: 'monospace',
+                        ),
+                        codeblockDecoration: const BoxDecoration(), // New widget handles decoration
                       ),
-                      code: const TextStyle(
-                        backgroundColor: AppColors.surface,
-                        color: AppColors.primary,
-                        fontFamily: 'monospace',
-                      ),
-                      codeblockDecoration: const BoxDecoration(), // New widget handles decoration
                     ),
-                  ),
                   _buildErrorRecoveryButton(context, ref),
                   if (isAssistant && metadata?['tool_calls'] != null) ...[
                     const SizedBox(height: 16),
@@ -592,6 +626,48 @@ class MessageBubble extends ConsumerWidget {
     if (mimeType.startsWith('text/')) return Icons.description_outlined;
     return Icons.insert_drive_file_outlined;
   }
+
+  /// Renders plain text with inline search-match highlights via [RichText].
+  /// Used for user messages (no Markdown) to avoid the marker-injection fragility.
+  Widget _buildHighlightedText(
+    String text,
+    String query,
+    int startIndex,
+    int active,
+  ) {
+    final queryRegex = RegExp(RegExp.escape(query), caseSensitive: false);
+    final spans = <TextSpan>[];
+    int cursor = 0;
+    int localIdx = 0;
+    for (final m in queryRegex.allMatches(text)) {
+      if (m.start > cursor) {
+        spans.add(TextSpan(
+          text: text.substring(cursor, m.start),
+          style: const TextStyle(color: AppColors.textMain, fontSize: 15, height: 1.6),
+        ));
+      }
+      final globalIdx = startIndex + localIdx;
+      final isActive = globalIdx == active;
+      spans.add(TextSpan(
+        text: m[0],
+        style: TextStyle(
+          backgroundColor: isActive ? Colors.green : Colors.green.withValues(alpha: 0.3),
+          color: isActive ? Colors.white : AppColors.textMain,
+          fontSize: 15,
+          height: 1.6,
+        ),
+      ));
+      localIdx++;
+      cursor = m.end;
+    }
+    if (cursor < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(cursor),
+        style: const TextStyle(color: AppColors.textMain, fontSize: 15, height: 1.6),
+      ));
+    }
+    return RichText(text: TextSpan(children: spans));
+  }
 }
 
 class CodeElementBuilder extends MarkdownElementBuilder {
@@ -612,10 +688,56 @@ class CodeElementBuilder extends MarkdownElementBuilder {
       }
     }
 
+    String cleanText = element.textContent;
+    // Strip search markers (using both old @@ and new \x02/\x03 style)
+    cleanText = cleanText
+        .replaceAll(RegExp(r'\x02sm\d+\x03'), '')
+        .replaceAll(RegExp(r'\x02em\x03'), '')
+        .replaceAll(RegExp(r'@@sm\d+@@'), '')
+        .replaceAll('@@em@@', '');
+
     return CodeBlockWidget(
-      code: element.textContent,
+      code: cleanText,
       language: language.isEmpty ? null : language,
     );
   }
 }
 
+class SearchMatchSyntax extends md.InlineSyntax {
+  // \x02sm<idx>\x03 ... \x02em\x03 — using STX/ETX control chars as safe delimiters.
+  // These are never valid Markdown and won't be touched by any Markdown syntax.
+  SearchMatchSyntax() : super('\x02sm(\\d+)\x03([^\x02]*)\x02em\x03');
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    final searchElement = md.Element('search_match', [md.Text(match[2]!)]);
+    searchElement.attributes['index'] = match[1]!;
+    parser.addNode(searchElement);
+    return true;
+  }
+}
+
+class SearchMatchBuilder extends MarkdownElementBuilder {
+  final int activeMatchIndex;
+  SearchMatchBuilder({required this.activeMatchIndex});
+
+  @override
+  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    final idx = int.tryParse(element.attributes['index'] ?? '-1') ?? -1;
+    final isMatchActive = idx == activeMatchIndex;
+    final baseStyle = preferredStyle ?? const TextStyle(
+      color: AppColors.textMain,
+      fontSize: 15,
+      height: 1.6,
+    );
+    return RichText(
+      text: TextSpan(
+        text: element.textContent,
+        style: baseStyle.copyWith(
+          backgroundColor: isMatchActive ? Colors.green : Colors.green.withValues(alpha: 0.3),
+          color: isMatchActive ? Colors.white : AppColors.textMain,
+        ),
+      ),
+    );
+  }
+}

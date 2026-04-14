@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../providers/gateway_provider.dart';
@@ -31,6 +32,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollController = ScrollController();
   bool _isIconHovered = false;
 
+  bool _isSearchVisible = false;
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
+  int _currentSearchIndex = 0;
+  final Map<int, GlobalKey> _messageKeys = {};
+
   @override
   void initState() {
     super.initState();
@@ -45,6 +53,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void dispose() {
     _textController.dispose();
     _scrollController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -58,6 +68,55 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       }
     });
+  }
+
+  void _scrollToActiveMatch(Map<int, int> messageMatchOffsets, int totalMessages) {
+    if (messageMatchOffsets.isEmpty) return;
+
+    // Find which message contains _currentSearchIndex.
+    // messageMatchOffsets[i] = start offset of matches for message i.
+    // Message i owns match indices [offset, nextOffset).
+    int targetMessageIndex = -1;
+    final sortedEntries = messageMatchOffsets.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    for (int e = 0; e < sortedEntries.length; e++) {
+      final startOffset = sortedEntries[e].value;
+      final int endOffset = (e + 1 < sortedEntries.length)
+          ? sortedEntries[e + 1].value
+          : 999999;
+      if (_currentSearchIndex >= startOffset && _currentSearchIndex < endOffset) {
+        targetMessageIndex = sortedEntries[e].key;
+        break;
+      }
+    }
+
+    if (targetMessageIndex == -1) return;
+
+    final key = _messageKeys[targetMessageIndex];
+    void ensureVisible() {
+      if (key != null && key.currentContext != null) {
+        Scrollable.ensureVisible(
+          key.currentContext!,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.5,
+        );
+      }
+    }
+
+    if (key != null && key.currentContext != null) {
+      ensureVisible();
+    } else {
+      if (_scrollController.hasClients) {
+        final fraction = targetMessageIndex / (totalMessages == 0 ? 1 : totalMessages);
+        final targetOffset = _scrollController.position.maxScrollExtent * fraction;
+        _scrollController.jumpTo(targetOffset);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ensureVisible();
+        });
+      }
+    }
   }
 
   Future<void> _sendMessage(String text, List<PlatformFile> attachments) async {
@@ -181,8 +240,41 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final allChatStates = ref.watch(chatProvider);
     final chatState = allChatStates[widget.sessionId] ?? ChatState.initial();
-    final visibleMessages =
+    var visibleMessages =
         chatState.messages.where((m) => !m.isSystem && !m.isHidden).toList();
+
+    int totalSearchMatches = 0;
+    final Map<int, int> messageMatchOffsets = {};
+
+    if (_searchQuery.isNotEmpty) {
+      final queryRegex = RegExp(RegExp.escape(_searchQuery), caseSensitive: false);
+      for (int i = 0; i < visibleMessages.length; i++) {
+        // Strip markdown syntax before counting so count matches what the user sees.
+        final rawText = visibleMessages[i].content
+            .replaceAll(RegExp(r'[*_`#~>\[\]()!]'), '');
+        final count = queryRegex.allMatches(rawText).length;
+        if (count > 0) {
+          messageMatchOffsets[i] = totalSearchMatches;
+          totalSearchMatches += count;
+        }
+      }
+      
+      if (chatState.isProcessing && chatState.streamedContent.isNotEmpty) {
+        final rawText = chatState.streamedContent
+            .replaceAll(RegExp(r'[*_`#~>\[\]()!]'), '');
+        final count = queryRegex.allMatches(rawText).length;
+        if (count > 0) {
+          messageMatchOffsets[visibleMessages.length] = totalSearchMatches;
+          totalSearchMatches += count;
+        }
+      }
+    }
+
+    if (_currentSearchIndex >= totalSearchMatches && totalSearchMatches > 0) {
+      _currentSearchIndex = totalSearchMatches - 1;
+    } else if (totalSearchMatches == 0) {
+      _currentSearchIndex = 0;
+    }
 
     final sessions = ref.watch(sessionsProvider);
     final ChatSession? currentSession = sessions.where(
@@ -202,7 +294,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
     });
 
-    return Column(
+    final contentColumn = Column(
       children: [
         // Header
         Container(
@@ -266,7 +358,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       (currentSession.inputTokens > 0 ||
                           currentSession.outputTokens > 0)) ...[
                     Text(
-                      'Tokens: ${currentSession.inputTokens} / ${currentSession.outputTokens}',
+                      'In: ${currentSession.inputTokens} | Out: ${currentSession.outputTokens}',
                       style: const TextStyle(
                         color: AppColors.textDim,
                         fontSize: 10,
@@ -283,6 +375,87 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         ),
 
+        // Search Bar
+        if (_isSearchVisible)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              border: Border(bottom: BorderSide(color: AppColors.border)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.search, size: 18, color: AppColors.textDim),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    style: const TextStyle(fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'chat.search_hint'.tr(),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val;
+                        _currentSearchIndex = 0;
+                      });
+                      // Scroll to first match when query changes
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _scrollToActiveMatch(messageMatchOffsets, visibleMessages.length + 1);
+                      });
+                    },
+                  ),
+                ),
+                if (_searchQuery.isNotEmpty) ...[
+                  Text(
+                    totalSearchMatches > 0 ? '${_currentSearchIndex + 1} / $totalSearchMatches' : '0 / 0',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textDim),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.keyboard_arrow_up, size: 18),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: totalSearchMatches > 0 ? () {
+                      setState(() {
+                        _currentSearchIndex = (_currentSearchIndex - 1 + totalSearchMatches) % totalSearchMatches;
+                      });
+                      _scrollToActiveMatch(messageMatchOffsets, visibleMessages.length + 1);
+                    } : null,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.keyboard_arrow_down, size: 18),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: totalSearchMatches > 0 ? () {
+                      setState(() {
+                        _currentSearchIndex = (_currentSearchIndex + 1) % totalSearchMatches;
+                      });
+                      _scrollToActiveMatch(messageMatchOffsets, visibleMessages.length + 1);
+                    } : null,
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    setState(() {
+                      _isSearchVisible = false;
+                      _searchQuery = '';
+                      _searchController.clear();
+                    });
+                    _scrollToBottom();
+                  },
+                ),
+              ],
+            ),
+          ),
+
         // Messages
         Expanded(
           child: SelectionArea(
@@ -292,10 +465,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               itemCount:
                   visibleMessages.length + (chatState.isProcessing ? 1 : 0),
               itemBuilder: (context, index) {
+                _messageKeys[index] ??= GlobalKey();
+                final key = _messageKeys[index];
+
                 if (index == visibleMessages.length) {
                   final agentId = currentSession?.agentId;
 
-                    return MessageBubble(
+                  return Container(
+                    key: key,
+                    child: MessageBubble(
                       role: 'assistant',
                       content: chatState.streamedContent,
                       isStreaming: true,
@@ -308,18 +486,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       },
                       activity: chatState.activity,
                       sessionId: widget.sessionId,
-                    );
-                  }
-                  final m = visibleMessages[index];
-                  return MessageBubble(
+                      searchQuery: _searchQuery,
+                      matchStartIndex: messageMatchOffsets[index] ?? 0,
+                      activeMatchIndex: _currentSearchIndex,
+                    ),
+                  );
+                }
+                final m = visibleMessages[index];
+                return Container(
+                  key: key,
+                  child: MessageBubble(
                     role: m.role,
                     content: m.content,
                     metadata: m.metadata,
                     timestamp: m.timestamp,
                     attachments: m.attachments,
                     sessionId: widget.sessionId,
-                  );
-                },
+                    searchQuery: _searchQuery,
+                    matchStartIndex: messageMatchOffsets[index] ?? 0,
+                    activeMatchIndex: _currentSearchIndex,
+                  ),
+                );
+              },
               ),
             ),
           ),
@@ -332,6 +520,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           isProcessing: chatState.isProcessing,
         ),
       ],
+    );
+
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
+          setState(() => _isSearchVisible = true);
+          _searchFocusNode.requestFocus();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyF, meta: true): () {
+          setState(() => _isSearchVisible = true);
+          _searchFocusNode.requestFocus();
+        },
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (_isSearchVisible) {
+            setState(() {
+              _isSearchVisible = false;
+              _searchQuery = '';
+              _searchController.clear();
+            });
+          }
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: contentColumn,
+      ),
     );
   }
 
