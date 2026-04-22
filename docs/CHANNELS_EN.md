@@ -9,6 +9,8 @@ All channels are configured via the **Settings → Channels** tab in the Ghost A
 - **Search Filter**: Use the search bar at the top to quickly find specific channels.
 - **Auto-Sorting**: Configured and active channels are automatically grouped at the top for easy access.
 - **Secure Management**: Sensitive credentials like API keys and tokens are masked by default and securely fetched on-demand.
+- **Automated Cleanup**: If you remove a token or disable a channel, Ghost automatically wipes the credentials from the secure vault.
+- **Resilient Connections**: Active channels feature automatic connection recovery if the session is interrupted.
 
 ---
 
@@ -19,6 +21,7 @@ Ghost uses the [teledart](https://pub.dev/packages/teledart) library to connect 
   2. Use `/newbot` to create a new bot and get your **Bot Token**.
   3. Enter the token in Ghost.
 - **Features**: Supports text and **voice messages** (with local STT/TTS).
+- **Auto-Restart**: Changing the token automatically restarts the bot with the new credentials.
 
 ### 2. Discord
 Uses the [nyxx](https://pub.dev/packages/nyxx) library.

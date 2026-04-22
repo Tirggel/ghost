@@ -1,6 +1,8 @@
 include: package:lints/recommended.yaml
 
 analyzer:
+  exclude:
+    - lib/objectbox.g.dart
   language:
     strict-casts: true
     strict-inference: true

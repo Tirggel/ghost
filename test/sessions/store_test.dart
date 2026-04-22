@@ -2,8 +2,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:test/test.dart';
 import 'package:hive_ce/hive.dart';
-import 'package:ghost/sessions/store.dart';
-import 'package:ghost/models/message.dart';
+import 'package:ghost/engine/sessions/store.dart';
+import 'package:ghost/engine/models/message.dart';
 
 void main() {
   late Directory tempDir;

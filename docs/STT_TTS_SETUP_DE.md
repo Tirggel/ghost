@@ -33,7 +33,8 @@ Ghost nutzt **Piper**, ein schnelles, lokales neuronales Text-to-Speech-System.
 
 ### Modell-Konfiguration:
 Modelle werden in `scripts/models/` gespeichert. Falls ein Modell fehlt, versucht das Skript, es automatisch herunterzuladen.
-- **Standard-Modell**: `de_DE-thorsten-low` (Deutsch).
+- **Standard-Modell**: `de_DE-thorsten-low` (Premium-Stimme für Deutsch).
+- **Vorteil**: Bietet eine sehr natürliche, menschliche Stimme bei minimaler Rechenlast.
 - Um das Modell zu ändern, aktualisiere die Einstellungen in der Ghost App unter **Einstellungen > Stimme**.
 
 ---
@@ -51,7 +52,8 @@ Ghost unterstützt zwei Modi für die Spracherkennung: **Gateway-Client-Seite** 
 - **Verwendet für**: Direkte Echtzeit-Transkription innerhalb der Ghost Desktop App (Linux).
 - **Implementierung**: Integrierte [Sherpa-ONNX](https://github.com/k2-fsa/sherpa-onnx) Unterstützung.
 - **Modell**: Verwendet das präzise **Whisper `base`** Modell (ONNX-Format).
-- **Einrichtung**: Die App lädt beim ersten Gebrauch automatisch die erforderlichen Modelldateien (~150MB) herunter. Für diese Funktion ist keine separate Python-Einrichtung erforderlich.
+- **Einrichtung**: Die App lädt beim ersten Gebrauch automatisch die erforderlichen Modelldateien (~150MB) herunter.
+- **Vorteil**: In-App-Diktieren ist sofort einsatzbereit, extrem schnell und bietet eine präzisere Offline-Transkription als herkömmliche Methoden auf CPU-Basis.
 - **Features**: Optimiert für hohe Leistung und geringe Latenz auf Desktop-CPUs.
 
 ---

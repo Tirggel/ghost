@@ -1,7 +1,7 @@
 # Ghost
 
 <p align="center">
-  <img src="app/assets/icons/logo/ghost.png" width="150" alt="Ghost Logo">
+  <img src="assets/icons/logo/ghost.png" width="150" alt="Ghost Logo">
 </p>
 
 > [!WARNING]
@@ -18,10 +18,10 @@
 
 ### 🏗️ Architektur auf einen Blick
 
-Ghost folgt einer modularen Client-Server-Architektur:
-- **Gateway (Daemon)**: Ein hochperformanter, Dart-basierter WebSocket-Server, der KI-Agenten, Speicher und Werkzeuge verwaltet.
-- **App (UI)**: Eine moderne, Flutter-basierte Desktop-Anwendung (Linux, macOS, Windows) und eine Web-Oberfläche.
-- **Agenten & Skills**: Erweiterbare KI-Gehirne und Fähigkeiten, die über ein einfaches, Markdown-basiertes System hinzugefügt werden können.
+Ghost bietet eine moderne, integrierte Architektur:
+- **Integrierte Engine**: Ein hochperformantes Backend, das KI-Agenten, Speicher und Werkzeuge verwaltet—direkt in die Anwendung integriert.
+- **Sleek UI**: Eine minimalistische, leistungsstarke Benutzeroberfläche für Desktop (Linux, macOS, Windows) und Web.
+- **Agenten & Skills**: Erweiterbare KI-Fähigkeiten, die über ein einfaches, Markdown-basiertes System hinzugefügt werden können.
 - **Memory Engine**: Dual-Modus-Speicher mit Hive (Standard) und ObjectBox (RAG) für sicheres, lokales Wissen.
 
 ---
@@ -37,18 +37,13 @@ Um mit Ghost zu starten, folge bitte unserer detaillierten Installationsanleitun
 👉 **[Installation & Setup Guide (English)](docs/installation/INSTALLATION_EN.md)**
 👉 **[Installs- & Setup-Anleitung (Deutsch)](docs/installation/INSTALLATION_DE.md)**
 
-### 🪄 Erststart: Manuelle Einrichtung
-Vor dem ersten Start von Ghost **musst** du ein Reset durchführen, um die lokale Umgebung und die Datenbanken korrekt zu initialisieren.
+### 🪄 Erststart: Einfache Einrichtung
+Ghost ist so konzipiert, dass es direkt einsatzbereit ist. Beim ersten Start führt dich ein interaktiver **Einrichtungsassistent** durch die Konfiguration.
 
-Führe den folgenden Befehl in deinem Terminal aus:
+Wenn du das Projekt aus dem Quellcode baust, führe einfach Folgendes aus:
 ```bash
-dart bin/ghost.dart reset
+flutter run
 ```
-
-**Erforderliche Antworten während des Vorgangs:**
-*   `Are you sure you want to continue? (y/N):` **y**
-*   `Do you want to save the user and main agent configuration and restore them after reset? (y/N):` **n**
-*   `Do you want to start the gateway now? (y/N):` **y**
 
 > [!IMPORTANT]
 > **Sicherheitseinstellungen nach der Erstinstallation überprüfen!**
@@ -64,15 +59,23 @@ dart bin/ghost.dart reset
 >
 > Für normale Nutzung empfiehlt sich mindestens **Level "medium"** (HITL + Prompt-Härtung aktiv).
 
-### 🪄 Einrichtungsassistent (Setup Wizard)
-Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistenten**, der automatisch gestartet wird, wenn die Anwendung noch nicht konfiguriert ist.
+### 🪄 Setup-Assistent & Wiederherstellung
+Für neue Benutzer bietet Ghost einen interaktiven **Einrichtungsassistenten**, der automatisch startet, wenn die Anwendung noch nicht konfiguriert ist.
+
+> [!TIP]
+> **System-Wiederherstellung**: Wenn du bereits ein Backup hast, kannst du dieses direkt im ersten Schritt des Assistenten hochladen. Ghost stellt dann automatisch alle Agenten, Einstellungen und sogar deine verschlüsselten API-Token wieder her.
+
+### 🛠️ Wartung & Backup
+Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, der dir volle Kontrolle über dein System gibt:
+- **Factory Reset**: Setzt die gesamte Anwendung auf den Werkszustand zurück (löscht alle lokalen Daten & Datenbanken).
+- **System-Backup**: Erstellt ein verschlüsseltes ZIP-Archiv deiner gesamten Konfiguration.
+- **Wiederherstellung**: Importiert ein Backup-Archiv und stellt den Zustand deines Ghost-Assistenten nahtlos wieder her.
 
 ### 📚 Weiterführende Dokumentation
 - **[Skills Development Guide](docs/SKILLS_GUIDE_DE.md)**: Erfahre, wie du eigene KI-Skills erstellst und paketierst.
 - **[STT & TTS Setup](docs/STT_TTS_SETUP_DE.md)**: Konfiguriere lokale Spracherkennung und -synthese.
 - **[Multi-Channel Setup](docs/CHANNELS_DE.md)**: Detaillierte Anleitung für Telegram, Discord, WhatsApp & Co.
 - **[RPC API Referenz](docs/RPC_API_REFERENCE_DE.md)**: Dokumentation der JSON-RPC 2.0 Schnittstelle.
-- **[Docker Setup Guide](docs/DOCKER_SETUP.md)**: Deployment und Verwaltung via Docker.
 
 ---
 
@@ -105,7 +108,6 @@ Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistent
     - **Resiliente Verbindungen**: Verbesserte Stabilität für Messaging-Gateways (wie Telegram) durch automatische Verbindungswiederherstellung und automatische Bereinigung von Tokens/Zugangsdaten.
     - **DM-Richtlinien**: Granulare Kontrolle darüber, wer deinem Bot schreiben darf (Pairing, Allowlist, Open, Disabled).
     - **Sprachnachrichten & Lokales Diktieren**: Unterstützt das Empfangen/Senden von Sprachnachrichten und bietet eine **hochperformante lokale Offline-Diktierfunktion** (Whisper `base` via Sherpa-ONNX) direkt in der App.
-    - **Zentrales Gateway**: Alle Nachrichten werden über einen einzigen Hochleistungsserver geroutet.
 - **Automatisierte Agenten-Zeitpläne**:
     - **Cron-basierte Automatisierung**: Erstelle eigene Agenten mit spezialisierten Skills und plane deren Ausführung mittels Unix-Cron-Ausdrücken (z.B. alle 5 Minuten).
     - **Echtzeit-UI-Synchronisierung**: Neue Agenten und Konfigurationsänderungen werden sofort an das UI übertragen für ein nahtloses Erlebnis.
@@ -124,10 +126,13 @@ Für neue Benutzer bietet Ghost jetzt einen interaktiven **Einrichtungsassistent
     - **Avatar-Management**: Bilder werden direkt in der Datenbank gespeichert, um maximale Privatsphäre zu gewährleisten.
     - **Selbstgehostet**: Volle Kontrolle über deine Daten und die Codebasis.
 - **Moderne Benutzeroberfläche**:
-    - **Klares Design**: Eine minimalistische und intuitive Oberfläche für ein ablenkungsfreies Erlebnis.
+    - **Klares Design**: Eine minimalistische und intuitive Oberfläche im "Monolith Black" Stil für ein ablenkungsfreies Erlebnis.
     - **Code-Darstellung**: Hebt Code-Blöcke hervor und formatiert sie für eine bessere Lesbarkeit.
-    - **Einstellungszentrale**: Verwalte alle deine Konfigurationen zentral, einschließlich eines dedizierten Gateway-Tabs.
-- **Gateway-Status & Live-Logs**: Echtzeit-Überwachung der Gateway-Leistung, verbundener Clients und Systemprotokolle direkt in der App.
+    - **Einstellungszentrale**: Verwalte alle deine Konfigurationen zentral, einschließlich dedizierter Tabs für Gateway, Sicherheit und **Wartung**.
+- **System-Stabilität & Wartung**:
+    - **Gateway-Status & Live-Logs**: Echtzeit-Überwachung der Gateway-Leistung, verbundener Clients und Systemprotokolle direkt in der App.
+    - **Sicherer Shutdown**: Robuster Hintergrund-Shutdown-Prozess, der sicherstellt, dass alle Datenbanken sauber geschlossen werden, bevor das System beendet oder zurückgesetzt wird.
+    - **Backups mit Token-Erhalt**: Deine API-Token werden sicher im Backup gespeichert und beim Restore automatisch wieder in den Tresor importiert.
 
 ---
 

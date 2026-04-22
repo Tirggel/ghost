@@ -9,8 +9,6 @@ Klone das Repository und installiere die Abhängigkeiten:
 ```bash
 git clone https://github.com/your-username/ghost.git
 cd ghost
-dart pub get
-cd ghost/app
 flutter pub get
 ```
 
@@ -23,56 +21,19 @@ flutter pub get
     - **macOS:** `bash docs/installation/scripts/install_mac.sh`
     - **Windows:** Führe `docs/installation/scripts/install.ps1` in der PowerShell aus
 
-### 3. Gateway manuell starten
-Falls du Docker nicht nutzt, kannst du das Gateway direkt starten.
+### 3. Ghost starten
+Der einfachste Weg, Ghost zu nutzen, ist der Start der integrierten Anwendung. Die **integrierte Engine** (Server-Logik) startet automatisch innerhalb der App.
 
-**Option A: Einrichtungsassistent (Empfohlen)**
-Der einfachste Weg, Ghost zum ersten Mal zu konfigurieren, ist der integrierte **Einrichtungsassistent**.
-1. Starte das Gateway: `dart bin/ghost.dart gateway`
-2. Starte die App: `cd app && flutter run`
-3. Die App erkennt automatisch, ob eine Einrichtung erforderlich ist und führt dich durch den Prozess.
+1. Starte die App:
+   ```bash
+   flutter run
+   ```
+2. Beim ersten Start öffnet sich automatisch der **Einrichtungsassistent**, der dich durch die Konfiguration führt.
+    - **Tipp**: Falls du ein Backup hast, kannst du dieses direkt im ersten Schritt des Assistenten hochladen (**Wiederherstellen**).
 
-**Option B: Manuelles Zurücksetzen (CLI)**
-Falls du die Kommandozeile bevorzugst, führe einen Reset aus, um die Datenbank korrekt zu initialisieren:
-```bash
-dart bin/ghost.dart gateway reset
-# Beantworte die Fragen wie folgt:
-# Are you sure you want to continue? (y/N): y
-# Do you want to save the user and main agent configuration and restore them after reset? (y/N): n
-# Do you want to start the gateway now? (y/N): y
-```
+---
 
-**Normaler Start:**
-Anschließend (oder bei jedem weiteren Mal) kannst du das Gateway so starten:
-```bash
-# Standard-Start (nutzt Standard-Config)
-dart bin/ghost.dart gateway
-
-# Starte die App (in einem neuen Terminal)
-cd app
-flutter run
-```
-
-### 4. Starten mit Docker (Empfohlen)
-Du kannst das Ghost Backend (Gateway) über Docker starten, ohne Dart oder Flutter lokal zu installieren.
-
-Für detaillierte Anweisungen (Linux, Windows, macOS), siehe: 👉 **[Docker Setup Guide](../DOCKER_SETUP.md)**
-
-**Schnellstart:**
-```bash
-# Daemon im Hintergrund starten
-docker-compose up -d ghost-daemon
-
-# Logs einsehen
-docker-compose logs -f
-```
-
-Starte dann die App für deine Plattform:
-- **Linux:** `bash docs/installation/scripts/run.sh`
-- **macOS:** `bash docs/installation/scripts/run_mac.sh`
-- **Windows:** `docs/installation/scripts/run.bat`
-
-### 5. Google Workspace Konfiguration (Optional)
+### 4. Google Workspace Konfiguration (Optional)
 Um Gmail, Kalender und Drive zu nutzen, musst du die entsprechenden APIs und OAuth-Clients in der Google Cloud Console konfigurieren.
 
 Eine detaillierte Anleitung findest du hier:
@@ -89,27 +50,15 @@ Wenn etwas nicht wie erwartet funktioniert, versuche folgende Schritte:
 ### 1. Projekt bereinigen & Abhängigkeiten aktualisieren
 Oft lösen veraltete Build-Artefakte Probleme. Führe dies im Hauptverzeichnis aus:
 ```bash
-# Gateway & CLI Abhängigkeiten
-dart pub get
-
-# App Abhängigkeiten & Cleanup
-cd app
 flutter clean
 flutter pub get
-cd ..
 ```
 
-### 2. System-Check (Doctor)
-Nutze das eingebaute Diagnose-Werkzeug, um deine Konfiguration und den Status des Gateways zu prüfen:
-```bash
-dart bin/ghost.dart doctor
-```
-
-### 3. Kompletter Reset (Factory Reset)
-**Achtung:** Dies löscht alle lokalen Daten, den Tresor und die Konfiguration!
-```bash
-dart bin/ghost.dart gateway reset
-```
+### 2. Wartung & Reset
+Falls du einen Factory Reset durchführen möchtest oder den Systemstatus prüfen willst, nutze den integrierten **Wartungs-Tab** in den Einstellungen der Ghost App:
+- **Factory Reset**: Alle lokalen Daten und Konfigurationen löschen.
+- **System-Logs**: Live-Gateway-Protokolle und Status einsehen.
+- **Backup & Wiederherstellung**: System-Backups erstellen und importieren.
 
 ---
 
@@ -117,7 +66,6 @@ dart bin/ghost.dart gateway reset
 Schau in unsere spezialisierte Dokumentation für fortgeschrittene Konfigurationen:
 - **[Skills Development Guide](../SKILLS_GUIDE_DE.md)**: Erstelle deine eigenen KI-Funktionen.
 - **[STT & TTS Setup](../STT_TTS_SETUP_DE.md)**: Lokale Hochleistungs-Spracherkennung/-synthese.
-- **[RPC API Reference](../RPC_API_REFERENCE_DE.md)**: Baue deinen eigenen Client für das Gateway.
-- **[Docker Setup Guide](../DOCKER_SETUP.md)**: Deployment via Docker.
+- **[RPC API Referenz](../RPC_API_REFERENCE_DE.md)**: Dokumentation der JSON-RPC 2.0 Schnittstelle.
 
 ---

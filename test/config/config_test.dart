@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:ghost/config/config.dart';
+import 'package:ghost/engine/config/config.dart';
 
 void main() {
   group('Config Parsing', () {

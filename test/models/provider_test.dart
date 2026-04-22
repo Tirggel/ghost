@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:ghost/models/provider.dart';
+import 'package:ghost/engine/models/provider.dart';
 
 void main() {
   group('AIResponse Models', () {

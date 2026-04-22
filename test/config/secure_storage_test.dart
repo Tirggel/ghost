@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:test/test.dart';
-import 'package:ghost/config/secure_storage.dart';
+import 'package:ghost/engine/config/secure_storage.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:path/path.dart' as p;
 

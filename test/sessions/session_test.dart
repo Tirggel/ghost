@@ -1,6 +1,6 @@
 import 'package:test/test.dart';
-import 'package:ghost/sessions/session.dart';
-import 'package:ghost/models/message.dart';
+import 'package:ghost/engine/sessions/session.dart';
+import 'package:ghost/engine/models/message.dart';
 
 void main() {
   group('Session', () {

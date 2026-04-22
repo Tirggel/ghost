@@ -1,7 +1,7 @@
 # Ghost
 
 <p align="center">
-  <img src="app/assets/icons/logo/ghost.png" width="150" alt="Ghost Logo">
+  <img src="assets/icons/logo/ghost.png" width="150" alt="Ghost Logo">
 </p>
 
 > [!WARNING]
@@ -18,10 +18,10 @@
 
 ### 🏗️ Architecture at a Glance
 
-Ghost follows a modular client-server architecture:
-- **Gateway (Daemon)**: A high-performance, Dart-based WebSocket server that manages AI agents, memory, and tools.
-- **App (UI)**: A modern, Flutter-based desktop application (Linux, macOS, Windows) and a web interface.
-- **Agents & Skills**: Extensible AI brains and capabilities that can be added via a simple, Markdown-based system.
+Ghost features a modern, integrated architecture:
+- **Integrated Engine**: A high-performance backend managing AI agents, memory, and tools—built directly into the Flutter application.
+- **Sleek UI**: A minimalist, high-performance interface for Desktop (Linux, macOS, Windows) and Web.
+- **Agents & Skills**: Extensible AI capabilities added via a simple, Markdown-based system.
 - **Memory Engine**: Dual-mode memory using Hive (standard) and ObjectBox (RAG) for secure, local knowledge.
 
 ---
@@ -37,20 +37,16 @@ To get started with Ghost, please follow our detailed installation guide:
 👉 **[Installation & Setup Guide (English)](docs/installation/INSTALLATION_EN.md)**
 👉 **[Installs- & Setup-Anleitung (Deutsch)](docs/installation/INSTALLATION_DE.md)**
 
-### 🪄 First Start: Manual Setup
-Before starting Ghost for the first time, you **must** perform a reset to correctly initialize the local environment and databases.
+### 🪄 First Start: Easy Setup
+Ghost is designed to be plug-and-play. On your first start, an interactive **Setup Wizard** will guide you through the configuration.
 
-Run the following command in your terminal:
+If you are building from source, simply run:
 ```bash
-dart bin/ghost.dart reset
+flutter run
 ```
 
-**Required answers during the process:**
-*   `Are you sure you want to continue? (y/N):` **y**
-*   `Do you want to save the user and main agent configuration and restore them after reset? (y/N):` **n**
-*   `Do you want to start the gateway now? (y/N):` **y**
-
 > [!IMPORTANT]
+
 > **Review your security settings after the first install!**
 > After a reset, all security settings are reset to **level "none" (everything disabled)**.
 > Once the app is running, navigate to **Settings → Security** and configure them to your needs:
@@ -64,15 +60,23 @@ dart bin/ghost.dart reset
 >
 > For normal use, at least **level "medium"** is recommended (HITL + Prompt Hardening active).
 
-### 🪄 Setup Wizard
-For new users, Ghost now includes an interactive **Setup Wizard** which is triggered automatically if the application is not yet configured.
+### 🪄 Setup Wizard & System Restore
+For new users, Ghost includes an interactive **Setup Wizard** that starts automatically if the application is not yet configured.
+
+> [!TIP]
+> **System Restore**: If you already have a backup, you can upload it in the very first step of the wizard. Ghost will automatically restore all agents, settings, and even your encrypted API tokens.
+
+### 🛠️ Maintenance & Backup
+Ghost features a dedicated **Maintenance Tab** in the settings, giving you full control over your system:
+- **Factory Reset**: Wipe the entire application to its original state (deletes all local data & databases).
+- **System Backup**: Create an encrypted ZIP archive of your entire configuration.
+- **Restore**: Import a backup archive and seamlessly restore your Ghost assistant's state.
 
 ### 📚 Further Documentation
 - **[Skills Development Guide](docs/SKILLS_GUIDE.md)**: Learn how to create and package your own AI skills.
 - **[STT & TTS Setup](docs/STT_TTS_SETUP.md)**: Configure local speech recognition and synthesis.
 - **[Multi-Channel Setup](docs/CHANNELS_EN.md)**: Detailed guide for connecting Telegram, Discord, WhatsApp, etc.
 - **[RPC API Reference](docs/RPC_API_REFERENCE.md)**: Detailed documentation of the JSON-RPC 2.0 WebSocket API.
-- **[Docker Setup Guide](docs/DOCKER_SETUP_EN.md)**: Deployment and management via Docker.
 
 ---
 
@@ -105,7 +109,6 @@ For new users, Ghost now includes an interactive **Setup Wizard** which is trigg
     - **Resilient Connections**: Improved stability for messaging gateways (like Telegram), featuring automatic connection recovery and automated token/credential cleanup.
     - **DM Policies**: Granular control over who can message your bot (Pairing, Allowlist, Open, Disabled).
     - **Voice Messages & Local Dictation**: Supports receiving/sending voice messages and provides **high-performance local offline dictation** (Whisper `base` via Sherpa-ONNX) directly in the app.
-    - **Centralized Gateway**: All messages are routed through a single high-performance server.
 - **Automated Agent Scheduling**:
     - **Cron-based Automation**: Create custom agents with specialized skills and schedule them using unix-style cron expressions (e.g., every 5 minutes).
     - **Real-time UI Sync**: New agents and reconfiguration changes are broadcasted immediately to the UI for a seamless experience.
@@ -124,10 +127,13 @@ For new users, Ghost now includes an interactive **Setup Wizard** which is trigg
     - **Avatar Management**: Images are stored directly in the database for maximum privacy.
     - **Self-hosted**: Full control over your data and codebase.
 - **Modern User Interface**:
-    - **Clean Design**: A minimalist and intuitive interface for a distraction-free experience.
+    - **Clean Design**: A minimalist and intuitive "Monolith Black" interface for a distraction-free experience.
     - **Code Rendering**: Highlights and formats code blocks for easy reading.
-    - **Settings Hub**: Centrally manage all your configurations, including a dedicated Gateway tab.
-- **Gateway Status & Live Logs**: Real-time monitoring of gateway performance, connected clients, and system logs directly in the app.
+    - **Settings Hub**: Centrally manage all your configurations, including dedicated tabs for Gateway, Security, and **Maintenance**.
+- **System Stability & Maintenance**:
+    - **Gateway Status & Live Logs**: Real-time monitoring of gateway performance, connected clients, and system logs directly in the app.
+    - **Secure Shutdown**: Robust background shutdown process ensuring all databases are properly closed before the system exits or resets.
+    - **Backups with Token Persistence**: Your API tokens are securely included in backups and automatically restored to the vault.
 
 
 ---

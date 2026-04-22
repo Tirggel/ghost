@@ -1,7 +1,7 @@
 import 'package:test/test.dart';
-import 'package:ghost/gateway/auth.dart';
-import 'package:ghost/config/config.dart';
-import 'package:ghost/infra/errors.dart';
+import 'package:ghost/engine/gateway/auth.dart';
+import 'package:ghost/engine/config/config.dart';
+import 'package:ghost/engine/infra/errors.dart';
 
 void main() {
   group('GatewayAuth', () {

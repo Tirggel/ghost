@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:ghost/infra/crypto.dart';
+import 'package:ghost/engine/infra/crypto.dart';
 
 void main() {
   group('Hashing', () {

@@ -1,0 +1,77 @@
+Analyzing ghost...
+
+warning - lib/core/gateway.dart:64:19 - The type of 'e' can't be inferred; a type must be explicitly provided. Try specifying the type of the parameter. - inference_failure_on_untyped_parameter
+warning - lib/engine/channels/telegram.dart:119:17 - The type argument(s) of the constructor 'Future.delayed' can't be inferred. Use explicit type argument(s) for 'Future.delayed'. - inference_failure_on_instance_creation
+warning - lib/engine/gateway/agent_router.dart:9:8 - Unused import: '../agent/agent.dart'. Try removing the import directive. - unused_import
+warning - lib/engine/gateway/agent_router.dart:14:8 - Unused import: '../agent/providers/factory.dart'. Try removing the import directive. - unused_import
+warning - lib/engine/gateway/agent_router.dart:15:8 - Unused import: '../models/provider.dart'. Try removing the import directive. - unused_import
+warning - lib/objectbox.g.dart:121:27 - The generic type 'EntityDefinition<dynamic>' should have explicit type arguments but doesn't. Use explicit type arguments for 'EntityDefinition<dynamic>'. - strict_raw_type
+warning - lib/providers/chat_provider.dart:46:21 - The generic type 'StreamSubscription<dynamic>' should have explicit type arguments but doesn't. Use explicit type arguments for 'StreamSubscription<dynamic>'. - strict_raw_type
+warning - lib/providers/stt_provider.dart:167:32 - The return type of ' Function(String)' can't be inferred. Declare the return type of ' Function(String)'. - inference_failure_on_function_return_type
+warning - lib/providers/stt_provider.dart:181:15 - The type argument(s) of the constructor 'Future.delayed' can't be inferred. Use explicit type argument(s) for 'Future.delayed'. - inference_failure_on_instance_creation
+warning - lib/ui/screens/chat_screen.dart:138:24 - The type argument(s) of 'List' can't be inferred. Use explicit type argument(s) for 'List'. - inference_failure_on_collection_literal
+warning - lib/ui/screens/shell/session_item.dart:302:5 - The type argument(s) of the function 'showDialog' can't be inferred. Use explicit type argument(s) for 'showDialog'. - inference_failure_on_function_invocation
+warning - lib/ui/screens/shell/session_model_dialog.dart:96:11 - The value of the local variable 'vaultKeys' isn't used. Try removing the variable or using it. - unused_local_variable
+warning - lib/ui/screens/shell/settings/channels_tab.dart:77:51 - The type argument(s) of 'Map' can't be inferred. Use explicit type argument(s) for 'Map'. - inference_failure_on_collection_literal
+warning - lib/ui/screens/shell/settings/identity_tab.dart:129:11 - The value of the local variable 'vaultKeys' isn't used. Try removing the variable or using it. - unused_local_variable
+warning - lib/ui/screens/shell/settings/integrations_tab.dart:187:66 - Unnecessary cast. Try removing the cast. - unnecessary_cast
+warning - lib/ui/screens/shell/settings/integrations_tab.dart:189:70 - Unnecessary cast. Try removing the cast. - unnecessary_cast
+warning - lib/ui/screens/shell/settings/integrations_tab.dart:191:68 - Unnecessary cast. Try removing the cast. - unnecessary_cast
+warning - lib/ui/screens/shell/settings/maintenance_tab.dart:144:17 - The type argument(s) of the function 'showDialog' can't be inferred. Use explicit type argument(s) for 'showDialog'. - inference_failure_on_function_invocation
+warning - lib/ui/screens/shell/settings/skills_tab.dart:344:17 - The type argument(s) of the function 'showDialog' can't be inferred. Use explicit type argument(s) for 'showDialog'. - inference_failure_on_function_invocation
+warning - lib/ui/screens/shell/settings/widgets/settings_sidebar.dart:17:9 - The return type of ' Function(int)' can't be inferred. Declare the return type of ' Function(int)'. - inference_failure_on_function_return_type
+warning - lib/ui/screens/shell/widgets/main_sidebar.dart:24:9 - The return type of ' Function(String agentName, List<ChatSession> sessions)' can't be inferred. Declare the return type of ' Function(String agentName, List<ChatSession> sessions)'. - inference_failure_on_function_return_type
+warning - lib/ui/screens/shell/widgets/new_chat_dialog.dart:76:11 - The value of the local variable 'vaultKeys' isn't used. Try removing the variable or using it. - unused_local_variable
+warning - lib/ui/screens/shell_screen.dart:97:15 - The type argument(s) of the constructor 'MaterialPageRoute' can't be inferred. Use explicit type argument(s) for 'MaterialPageRoute'. - inference_failure_on_instance_creation
+warning - lib/ui/screens/shell_screen.dart:368:5 - The type argument(s) of the function 'showDialog' can't be inferred. Use explicit type argument(s) for 'showDialog'. - inference_failure_on_function_invocation
+warning - lib/ui/widgets/app_styles.dart:233:5 - The type argument(s) of the function 'showDialog' can't be inferred. Use explicit type argument(s) for 'showDialog'. - inference_failure_on_function_invocation
+warning - lib/ui/widgets/app_styles.dart:334:9 - The return type of ' Function(T?)' can't be inferred. Declare the return type of ' Function(T?)'. - inference_failure_on_function_return_type
+warning - lib/ui/widgets/app_styles.dart:555:3 - The type argument(s) of the function 'showModalBottomSheet' can't be inferred. Use explicit type argument(s) for 'showModalBottomSheet'. - inference_failure_on_function_invocation
+warning - lib/ui/widgets/app_styles.dart:1120:3 - The type argument(s) of the function 'showDialog' can't be inferred. Use explicit type argument(s) for 'showDialog'. - inference_failure_on_function_invocation
+warning - lib/ui/widgets/chat_input_field.dart:20:9 - The return type of ' Function(String, List<PlatformFile>)' can't be inferred. Declare the return type of ' Function(String, List<PlatformFile>)'. - inference_failure_on_function_return_type
+warning - lib/ui/widgets/message_bubble.dart:482:26 - The type argument(s) of 'List' can't be inferred. Use explicit type argument(s) for 'List'. - inference_failure_on_collection_literal
+warning - lib/ui/widgets/message_bubble.dart:496:22 - The type argument(s) of 'List' can't be inferred. Use explicit type argument(s) for 'List'. - inference_failure_on_collection_literal
+warning - lib/ui/widgets/message_bubble.dart:512:24 - The type argument(s) of 'List' can't be inferred. Use explicit type argument(s) for 'List'. - inference_failure_on_collection_literal
+warning - lib/ui/widgets/message_bubble.dart:538:21 - The type argument(s) of the function 'showDialog' can't be inferred. Use explicit type argument(s) for 'showDialog'. - inference_failure_on_function_invocation
+warning - lib/ui/widgets/message_bubble.dart:574:38 - The type argument(s) of 'List' can't be inferred. Use explicit type argument(s) for 'List'. - inference_failure_on_collection_literal
+warning - lib/ui/widgets/message_bubble.dart:593:40 - The type argument(s) of 'List' can't be inferred. Use explicit type argument(s) for 'List'. - inference_failure_on_collection_literal
+warning - lib/ui/widgets/searchable_model_picker.dart:20:9 - The return type of ' Function(String)' can't be inferred. Declare the return type of ' Function(String)'. - inference_failure_on_function_return_type
+warning - lib/ui/widgets/searchable_model_picker.dart:34:5 - The type argument(s) of the function 'showDialog' can't be inferred. Use explicit type argument(s) for 'showDialog'. - inference_failure_on_function_invocation
+warning - lib/ui/widgets/searchable_model_picker.dart:149:9 - The return type of ' Function(String)' can't be inferred. Declare the return type of ' Function(String)'. - inference_failure_on_function_return_type
+warning - lib/ui/widgets/searchable_model_picker.dart:182:15 - The declaration '_isEmbeddingModel' isn't referenced. Try removing the declaration of '_isEmbeddingModel'. - unused_element
+warning - lib/ui/widgets/settings_sub_nav_bar.dart:15:9 - The return type of ' Function(int)' can't be inferred. Declare the return type of ' Function(int)'. - inference_failure_on_function_return_type
+warning - lib/ui/widgets/skills_selector_widget.dart:22:9 - The return type of ' Function(List<String>)' can't be inferred. Declare the return type of ' Function(List<String>)'. - inference_failure_on_function_return_type
+warning - lib/ui/widgets/skills_selector_widget.dart:26:9 - The return type of ' Function(String slug, bool val)?' can't be inferred. Declare the return type of ' Function(String slug, bool val)?'. - inference_failure_on_function_return_type
+warning - lib/ui/widgets/skills_selector_widget.dart:27:9 - The return type of ' Function(String slug)?' can't be inferred. Declare the return type of ' Function(String slug)?'. - inference_failure_on_function_return_type
+warning - lib/ui/widgets/skills_selector_widget.dart:28:9 - The return type of ' Function(String slug)?' can't be inferred. Declare the return type of ' Function(String slug)?'. - inference_failure_on_function_return_type
+   info - lib/core/gateway.dart:49:5 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:51:22 - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'. - unawaited_futures
+   info - lib/core/gateway.dart:55:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:60:11 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:66:13 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:69:11 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:76:9 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:79:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:89:5 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:93:9 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:97:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:100:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:119:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:134:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:141:7 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/gateway.dart:161:5 - Don't invoke 'print' in production code. Try using a logging framework. - avoid_print
+   info - lib/core/secure_storage_impl.dart:9:30 - 'encryptedSharedPreferences' is deprecated and shouldn't be used. EncryptedSharedPreferences is deprecated and will be removed in v11. The Jetpack Security library is deprecated by Google. Your data will be automatically migrated to custom ciphers on first access. Remove this parameter - it will be ignored. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - lib/ui/screens/chat_screen.dart:19:8 - The import of '../../core/models/config_models.dart' is unnecessary because all of the used elements are also provided by the import of '../../providers/gateway_provider.dart'. Try removing the import directive. - unnecessary_import
+   info - lib/ui/screens/shell/session_item.dart:278:47 - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'. - unawaited_futures
+   info - lib/ui/screens/shell/session_model_dialog.dart:71:43 - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'. - unawaited_futures
+   info - lib/ui/screens/shell/settings/api_keys_tab.dart:5:8 - The import of '../../../../core/models/config_models.dart' is unnecessary because all of the used elements are also provided by the import of '../../../../providers/gateway_provider.dart'. Try removing the import directive. - unnecessary_import
+   info - lib/ui/screens/shell/settings/gateway_tab.dart:112:20 - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'. - unawaited_futures
+   info - lib/ui/screens/shell/settings/security_tab.dart:6:8 - The import of '../../../../core/models/config_models.dart' is unnecessary because all of the used elements are also provided by the import of '../../../../providers/gateway_provider.dart'. Try removing the import directive. - unnecessary_import
+   info - lib/ui/screens/shell_screen.dart:84:21 - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'. - unawaited_futures
+   info - lib/ui/screens/shell_screen.dart:195:43 - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'. - unawaited_futures
+   info - lib/ui/screens/shell_screen.dart:297:34 - Missing an 'await' for the 'Future' computed by this expression. Try adding an 'await' or wrapping the expression with 'unawaited'. - unawaited_futures
+   info - lib/ui/widgets/app_sidebar.dart:28:11 - Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?'. - use_null_aware_elements
+   info - lib/ui/widgets/app_sidebar.dart:30:11 - Use the null-aware marker '?' rather than a null check via an 'if'. Try using '?'. - use_null_aware_elements
+   info - lib/ui/widgets/chat_input_field.dart:6:8 - The import of '../../core/models/config_models.dart' is unnecessary because all of the used elements are also provided by the import of '../../providers/gateway_provider.dart'. Try removing the import directive. - unnecessary_import
+
+73 issues found.

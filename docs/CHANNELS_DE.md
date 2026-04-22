@@ -9,6 +9,8 @@ Alle Kanäle werden über die Registerkarte **Einstellungen → Kanäle** in der
 - **Suchfilter**: Verwenden Sie die Suchleiste oben, um bestimmte Kanäle schnell zu finden.
 - **Automatische Sortierung**: Konfigurierte und aktive Kanäle werden automatisch oben gruppiert, um den Zugriff zu erleichtern.
 - **Sichere Verwaltung**: Sensible Zugangsdaten wie API-Schlüssel und Token werden standardmäßig maskiert und bei Bedarf sicher abgerufen.
+- **Automatisierte Bereinigung**: Wenn Sie ein Token entfernen oder einen Kanal deaktivieren, löscht Ghost die Zugangsdaten automatisch aus dem sicheren Tresor.
+- **Resiliente Verbindungen**: Aktive Kanäle verfügen über eine automatische Verbindungswiederherstellung, falls die Sitzung unterbrochen wird.
 
 ---
 
@@ -19,6 +21,7 @@ Ghost verwendet die [teledart](https://pub.dev/packages/teledart)-Bibliothek fü
   2. Verwenden Sie `/newbot`, um einen neuen Bot zu erstellen und Ihren **Bot Token** zu erhalten.
   3. Geben Sie den Token in Ghost ein.
 - **Funktionen**: Unterstützt Text- und **Sprachnachrichten** (mit lokalem STT/TTS).
+- **Auto-Neustart**: Das Ändern des Tokens startet den Bot automatisch mit den neuen Zugangsdaten neu.
 
 ### 2. Discord
 Verwendet die [nyxx](https://pub.dev/packages/nyxx)-Bibliothek.

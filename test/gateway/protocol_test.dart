@@ -1,6 +1,6 @@
 import 'package:test/test.dart';
-import 'package:ghost/gateway/protocol.dart';
-import 'package:ghost/infra/errors.dart';
+import 'package:ghost/engine/gateway/protocol.dart';
+import 'package:ghost/engine/infra/errors.dart';
 
 void main() {
   group('RpcRequest', () {
