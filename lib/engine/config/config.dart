@@ -957,6 +957,9 @@ class IntegrationsConfig {
     this.googleEmail,
     this.googleDisplayName,
     this.googlePhotoUrl,
+    this.microsoftEmail,
+    this.microsoftDisplayName,
+    this.microsoftPhotoUrl,
   });
 
   factory IntegrationsConfig.fromJson(Map<String, dynamic> json) {
@@ -969,6 +972,9 @@ class IntegrationsConfig {
       googleEmail: json['googleEmail'] as String?,
       googleDisplayName: json['googleDisplayName'] as String?,
       googlePhotoUrl: json['googlePhotoUrl'] as String?,
+      microsoftEmail: json['microsoftEmail'] as String?,
+      microsoftDisplayName: json['microsoftDisplayName'] as String?,
+      microsoftPhotoUrl: json['microsoftPhotoUrl'] as String?,
     );
   }
 
@@ -978,6 +984,9 @@ class IntegrationsConfig {
   final String? googleEmail;
   final String? googleDisplayName;
   final String? googlePhotoUrl;
+  final String? microsoftEmail;
+  final String? microsoftDisplayName;
+  final String? microsoftPhotoUrl;
 
   Map<String, dynamic> toJson() => {
         'googleClientIdWeb': googleClientIdWeb,
@@ -986,6 +995,9 @@ class IntegrationsConfig {
         if (googleEmail != null) 'googleEmail': googleEmail,
         if (googleDisplayName != null) 'googleDisplayName': googleDisplayName,
         if (googlePhotoUrl != null) 'googlePhotoUrl': googlePhotoUrl,
+        if (microsoftEmail != null) 'microsoftEmail': microsoftEmail,
+        if (microsoftDisplayName != null) 'microsoftDisplayName': microsoftDisplayName,
+        if (microsoftPhotoUrl != null) 'microsoftPhotoUrl': microsoftPhotoUrl,
       };
 
   IntegrationsConfig copyWith({
@@ -995,6 +1007,9 @@ class IntegrationsConfig {
     String? googleEmail,
     String? googleDisplayName,
     String? googlePhotoUrl,
+    String? microsoftEmail,
+    String? microsoftDisplayName,
+    String? microsoftPhotoUrl,
   }) {
     return IntegrationsConfig(
       googleClientIdWeb: googleClientIdWeb ?? this.googleClientIdWeb,
@@ -1004,6 +1019,9 @@ class IntegrationsConfig {
       googleEmail: googleEmail ?? this.googleEmail,
       googleDisplayName: googleDisplayName ?? this.googleDisplayName,
       googlePhotoUrl: googlePhotoUrl ?? this.googlePhotoUrl,
+      microsoftEmail: microsoftEmail ?? this.microsoftEmail,
+      microsoftDisplayName: microsoftDisplayName ?? this.microsoftDisplayName,
+      microsoftPhotoUrl: microsoftPhotoUrl ?? this.microsoftPhotoUrl,
     );
   }
 }

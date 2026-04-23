@@ -168,6 +168,7 @@ class InternalGatewayManager {
       FileSystemTools.registerAll(toolRegistry);
       GithubTools.registerAll(toolRegistry);
       GoogleWorkspaceTools.registerAll(toolRegistry, storage);
+      MicrosoftGraphTools.registerAll(toolRegistry, storage);
       
       // Browser tools might be disabled on some platforms (e.g. mobile)
       if (!kIsWeb && (p.extension(Platform.resolvedExecutable) != '.js')) {

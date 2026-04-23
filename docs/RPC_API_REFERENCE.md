@@ -59,10 +59,22 @@ Returns the complete application state.
 ### `config.getKey` / `config.setKey`
 Manage API keys and secrets in the vault.
 **Params:**
-- `service`: (String, e.g., "openai", "anthropic", "telegram")
+- `service`: (String, e.g., "openai", "google_workspace", "telegram")
 - `key`: (String)
 
-### `config.updateAgent` / `config.updateUser` / `config.updateIdentity`
+### `config.testKey`
+Tests a connection or key validity.
+**Params:**
+- `service`: (String)
+- `key`: (String)
+
+### `config.listModels` / `config.listModelsDetailed`
+Lists available models for a provider.
+**Params:**
+- `provider`: (String)
+- `apiKey`: (String, optional)
+
+### `config.updateAgent` / `config.updateUser` / `config.updateIdentity` / `config.updateIntegrations`
 Update specific configuration blocks. All sensitive data is automatically filtered into the vault.
 
 ---
@@ -121,6 +133,21 @@ Creates a new custom agent.
 Deletes a custom agent.
 **Params:**
 - `id`: (String) The agent ID.
+
+---
+
+## 📦 Skills Management
+
+### `skills.list`
+Lists all installed skills.
+
+### `skills.install` / `skills.import`
+Installs a new skill from a ZIP or local directory.
+
+### `skills.delete`
+Deletes a skill.
+**Params:**
+- `slug`: (String) The skill slug.
 
 ---
 

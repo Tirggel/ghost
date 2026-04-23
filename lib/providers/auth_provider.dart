@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/google_oauth.dart';
+import '../core/oauth/microsoft_oauth.dart';
 import 'gateway_provider.dart';
 
 const List<String> _kScopes = [
@@ -151,6 +153,126 @@ class AuthNotifier extends Notifier<GoogleUser?> {
       'googleEmail': '',
       'googleDisplayName': '',
       'googlePhotoUrl': '',
+    });
+  }
+}
+
+class MicrosoftUser {
+  MicrosoftUser({
+    required this.email,
+    this.displayName,
+    this.photoUrl,
+    required this.accessToken,
+  });
+  final String email;
+  final String? displayName;
+  final String? photoUrl;
+  final String accessToken;
+}
+
+final microsoftAuthStateProvider = NotifierProvider<MicrosoftAuthNotifier, MicrosoftUser?>(
+  () => MicrosoftAuthNotifier(),
+);
+
+class MicrosoftAuthNotifier extends Notifier<MicrosoftUser?> {
+  @override
+  MicrosoftUser? build() {
+    final config = ref.watch(configProvider);
+    final integrations = config.integrations;
+
+    final email = integrations['microsoftEmail'] as String?;
+    final vaultKeys = (config.vault['keys'] as List<dynamic>?)?.cast<String>() ?? [];
+
+    if (email != null && email.isNotEmpty && vaultKeys.contains('ms_graph_access_token')) {
+      return MicrosoftUser(
+        email: email,
+        displayName: integrations['microsoftDisplayName'] as String?,
+        photoUrl: integrations['microsoftPhotoUrl'] as String?,
+        accessToken: '',
+      );
+    }
+    return null;
+  }
+
+  Future<void> signIn({required String clientId}) async {
+    if (clientId.isEmpty) return;
+
+    try {
+      print('[MicrosoftAuth] Starting sign-in with clientId: ${clientId.substring(0, 8)}...');
+      final result = await performMicrosoftOAuth(
+        clientId: clientId,
+        scopes: [
+          'openid',
+          'profile',
+          'email',
+          'offline_access',
+          'User.Read',
+          'Mail.ReadWrite',
+          'Mail.Send',
+          'Files.ReadWrite.All',
+          'Calendars.ReadWrite',
+        ],
+      );
+
+      if (result != null) {
+        final token = result['accessToken'] ?? '';
+        print('[MicrosoftAuth] OAuth successful, email: ${result['email']}, token length: ${token.length}');
+
+        final configNotifier = ref.read(configProvider.notifier);
+
+        // Upload profile photo if available
+        String? photoPath;
+        final photoBase64 = result['photoBase64'];
+        if (photoBase64 != null) {
+          try {
+            final photoBytes = base64Decode(photoBase64);
+            final wsUrl = ref.read(gatewayUrlProvider).value ?? 'ws://127.0.0.1:18789';
+            photoPath = await configNotifier.uploadAvatar(
+              'ms_profile_photo.jpg',
+              photoBytes,
+              wsUrl,
+            );
+            print('[MicrosoftAuth] Profile photo uploaded: $photoPath');
+          } catch (e) {
+            print('[MicrosoftAuth] WARNING: Photo upload failed: $e');
+          }
+        }
+
+        final user = MicrosoftUser(
+          email: result['email'] ?? 'unknown',
+          displayName: result['displayName'],
+          photoUrl: photoPath,
+          accessToken: token,
+        );
+
+        state = user;
+
+        await configNotifier.setKey('ms_workspace', user.accessToken);
+        print('[MicrosoftAuth] Token saved to vault');
+
+        await configNotifier.updateIntegrations({
+          'microsoftEmail': user.email,
+          'microsoftDisplayName': user.displayName,
+          'microsoftPhotoUrl': user.photoUrl ?? '',
+        });
+        print('[MicrosoftAuth] Integrations updated with user info');
+      } else {
+        print('[MicrosoftAuth] OAuth returned null — sign-in failed');
+      }
+    } catch (e, stackTrace) {
+      print('[MicrosoftAuth] EXCEPTION in signIn: $e');
+      print('[MicrosoftAuth] Stack: $stackTrace');
+    }
+  }
+
+  Future<void> signOut() async {
+    state = null;
+    final configNotifier = ref.read(configProvider.notifier);
+    await configNotifier.setKey('ms_workspace', '');
+    await configNotifier.updateIntegrations({
+      'microsoftEmail': '',
+      'microsoftDisplayName': '',
+      'microsoftPhotoUrl': '',
     });
   }
 }

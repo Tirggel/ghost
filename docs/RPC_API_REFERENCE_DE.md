@@ -28,6 +28,28 @@ Falls die Authentifizierung aktiviert ist, muss als erste Nachricht nach dem Ver
 
 ---
 
+## ⚙️ Konfigurations-Methoden
+
+### `config.get`
+Gibt den vollständigen Anwendungszustand zurück.
+
+### `config.getKey` / `config.setKey`
+Verwaltet API-Schlüssel im verschlüsselten Tresor (Vault).
+**Parameter:**
+- `service`: (String, z.B. "openai", "google_workspace", "telegram")
+- `key`: (String)
+
+### `config.testKey`
+Testet eine Verbindung oder die Gültigkeit eines Schlüssels.
+
+### `config.listModels` / `config.listModelsDetailed`
+Listet verfügbare Modelle für einen Provider auf.
+
+### `config.updateAgent` / `config.updateUser` / `config.updateIdentity` / `config.updateIntegrations`
+Aktualisiert spezifische Konfigurationsblöcke.
+
+---
+
 ## 🤖 Agenten-Methoden
 
 ### `agent.chat`
@@ -83,6 +105,21 @@ Erstellt einen neuen Custom Agent.
 Löscht einen Custom Agent.
 **Parameter:**
 - `id`: (String) Die Agenten-ID.
+
+---
+
+## 📦 Skills Management
+
+### `skills.list`
+Listet alle installierten Skills auf.
+
+### `skills.install` / `skills.import`
+Installiert einen neuen Skill aus einem ZIP oder einem lokalen Verzeichnis.
+
+### `skills.delete`
+Löscht einen Skill.
+**Parameter:**
+- `slug`: (String) Der Skill-Slug.
 
 ---
 

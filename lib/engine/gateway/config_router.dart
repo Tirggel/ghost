@@ -21,6 +21,7 @@ import '../config/config.dart';
 import '../channels/manager.dart';
 import '../channels/telegram.dart';
 import '../tools/google_workspace.dart';
+import '../tools/microsoft_graph.dart';
 
 final _log = Logger('Ghost.ConfigRouter');
 
@@ -202,6 +203,18 @@ class ConfigRouter {
           return {
             'status': 'error',
             'message': 'Google Workspace token expired or invalid'
+          };
+        }
+      }
+
+      if (service == 'ms_workspace') {
+        final isValid = await MsGraphClient.testConnection(storage);
+        if (isValid) {
+          return {'status': 'ok', 'message': 'Connection successful'};
+        } else {
+          return {
+            'status': 'error',
+            'message': 'Microsoft 365 token expired or invalid'
           };
         }
       }
@@ -519,13 +532,17 @@ class ConfigRouter {
       if (params == null) throw ProtocolError('Missing params');
 
       final config = await loadConfig(configPath);
-      final updatedIntegrations = config.integrations.copyWith(
+      final current = await _loadIntegrationsFromVault() ?? config.integrations;
+      final updatedIntegrations = current.copyWith(
         googleClientIdWeb: params['googleClientIdWeb'] as String?,
         googleClientIdDesktop: params['googleClientIdDesktop'] as String?,
         googleClientSecret: params['googleClientSecret'] as String?,
         googleEmail: params['googleEmail'] as String?,
         googleDisplayName: params['googleDisplayName'] as String?,
         googlePhotoUrl: params['googlePhotoUrl'] as String?,
+        microsoftEmail: params['microsoftEmail'] as String?,
+        microsoftDisplayName: params['microsoftDisplayName'] as String?,
+        microsoftPhotoUrl: params['microsoftPhotoUrl'] as String?,
       );
       await _saveIntegrationsToVault(updatedIntegrations);
       await saveConfig(config, configPath);
@@ -1227,6 +1244,8 @@ class ConfigRouter {
   String _getStorageKey(String service) {
     if (service == 'telegram') return 'telegram_bot_token';
     if (service == 'google_workspace') return 'google_access_token';
+    if (service == 'ms_workspace') return 'ms_graph_access_token';
+    if (service == 'ms_client_id') return 'ms_client_id';
     if (service == 'google_client_id_web') return 'google_client_id_web';
     if (service == 'google_client_id_desktop') {
       return 'google_client_id_desktop';

@@ -51,6 +51,7 @@ export 'engine/tools/search.dart';
 export 'engine/tools/sessions.dart';
 export 'engine/tools/github.dart';
 export 'engine/tools/google_workspace.dart';
+export 'engine/tools/microsoft_graph.dart';
 export 'engine/tools/browser.dart';
 export 'engine/tools/memory.dart';
 export 'engine/tools/skills.dart';

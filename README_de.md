@@ -72,6 +72,8 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
 - **Wiederherstellung**: Importiert ein Backup-Archiv und stellt den Zustand deines Ghost-Assistenten nahtlos wieder her.
 
 ### 📚 Weiterführende Dokumentation
+- **[Google Workspace Setup](docs/GOOGLE_WORKSPACE_SETUP_DE.md)**: Anleitung zur Konfiguration von Gmail, Kalender und Drive.
+- **[Microsoft 365 Setup](docs/MICROSOFT_365_SETUP_DE.md)**: Anleitung zur Konfiguration von Outlook und OneDrive via Azure AD.
 - **[Skills Development Guide](docs/SKILLS_GUIDE_DE.md)**: Erfahre, wie du eigene KI-Skills erstellst und paketierst.
 - **[STT & TTS Setup](docs/STT_TTS_SETUP_DE.md)**: Konfiguriere lokale Spracherkennung und -synthese.
 - **[Multi-Channel Setup](docs/CHANNELS_DE.md)**: Detaillierte Anleitung für Telegram, Discord, WhatsApp & Co.
@@ -91,6 +93,10 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
     - **Gmail**: E-Mails lesen, suchen, **löschen** (Papierkorb) und **neue E-Mails senden**.
     - **Kalender**: Termine auflisten, **neue Events hinzufügen** und **Events löschen**.
     - **Google Drive**: Dateien suchen, auflisten und **löschen**.
+- **Microsoft 365 / Outlook Integration**:
+    - **Outlook Mail**: E-Mails lesen, suchen und **senden** via Microsoft Graph.
+    - **Outlook Kalender**: Termine auflisten und **neue Events hinzufügen**.
+    - **OneDrive**: Dateien in deinem Cloud-Speicher suchen und auflisten.
 - **Erweiterbare Skills**:
     - **Modulares System**: Laden und Verwalten von Skills zur Erweiterung der Fähigkeiten des Agenten.
     - **Globale & Agenten-spezifische Skills**: Aktiviere Funktionen für alle Agenten oder nur für bestimmte Profile.

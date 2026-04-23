@@ -73,6 +73,8 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
 - **Restore**: Import a backup archive and seamlessly restore your Ghost assistant's state.
 
 ### 📚 Further Documentation
+- **[Google Workspace Setup](docs/GOOGLE_WORKSPACE_SETUP_EN.md)**: Guide for configuring Gmail, Calendar, and Drive.
+- **[Microsoft 365 Setup](docs/MICROSOFT_365_SETUP_EN.md)**: Guide for configuring Outlook and OneDrive via Azure AD.
 - **[Skills Development Guide](docs/SKILLS_GUIDE.md)**: Learn how to create and package your own AI skills.
 - **[STT & TTS Setup](docs/STT_TTS_SETUP.md)**: Configure local speech recognition and synthesis.
 - **[Multi-Channel Setup](docs/CHANNELS_EN.md)**: Detailed guide for connecting Telegram, Discord, WhatsApp, etc.
@@ -92,6 +94,10 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
     - **Gmail**: Read, search, **delete** (trash), and **send new emails**.
     - **Calendar**: List appointments, **add new events**, and **delete events**.
     - **Google Drive**: Search, list, and **delete** files.
+- **Microsoft 365 / Outlook Integration**:
+    - **Outlook Mail**: Read, search, and **send emails** via Microsoft Graph.
+    - **Outlook Calendar**: List appointments and **add new events**.
+    - **OneDrive**: Search and list files in your cloud storage.
 - **Extensible Skills**:
     - **Modular System**: Load and manage skills to extend agent capabilities.
     - **Global & Agent-specific Skills**: Enable features for all agents or just specific profiles.

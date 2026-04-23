@@ -7,6 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import '../../../../core/constants.dart';
+import '../../../../core/oauth/microsoft_oauth.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../../providers/auth_provider.dart';
 import '../../../widgets/app_styles.dart';
@@ -207,6 +208,7 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
+    final msAuthState = ref.watch(microsoftAuthStateProvider);
     final config = ref.watch(configProvider);
     final vaultKeys = (config.vault['keys'] as List<dynamic>?)?.cast<String>() ?? [];
 
@@ -385,6 +387,134 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
               foregroundColor: AppColors.black,
             ),
           ),
+          
+        const SizedBox(height: 32),
+        const AppSectionHeader('settings.integrations.ms_graph_section', large: true),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Text(
+            msAuthState != null
+                ? 'settings.integrations.ms_connected'.tr()
+                : kIsWeb
+                    ? 'settings.integrations.ms_desc_web'.tr()
+                    : 'settings.integrations.ms_desc_desktop'.tr(),
+            style: const TextStyle(color: AppColors.textDim, fontSize: AppConstants.fontSizeBody),
+          ),
+        ),
+        if (msAuthState != null) ...[
+          AppSettingsTile(
+            title: msAuthState.displayName ?? msAuthState.email,
+            subtitle: msAuthState.displayName != null ? msAuthState.email : null,
+            leading: AvatarWidget(
+              path: msAuthState.photoUrl,
+              radius: AppConstants.avatarRadius,
+              iconSize: AppConstants.avatarIconSize,
+            ),
+            trailing: TextButton.icon(
+              onPressed: () => ref.read(microsoftAuthStateProvider.notifier).signOut(),
+              icon: const Icon(Icons.logout, size: AppConstants.settingsIconSize, color: AppColors.error),
+              label: Text('common.sign_out'.tr(), style: const TextStyle(color: AppColors.error)),
+            ),
+          ),
+        ],
+        if (msAuthState == null) ...[
+          AppSettingsInput(
+            title: 'settings.integrations.ms_graph_section',
+            leading: Image.asset(
+              AppConstants.getChannelIcon('msTeams'),
+              width: AppConstants.integrationIconSize,
+              height: AppConstants.integrationIconSize,
+            ),
+            isEditing: _editingOAuthField == 'ms_workspace',
+            isAlreadySet: vaultKeys.contains('ms_client_id'),
+            isVerifying: _signingIn && _editingOAuthField == 'ms_workspace',
+            inputs: [
+              AppSettingsInputField(
+                controller: _getOAuthEditController('ms_client_id'),
+                label: 'settings.integrations.ms_client_id_desktop_label',
+                hint: 'settings.integrations.ms_client_id_missing_desktop',
+                obscureText: false,
+              ),
+            ],
+            onEdit: () async {
+              final clientId = await ref.read(configProvider.notifier).getKey('ms_client_id');
+              if (mounted) {
+                setState(() {
+                  _getOAuthEditController('ms_client_id').text = clientId ?? '';
+                  _editingOAuthField = 'ms_workspace';
+                });
+              }
+            },
+            onDelete: () async {
+              final label = 'settings.integrations.ms_graph_section'.tr();
+              final confirmed = await AppAlertDialog.showConfirmation(
+                context: context,
+                title: 'settings.api_keys.delete_key_title'.tr(namedArgs: {'label': label}),
+                content: 'settings.api_keys.delete_key_content'.tr(namedArgs: {'label': label}),
+                confirmLabel: 'common.delete'.tr(),
+                isDestructive: true,
+              );
+              if (confirmed == true) {
+                try {
+                  await ref.read(configProvider.notifier).setKey('ms_client_id', '');
+                  if (!mounted) return;
+                  AppSnackBar.showSuccess(context, 'settings.integrations.credential_removed'.tr(namedArgs: {'label': label}));
+                } catch (e) {
+                  if (!context.mounted) return;
+                  showAppErrorDialog(context, e.toString());
+                }
+              }
+            },
+            onSave: () async {
+              setState(() => _signingIn = true);
+              try {
+                final idValue = _getOAuthEditController('ms_client_id').text.trim();
+                if (idValue.isNotEmpty) {
+                  final isValid = await verifyMicrosoftClientId(idValue);
+                  if (!isValid) {
+                    if (mounted) {
+                      _getOAuthEditController('ms_client_id').clear();
+                      AppSnackBar.showError(
+                        context,
+                        'settings.integrations.invalid_ms_client_id'.tr(),
+                      );
+                    }
+                    return;
+                  }
+                  await ref.read(configProvider.notifier).setKey('ms_client_id', idValue);
+                }
+                if (!mounted) return;
+                AppSnackBar.showSuccess(
+                  context,
+                  'settings.integrations.credential_saved'.tr(
+                    namedArgs: {'label': 'settings.integrations.ms_graph_section'.tr()},
+                  ),
+                );
+                setState(() => _editingOAuthField = null);
+              } catch (e) {
+                if (!context.mounted) return;
+                showAppErrorDialog(context, e.toString());
+              } finally {
+                setState(() => _signingIn = false);
+              }
+            },
+            onCancel: () => setState(() => _editingOAuthField = null),
+            verifySaveTooltip: 'settings.api_keys.verify_save_tooltip',
+          ),
+        ],
+        const SizedBox(height: 12),
+        if (_signingIn && _editingOAuthField != 'google_workspace' && _editingOAuthField != 'ms_workspace')
+          const Center(child: CircularProgressIndicator())
+        else if (vaultKeys.contains('ms_client_id') && msAuthState == null)
+          ElevatedButton.icon(
+            onPressed: _handleMicrosoftSignIn,
+            icon: const Icon(Icons.login, size: AppConstants.settingsIconSize),
+            label: Text('settings.integrations.sign_in_ms'.tr()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0078D4),
+              foregroundColor: AppColors.white,
+            ),
+          ),
       ],
     );
   }
@@ -400,6 +530,22 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
         return;
       }
       await ref.read(authStateProvider.notifier).signIn(clientId: clientId, clientSecret: clientSecret ?? '');
+    } catch (e) {
+      if (mounted) AppSnackBar.showError(context, 'Error: $e');
+    } finally {
+      if (mounted) setState(() => _signingIn = false);
+    }
+  }
+
+  Future<void> _handleMicrosoftSignIn() async {
+    setState(() => _signingIn = true);
+    try {
+      final clientId = await ref.read(configProvider.notifier).getKey('ms_client_id');
+      if (clientId == null || clientId.isEmpty) {
+        AppSnackBar.showError(context, 'settings.integrations.client_id_missing'.tr());
+        return;
+      }
+      await ref.read(microsoftAuthStateProvider.notifier).signIn(clientId: clientId);
     } catch (e) {
       if (mounted) AppSnackBar.showError(context, 'Error: $e');
     } finally {
