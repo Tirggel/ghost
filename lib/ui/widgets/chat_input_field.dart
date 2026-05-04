@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../core/constants.dart';
-import '../../core/models/config_models.dart';
 import '../../providers/gateway_provider.dart';
 import '../../providers/stt_provider.dart';
 
@@ -30,14 +29,18 @@ class _ChatInputFieldState extends ConsumerState<ChatInputField> {
 
   void _toggleListening() {
     final sttState = ref.read(sttProvider);
-    if (!sttState.isRecording && !sttState.isDownloading && !sttState.isTranscribing) {
+    if (!sttState.isRecording &&
+        !sttState.isDownloading &&
+        !sttState.isTranscribing) {
       widget.controller.clear();
     }
 
     ref.read(sttProvider.notifier).toggleRecording((text) {
       if (text.isNotEmpty) {
         final currentText = widget.controller.text;
-        widget.controller.text = currentText.isEmpty ? text : '$currentText $text';
+        widget.controller.text = currentText.isEmpty
+            ? text
+            : '$currentText $text';
       }
     });
   }
@@ -49,7 +52,8 @@ class _ChatInputFieldState extends ConsumerState<ChatInputField> {
       allowedExtensions.addAll(['txt', 'md', 'dart', 'py', 'js', 'json']);
     }
 
-    final FileType type = (caps.supportsImage || caps.supportsVideo || caps.supportsAudio)
+    final FileType type =
+        (caps.supportsImage || caps.supportsVideo || caps.supportsAudio)
         ? FileType.any
         : FileType.custom;
 
@@ -106,7 +110,10 @@ class _ChatInputFieldState extends ConsumerState<ChatInputField> {
                   final file = _attachments[index];
                   return Container(
                     margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(12),
@@ -125,14 +132,21 @@ class _ChatInputFieldState extends ConsumerState<ChatInputField> {
                           constraints: const BoxConstraints(maxWidth: 120),
                           child: Text(
                             file.name,
-                            style: const TextStyle(fontSize: 12, color: AppColors.white),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.white,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 4),
                         InkWell(
                           onTap: () => _removeAttachment(index),
-                          child: const Icon(Icons.close, size: 14, color: AppColors.textDim),
+                          child: const Icon(
+                            Icons.close,
+                            size: 14,
+                            color: AppColors.textDim,
+                          ),
                         ),
                       ],
                     ),
@@ -144,7 +158,9 @@ class _ChatInputFieldState extends ConsumerState<ChatInputField> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
+              borderRadius: BorderRadius.circular(
+                AppConstants.buttonBorderRadius,
+              ),
               border: Border.all(color: AppColors.border),
             ),
             child: Row(
@@ -176,8 +192,8 @@ class _ChatInputFieldState extends ConsumerState<ChatInputField> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          sttState.downloadProgress >= 1.0 
-                              ? 'Entpacke Modell...' 
+                          sttState.downloadProgress >= 1.0
+                              ? 'Entpacke Modell...'
                               : 'Lade Modell... ${(sttState.downloadProgress * 100).toInt()}%',
                           style: const TextStyle(
                             color: AppConstants.iconColorPrimary,
@@ -190,8 +206,10 @@ class _ChatInputFieldState extends ConsumerState<ChatInputField> {
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                            value: sttState.downloadProgress > 0 && sttState.downloadProgress < 1.0 
-                                ? sttState.downloadProgress 
+                            value:
+                                sttState.downloadProgress > 0 &&
+                                    sttState.downloadProgress < 1.0
+                                ? sttState.downloadProgress
                                 : null,
                             strokeWidth: 2,
                             color: AppConstants.iconColorPrimary,
@@ -217,7 +235,9 @@ class _ChatInputFieldState extends ConsumerState<ChatInputField> {
                     onPressed: _toggleListening,
                     icon: Icon(
                       sttState.isRecording ? Icons.mic : Icons.mic_none,
-                      color: sttState.isRecording ? AppConstants.iconColorError : AppColors.textDim,
+                      color: sttState.isRecording
+                          ? AppConstants.iconColorError
+                          : AppColors.textDim,
                     ),
                     tooltip: 'Mic',
                   ),

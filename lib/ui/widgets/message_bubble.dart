@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:easy_localization/easy_localization.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'code_block_widget.dart';
 import '../../providers/gateway_provider.dart';
 import '../../core/constants.dart';
@@ -108,7 +110,7 @@ class MessageBubble extends ConsumerWidget {
     String identityAvatarPath = identity.avatar ?? '';
     String identityName =
         identity.name.isEmpty ? 'settings.tabs.identity'.tr() : identity.name;
-    final identityEmoji = identity.emoji;
+    final identityEmoji = (identity.emoji == null || identity.emoji!.isEmpty) ? '🤖' : identity.emoji;
 
     // Check if this is a custom agent message
     final agentId = metadata?['agentId'] as String?;
@@ -136,10 +138,10 @@ class MessageBubble extends ConsumerWidget {
         );
       }
       if (isAssistant) {
-        // Custom agent without avatar → show robot icon
+        // Custom agent without avatar → show robot emoji
         if (isCustomAgent && identityAvatarPath.isEmpty) {
           return const AppAssistantAvatar(
-            icon: Icons.smart_toy_outlined,
+            emoji: '🤖',
             radius: AppConstants.avatarRadius,
             iconSize: AppConstants.avatarIconSize,
           );
@@ -279,12 +281,19 @@ class MessageBubble extends ConsumerWidget {
                     )
                   else
                     MarkdownBody(
+                      selectable: false,
+                      onTapLink: (text, href, title) {
+                        if (href != null) {
+                          launchUrl(Uri.parse(href));
+                        }
+                      },
                       data: content.isEmpty && isAssistant ? '_${'chat.thinking'.tr()}_' : displayContent,
                       inlineSyntaxes: [
                         if (searchQuery.isNotEmpty && role != 'user') SearchMatchSyntax(),
                       ],
                       builders: {
                         'pre': CodeElementBuilder(),
+                        'a': LinkElementBuilder(),
                         if (searchQuery.isNotEmpty && role != 'user')
                           'search_match': SearchMatchBuilder(activeMatchIndex: activeMatchIndex),
                       },
@@ -399,9 +408,9 @@ class MessageBubble extends ConsumerWidget {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  color: Colors.green.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
-                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                                  border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
                                 ),
                                 child: Row(
                                   children: [
@@ -410,7 +419,7 @@ class MessageBubble extends ConsumerWidget {
                                       height: 16,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                                        valueColor: const AlwaysStoppedAnimation(Colors.greenAccent),
                                       ),
                                     ),
                                     const SizedBox(width: 16),
@@ -419,7 +428,7 @@ class MessageBubble extends ConsumerWidget {
                                         activityLocal.toUpperCase(),
                                         style: const TextStyle(
                                           fontSize: 11,
-                                          color: AppColors.primary,
+                                          color: Colors.greenAccent,
                                           letterSpacing: 1.2,
                                           fontWeight: FontWeight.w800,
                                         ),
@@ -680,7 +689,83 @@ class MessageBubble extends ConsumerWidget {
         style: const TextStyle(color: AppColors.textMain, fontSize: 15, height: 1.6),
       ));
     }
-    return RichText(text: TextSpan(children: spans));
+    return Text.rich(TextSpan(children: spans));
+  }
+}
+
+class LinkWidget extends StatefulWidget {
+  final String text;
+  final String? href;
+  final TextStyle? preferredStyle;
+
+  const LinkWidget({
+    super.key,
+    required this.text,
+    this.href,
+    this.preferredStyle,
+  });
+
+  @override
+  State<LinkWidget> createState() => _LinkWidgetState();
+}
+
+class _LinkWidgetState extends State<LinkWidget> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = (widget.preferredStyle ?? const TextStyle()).copyWith(
+      color: Colors.greenAccent,
+      decoration: _isHovered ? TextDecoration.underline : TextDecoration.none,
+    );
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: () async {
+          final isCtrlPressed = HardwareKeyboard.instance.logicalKeysPressed
+                  .contains(LogicalKeyboardKey.controlLeft) ||
+              HardwareKeyboard.instance.logicalKeysPressed
+                  .contains(LogicalKeyboardKey.controlRight) ||
+              HardwareKeyboard.instance.logicalKeysPressed
+                  .contains(LogicalKeyboardKey.metaLeft) ||
+              HardwareKeyboard.instance.logicalKeysPressed
+                  .contains(LogicalKeyboardKey.metaRight);
+
+          if (isCtrlPressed && widget.href != null) {
+            final uri = Uri.tryParse(widget.href!);
+            if (uri != null) {
+              await launchUrl(uri);
+            }
+          } else if (!isCtrlPressed) {
+            // Optional: Show a small tooltip or snackbar that Ctrl+Click is needed
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Nutze Strg + Klick zum Öffnen des Links'),
+                duration: Duration(seconds: 1),
+              ),
+            );
+          }
+        },
+        child: Text(widget.text, style: style),
+      ),
+    );
+  }
+}
+
+class LinkElementBuilder extends MarkdownElementBuilder {
+  @override
+  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    final text = element.textContent;
+    final href = element.attributes['href'];
+    return LinkWidget(
+      text: text,
+      href: href,
+      preferredStyle: preferredStyle,
+    );
   }
 }
 

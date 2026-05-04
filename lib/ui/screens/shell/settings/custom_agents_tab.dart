@@ -23,6 +23,8 @@ class CustomAgentsTab extends ConsumerStatefulWidget {
 
 class _CustomAgentsTabState extends ConsumerState<CustomAgentsTab> {
   final List<Map<String, dynamic>> _newAgents = [];
+  final Set<String> _editingIds = {};
+  int _saveTrigger = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -76,26 +78,58 @@ class _CustomAgentsTabState extends ConsumerState<CustomAgentsTab> {
                     style: const TextStyle(color: AppColors.textDim))
               else ...[
                 // New unsaved agents
-                ..._newAgents.map((agent) => CustomAgentCard(
-                      key: ValueKey(agent['id']),
-                      agent: agent,
-                      isNew: true,
-                      onCancel: () {
-                        setState(() {
-                          _newAgents.remove(agent);
-                        });
-                      },
-                      onSaved: () {
-                        setState(() {
-                          _newAgents.remove(agent);
-                        });
-                      },
-                    )),
+                ..._newAgents.map((agent) {
+                  final id = agent['id'] as String;
+                  return CustomAgentCard(
+                    key: ValueKey(id),
+                    agent: agent,
+                    isNew: true,
+                    isEditing: _editingIds.contains(id),
+                    saveTrigger: _saveTrigger,
+                    onEditToggle: () {
+                      setState(() {
+                        if (_editingIds.contains(id)) {
+                          _editingIds.remove(id);
+                        } else {
+                          _editingIds.add(id);
+                        }
+                      });
+                    },
+                    onCancel: () {
+                      setState(() {
+                        _newAgents.remove(agent);
+                        _editingIds.remove(id);
+                      });
+                    },
+                    onSaved: () {
+                      setState(() {
+                        _newAgents.remove(agent);
+                        _editingIds.remove(id);
+                      });
+                    },
+                  );
+                }),
                 // Existing agents
                 ...customAgents.map((agent) {
                   return CustomAgentCard(
                     key: ValueKey(agent.id),
                     agent: agent,
+                    isEditing: _editingIds.contains(agent.id),
+                    saveTrigger: _saveTrigger,
+                    onEditToggle: () {
+                      setState(() {
+                        if (_editingIds.contains(agent.id)) {
+                          _editingIds.remove(agent.id);
+                        } else {
+                          _editingIds.add(agent.id);
+                        }
+                      });
+                    },
+                    onSaved: () {
+                      setState(() {
+                        _editingIds.remove(agent.id);
+                      });
+                    },
                   );
                 }),
               ],
@@ -112,6 +146,7 @@ class _CustomAgentsTabState extends ConsumerState<CustomAgentsTab> {
     return AppSettingsNavBar(
       onBack: widget.onBack,
       onNext: widget.onNext,
+      onSave: _editingIds.isNotEmpty ? () => setState(() => _saveTrigger++) : null,
     );
   }
 }
@@ -122,13 +157,19 @@ class CustomAgentCard extends ConsumerStatefulWidget {
     super.key,
     required this.agent,
     this.isNew = false,
+    this.isEditing = false,
+    this.onEditToggle,
     this.onCancel,
     this.onSaved,
+    this.saveTrigger = 0,
   });
   final dynamic agent;
   final bool isNew;
+  final bool isEditing;
+  final VoidCallback? onEditToggle;
   final VoidCallback? onCancel;
   final VoidCallback? onSaved;
+  final int saveTrigger;
 
   @override
   ConsumerState<CustomAgentCard> createState() => _CustomAgentCardState();
@@ -144,6 +185,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
   int _avatarNonce = 0;
   bool _enabled = true;
   bool _sendChatHistory = true;
+  int? _lastSaveTrigger;
 
   final Map<String, String> _cronPresets = {
     '': 'settings.agents.cron_none',
@@ -261,12 +303,26 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
         }
       } else {
         await ref.read(configProvider.notifier).updateCustomAgent(newAgentData);
+        if (mounted) {
+          widget.onSaved?.call();
+        }
       }
     }, successMessage: 'settings.agents.saved'.tr());
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.saveTrigger > 0 && widget.saveTrigger != _lastSaveTrigger) {
+      _lastSaveTrigger = widget.saveTrigger;
+      if (widget.isEditing) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !isSaveLoading) {
+            _save();
+          }
+        });
+      }
+    }
+
     final config = ref.watch(configProvider);
     final vaultKeys = config.vaultKeys;
     final availableProviders = AppConstants.aiProviders.where((p) {
@@ -298,11 +354,8 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
               await _save();
           }
       },
-      onEditToggle: () {
-          if (widget.isNew) {
-              widget.onCancel?.call();
-          }
-      },
+      isEditing: widget.isEditing,
+      onEditToggle: widget.isNew ? widget.onCancel : widget.onEditToggle,
       onDelete: () async {
           if (widget.isNew) {
               widget.onCancel?.call();

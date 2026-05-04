@@ -3,12 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../../core/constants.dart';
-import '../../../../core/models/config_models.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_snackbar.dart';
 
 class SecurityTab extends ConsumerStatefulWidget {
-
   const SecurityTab({super.key, this.onBack, this.onNext});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
@@ -34,7 +32,9 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
   Future<void> _updateConfig(SecurityConfig newConfig) async {
     setState(() => _security = newConfig);
     try {
-      await ref.read(configProvider.notifier).updateSecurity(newConfig.toJson());
+      await ref
+          .read(configProvider.notifier)
+          .updateSecurity(newConfig.toJson());
       if (mounted) {
         AppSnackBar.showSuccess(context, 'common.saved'.tr());
       }
@@ -51,7 +51,7 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
   void _onLevelChanged(String? val) {
     if (val == null) return;
     final level = SecurityLevel.values.firstWhere((e) => e.name == val);
-    
+
     SecurityConfig updated;
     switch (level) {
       case SecurityLevel.none:
@@ -108,7 +108,7 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
       onNext: widget.onNext,
       children: [
         const AppSectionHeader('settings.security.section', large: true),
-        
+
         // Level Dropdown
         Padding(
           padding: const EdgeInsets.only(bottom: 24.0),
@@ -119,7 +119,8 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
                   value: _security.level.name,
                   label: 'settings.security.level',
                   items: ['none', 'low', 'medium', 'high'],
-                  displayValue: (String val) => 'settings.security.level_$val'.tr(),
+                  displayValue: (String val) =>
+                      'settings.security.level_$val'.tr(),
                   onChanged: _onLevelChanged,
                 ),
               ),
@@ -141,7 +142,8 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
             style: const TextStyle(color: AppColors.textDim, fontSize: 13),
           ),
           value: _security.humanInTheLoop,
-          onChanged: (val) => _updateConfig(_security.copyWith(humanInTheLoop: val)),
+          onChanged: (val) =>
+              _updateConfig(_security.copyWith(humanInTheLoop: val)),
         ),
 
         // Prompt Hardening Switch
@@ -158,7 +160,8 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
             style: const TextStyle(color: AppColors.textDim, fontSize: 13),
           ),
           value: _security.promptHardening,
-          onChanged: (val) => _updateConfig(_security.copyWith(promptHardening: val)),
+          onChanged: (val) =>
+              _updateConfig(_security.copyWith(promptHardening: val)),
         ),
 
         // Network Isolation
@@ -175,7 +178,8 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
             style: const TextStyle(color: AppColors.textDim, fontSize: 13),
           ),
           value: _security.restrictNetwork,
-          onChanged: (val) => _updateConfig(_security.copyWith(restrictNetwork: val)),
+          onChanged: (val) =>
+              _updateConfig(_security.copyWith(restrictNetwork: val)),
         ),
 
         // Prompt Analyzers
@@ -192,7 +196,8 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
             style: const TextStyle(color: AppColors.textDim, fontSize: 13),
           ),
           value: _security.promptAnalyzers,
-          onChanged: (val) => _updateConfig(_security.copyWith(promptAnalyzers: val)),
+          onChanged: (val) =>
+              _updateConfig(_security.copyWith(promptAnalyzers: val)),
         ),
       ],
     );

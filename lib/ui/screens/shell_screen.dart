@@ -29,6 +29,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   final _log = Logger('Ghost.ShellScreen');
   StreamSubscription<Map<String, dynamic>>? _messageSub;
   final TextEditingController _searchController = TextEditingController();
+  bool _isCheckingConfig = true;
 
   @override
   void initState() {
@@ -56,6 +57,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
           'channels.getErrors',
           {'clear': false},
         );
+        if (!mounted) return;
         if (result != null && result['errors'] != null) {
           final errors = result['errors'] as List<dynamic>;
           for (final err in errors) {
@@ -67,14 +69,17 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
         // Ignore errors fetching channel errors
       }
 
-      // 2. Ensure config is loaded from backend
-      final config = ref.read(configProvider);
-      if (config.isEmpty) {
-        await ref.read(configProvider.notifier).refresh();
-      }
+      if (!mounted) return;
+
+      // 2. Always force a full config refresh from backend.
+      // This is critical after a restore, where the gateway has restarted
+      // with a new vault and the local configProvider cache is stale.
+      await ref.read(configProvider.notifier).refresh();
+
+      if (!mounted) return;
 
       // Sync language from backend on startup
-      if (mounted) {
+      {
         final currentConfig = ref.read(configProvider);
         final backendLang = currentConfig.user.language;
         if (backendLang != null && backendLang.isNotEmpty) {
@@ -86,29 +91,53 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
         }
       }
 
-      // 2b. Show setup wizard if no provider is configured
-      if (mounted) {
-        final currentConfig = ref.read(configProvider);
-        if (currentConfig.agent.provider == null ||
-            currentConfig.agent.provider!.isEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                fullscreenDialog: true,
-                builder: (_) => const SetupWizardScreen(),
-              ),
-            );
+      // 2b. Show setup wizard if no provider is configured.
+      // If the config is still empty after the first refresh (e.g. gateway is
+      // still warming up after a restore), wait briefly and retry once before
+      // concluding that the provider is genuinely unconfigured.
+      var currentConfig = ref.read(configProvider);
+      if (currentConfig.agent.provider == null ||
+          currentConfig.agent.provider!.isEmpty) {
+        // Retry once after a short delay to handle post-restore timing
+        await Future<void>.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        await ref.read(configProvider.notifier).refresh();
+        if (!mounted) return;
+        currentConfig = ref.read(configProvider);
+      }
+
+      if (currentConfig.agent.provider == null ||
+          currentConfig.agent.provider!.isEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              fullscreenDialog: true,
+              builder: (_) => const SetupWizardScreen(),
+            ),
+          ).then((_) {
+            if (mounted) {
+              setState(() {
+                _isCheckingConfig = false;
+              });
+            }
           });
-          return;
-        }
+        });
+        return;
       }
 
       // 3. Local startup checks (Auth & API Keys)
+      if (!mounted) return;
       startupErrors.addAll(_performStartupChecks());
 
       if (startupErrors.isNotEmpty) {
         _showErrorOverlay(startupErrors.join('\n\n'));
+      }
+
+      if (mounted) {
+        setState(() {
+          _isCheckingConfig = false;
+        });
       }
     });
   }
@@ -156,12 +185,16 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     return errors;
   }
 
-  void _showErrorOverlay(String errorMessage) {
+  void _showErrorOverlay(String errorMessage, {VoidCallback? onOk}) {
     if (!mounted) return;
     final lines = errorMessage.split('\n');
     final formattedMessage = lines.take(2).join('\n');
 
-    AppAlertDialog.showError(context: context, message: formattedMessage);
+    AppAlertDialog.showError(
+      context: context,
+      message: formattedMessage,
+      onOk: onOk,
+    );
   }
 
   void _newChat() async {
@@ -198,18 +231,77 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isCheckingConfig) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/icons/logo/ghost.png',
+                height: 120,
+                width: 120,
+              ),
+              const SizedBox(height: 32),
+              const CircularProgressIndicator(),
+              const SizedBox(height: 24),
+              const Text(
+                'Ghost is loading...',
+                style: TextStyle(
+                  color: AppColors.textDim,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final shellState = ref.watch(shellProvider);
     final activeSessionId = shellState.activeSessionId;
     final query = shellState.searchQuery.toLowerCase();
 
     ref.listen<String?>(authErrorProvider, (previous, next) {
       if (next != null) {
-        _showErrorOverlay(next);
+        final isSessionExpired = next == 'settings.integrations.google_session_expired';
+        
+        if (isSessionExpired) {
+          _showErrorOverlay(
+            next.tr(),
+            onOk: () {
+              // Navigate to Integrations tab and signal to open Settings
+              ref.read(shellProvider.notifier).setSettingsTabIndex(3);
+              ref.read(shellProvider.notifier).setPendingSettingsOpen(true);
+            },
+          );
+        } else {
+          // If it looks like a translation key, translate it, otherwise show as is
+          final message = next.contains('.') ? next.tr() : next;
+          _showErrorOverlay(message);
+        }
+
         Future.microtask(
           () => ref.read(authErrorProvider.notifier).setError(null),
         );
       }
     });
+
+    // React to pendingSettingsOpen: triggered after error dialog is dismissed
+    if (shellState.pendingSettingsOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(shellProvider.notifier).setPendingSettingsOpen(false);
+          showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => const SettingsDialog(),
+          );
+        }
+      });
+    }
 
     final sessions = ref.watch(sessionsProvider);
     final storedIds = sessions.map((s) => s.id).toSet();

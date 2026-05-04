@@ -97,6 +97,7 @@ class ToolGroups {
     'group:web': ['web_search', 'web_fetch'],
     'group:ui': ['browser', 'canvas'],
     'group:github': ['github'],
+    'group:vault': ['store_api_key'],
   };
 
   /// Expand group references in a tool list.
@@ -127,6 +128,7 @@ class ToolProfiles {
       'group:github',
       'group:web',
       'group:ui',
+      'group:vault',
     ],
     'messaging': ['message', 'group:sessions'],
     'full': [], // Empty = no restrictions

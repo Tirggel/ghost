@@ -8,7 +8,6 @@ enum ConnectionStatus {
   connecting,
   connected,
   authenticated,
-  restoring,
   error,
 }
 
@@ -62,28 +61,18 @@ class GatewayClient {
           _failPendingRequests('Connection closed');
         },
         onError: (Object e) {
-          if (_currentStatus == ConnectionStatus.restoring) {
-            print('[Ghost.Gateway] Connection drop during restore (expected)');
-            return;
-          }
           print('[Ghost.Gateway] Connection error: $e');
           _setStatus(ConnectionStatus.error);
           _failPendingRequests('Connection error: $e');
         },
       );
     } catch (e) {
-      if (_currentStatus == ConnectionStatus.restoring) {
-        print('[Ghost.Gateway] Connect failed during restore (expected)');
-        return;
-      }
       print('[Ghost.Gateway] Connect failed: $e');
       _setStatus(ConnectionStatus.error);
     }
   }
 
-  void setRestoring() {
-    _setStatus(ConnectionStatus.restoring);
-  }
+
 
   Future<bool> login(String token) async {
     print('[Ghost.Gateway] Attempting login...');
@@ -115,11 +104,13 @@ class GatewayClient {
     };
 
     final json = jsonEncode(request);
-    if (method != 'gateway.status') {
+    if (json.length > 500) {
+      print('[Ghost.Gateway] SEND: ${json.substring(0, 200)} ... [TRUNCATED, length: ${json.length}]');
+    } else {
       print('[Ghost.Gateway] SEND: $json');
     }
     _channel?.sink.add(json);
-    return completer.future.timeout(const Duration(seconds: 30));
+    return completer.future.timeout(const Duration(seconds: 120));
   }
 
   void _handleIncoming(String raw) {
@@ -136,9 +127,23 @@ class GatewayClient {
       return;
     }
 
-    if (!raw.contains('"method":"gateway.status"') &&
-        !raw.contains('"result":{"status":"running"')) {
-      print('[Ghost.Gateway] RECV: $raw');
+    // Suppress discovery messages containing agent.chat as they are very verbose
+    bool shouldLog = true;
+    if (data.containsKey('result') && data['result'] is Map) {
+      final result = data['result'] as Map;
+      if (result.containsKey('methods') && result['methods'] is List) {
+        if ((result['methods'] as List).contains('agent.chat')) {
+          shouldLog = false;
+        }
+      }
+    }
+
+    if (shouldLog) {
+      if (raw.length > 500) {
+        print('[Ghost.Gateway] RECV: ${raw.substring(0, 200)} ... [TRUNCATED, length: ${raw.length}]');
+      } else {
+        print('[Ghost.Gateway] RECV: $raw');
+      }
     }
 
     if (data.containsKey('id') && _pendingRequests.containsKey(data['id'])) {

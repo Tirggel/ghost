@@ -56,6 +56,7 @@ export 'engine/tools/browser.dart';
 export 'engine/tools/memory.dart';
 export 'engine/tools/skills.dart';
 export 'engine/tools/agents.dart';
+export 'engine/tools/vault.dart';
 
 // Routers
 export 'engine/gateway/agent_router.dart';

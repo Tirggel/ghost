@@ -133,6 +133,7 @@ class AuthTokenNotifier extends AsyncNotifier<String?> {
     ref.read(gatewayClientProvider).disconnect();
 
     // Clear secure storage
+    await _secureStorage.set(_tokenKey, '');
     await _secureStorage.remove(_tokenKey);
 
     // Clear gateway storage
@@ -143,7 +144,29 @@ class AuthTokenNotifier extends AsyncNotifier<String?> {
     } catch (_) {}
     state = const AsyncValue.data(null);
   }
+
+  /// Clears the local cached token AND the gateway-side client_token.
+  /// Use this during a restore: the gateway is about to restart and will
+  /// re-provision the correct token from the restored vault. We must also
+  /// clear the server-side client_token so that if authTokenProvider.build()
+  /// runs re-discovery (GET /client-token) before the gateway has restarted,
+  /// it does NOT get back the stale old token.
+  Future<void> clearLocalToken() async {
+    await _secureStorage.set(_tokenKey, '');
+    await _secureStorage.remove(_tokenKey);
+
+    // Also wipe the server-side client_token. The gateway is still briefly
+    // running (restore is deferred), so this HTTP call should succeed.
+    final wsUrl = await ref.read(gatewayUrlProvider.future);
+    final baseUrl = _gatewayHttpUrl(wsUrl);
+    try {
+      await http.delete(Uri.parse('$baseUrl/client-token'));
+    } catch (_) {}
+
+    state = const AsyncValue.data(null);
+  }
 }
+
 
 // Global Gateway Client Instance
 final gatewayClientProvider = Provider<GatewayClient>((ref) {

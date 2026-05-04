@@ -4,6 +4,7 @@ import '../../../../providers/shell_provider.dart';
 import '../../../widgets/settings_sub_nav_bar.dart';
 import 'api_keys_tab.dart';
 import 'external_services_tab.dart';
+import 'oauths_tab.dart';
 
 class ApiManagementTab extends ConsumerStatefulWidget {
   const ApiManagementTab({super.key, this.onBack, this.onNext});
@@ -20,6 +21,7 @@ class _ApiManagementTabState extends ConsumerState<ApiManagementTab> {
   final List<String> _subTabLabels = [
     'settings.api_keys.tab',
     'settings.external_services.tab',
+    'settings.oauths.tab',
   ];
 
   @override
@@ -44,6 +46,10 @@ class _ApiManagementTabState extends ConsumerState<ApiManagementTab> {
               ),
               ExternalServicesTab(
                 onBack: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 0),
+                onNext: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 2),
+              ),
+              OAuthsTab(
+                onBack: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 1),
                 onNext: widget.onNext,
               ),
             ],

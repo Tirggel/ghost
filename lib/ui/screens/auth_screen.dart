@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -6,6 +7,12 @@ import '../../providers/locale_provider.dart';
 import '../../providers/setup_wizard_provider.dart';
 import '../../core/constants.dart';
 import '../widgets/app_styles.dart';
+
+import '../widgets/app_dialogs.dart';
+import '../widgets/app_snackbar.dart';
+import 'package:logging/logging.dart';
+
+final _log = Logger('AuthScreen');
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -53,6 +60,64 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       if (mounted) setState(() => _error = 'Error: $e');
     } finally {
       if (mounted) setState(() => _isConnecting = false);
+    }
+  }
+
+  Future<void> _onFactoryReset() async {
+    final confirmed = await AppAlertDialog.showConfirmation(
+      context: context,
+      title: 'settings.maintenance.factory_reset_confirm_title'.tr(),
+      content: 'settings.maintenance.factory_reset_confirm_content'.tr(),
+      confirmLabel: 'common.delete'.tr(),
+      isDestructive: true,
+    );
+
+    if (confirmed == true) {
+      setState(() => _isConnecting = true);
+      try {
+        final client = ref.read(gatewayClientProvider);
+
+        // Try to reach the gateway to trigger a full server-side wipe
+        try {
+          await client.connect().timeout(const Duration(seconds: 3));
+          await client.call('config.factoryReset', {});
+        } catch (e) {
+          _log.warning('Gateway unreachable for factory reset, proceeding with local wipe: $e');
+        }
+
+        // Always clear local state (Token & Gateway URL)
+        await ref.read(authTokenProvider.notifier).logout();
+        await ref
+            .read(gatewayUrlProvider.notifier)
+            .setUrl(AppConstants.defaultGatewayUrl);
+
+        if (mounted) {
+          await showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AppAlertDialog(
+              title: Text('settings.maintenance.reset_success_title'.tr()),
+              content: Text('settings.maintenance.reset_success_content'.tr()),
+              actions: [
+                TextButton(
+                  onPressed: () => exit(0),
+                  child: Text(
+                    'settings.maintenance.restart_button'.tr(),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, color: AppColors.primary),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          AppSnackBar.showError(context, 'Reset: $e');
+        }
+      } finally {
+        if (mounted) setState(() => _isConnecting = false);
+      }
     }
   }
 
@@ -177,6 +242,20 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           .setFlag('de', e),
                     ),
                   ),
+                  const SizedBox(height: AppConstants.spacingMedium),
+                  TextButton.icon(
+                    onPressed: _onFactoryReset,
+                    icon: const Icon(Icons.refresh_rounded,
+                        color: AppColors.textDim, size: 16),
+                    label: Text(
+                      'settings.maintenance.factory_reset_button'.tr(),
+                      style: const TextStyle(
+                        color: AppColors.textDim,
+                        fontSize: 12,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -184,5 +263,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         ),
       ),
     );
+
   }
 }

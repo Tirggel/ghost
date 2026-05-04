@@ -62,6 +62,14 @@ Manage API keys and secrets in the vault.
 - `service`: (String, e.g., "openai", "google_workspace", "telegram")
 - `key`: (String)
 
+### `config.getChannelToken`
+Retrieves the secure token for a communication channel.
+**Params:**
+- `channelId`: (String, e.g., "telegram", "whatsapp")
+
+**Response:**
+- `token`: (String)
+
 ### `config.testKey`
 Tests a connection or key validity.
 **Params:**
@@ -74,8 +82,23 @@ Lists available models for a provider.
 - `provider`: (String)
 - `apiKey`: (String, optional)
 
-### `config.updateAgent` / `config.updateUser` / `config.updateIdentity` / `config.updateIntegrations`
-Update specific configuration blocks. All sensitive data is automatically filtered into the vault.
+### `config.getModelCapabilities`
+Returns details about what a specific model supports (e.g., tools, vision).
+**Params:**
+- `provider`: (String)
+- `model`: (String)
+
+### `config.testEmbedding`
+Tests if a provider/model combination supports vector embeddings.
+**Params:**
+- `provider`: (String)
+- `model`: (String)
+
+### `config.updateAgent` / `config.updateUser` / `config.updateIdentity` / `config.updateIntegrations` / `config.updateChannels` / `config.updateMemory` / `config.updateTools` / `config.updateSecurity`
+Update specific configuration blocks. All sensitive data (keys, tokens) is automatically filtered into the encrypted vault and never stored in plaintext.
+
+### `config.getGoogleCredentials`
+Retrieves the Google OAuth client IDs and secrets from the vault.
 
 ---
 
@@ -120,6 +143,11 @@ Back up or restore the Standard (Keyword) Memory database.
 ### `memory.rag.backup` / `memory.rag.restore`
 Back up or restore the RAG (Vector) Memory database.
 
+### `config.clearMemory`
+Wipes the specified memory database.
+**Params:**
+- `type`: (String, "standard" or "rag")
+
 ---
 
 ## 🛠️ Agent Management
@@ -128,6 +156,11 @@ Back up or restore the RAG (Vector) Memory database.
 Creates a new custom agent.
 **Params:**
 - `agent`: (Object) { `name`, `systemPrompt`, `skills`, `cronSchedule`, `cronMessage`, ... }
+
+### `config.updateCustomAgent`
+Updates an existing custom agent.
+**Params:**
+- `agent`: (Object) { `id`, ... }
 
 ### `config.deleteCustomAgent`
 Deletes a custom agent.
@@ -141,13 +174,60 @@ Deletes a custom agent.
 ### `skills.list`
 Lists all installed skills.
 
-### `skills.install` / `skills.import`
-Installs a new skill from a ZIP or local directory.
+### `skills.install` / `skills.import` / `skills.downloadFromGithub`
+Installs a new skill from a ZIP, local directory, or GitHub URL.
+
+### `skills.updateGlobal`
+Enables or disables a skill globally for all agents.
+**Params:**
+- `slug`: (String)
+- `isGlobal`: (Boolean)
+
+### `skills.getMarkdown` / `skills.updateMarkdown`
+Read or modify the Markdown-based logic of a skill.
+**Params:**
+- `slug`: (String)
+- `content`: (String, for update)
+
+### `skills.backup` / `skills.restore`
+Back up or restore the entire skills library.
 
 ### `skills.delete`
 Deletes a skill.
 **Params:**
 - `slug`: (String) The skill slug.
+
+---
+
+## 🛠️ Maintenance & System
+
+### `config.factoryReset`
+Wipes the entire application state, including all databases and the vault. Reboots the gateway into "first start" mode.
+
+### `config.backup`
+Creates an encrypted ZIP archive of the system state.
+**Params:**
+- `sections`: (Array of Strings, optional) e.g., `["config", "sessions", "skills", "memory", "vault"]`
+
+**Response:**
+- `path`: (String) Path to the temporary ZIP file on the host.
+- `filename`: (String) Suggested filename.
+
+### `config.restore`
+Restores the system from a ZIP archive.
+**Params:**
+- `path`: (String) Path to the ZIP file on the host.
+- `zip`: (String, optional) Alternatively, base64 encoded ZIP data.
+
+---
+
+## 💬 Channel Management
+
+### `channels.getErrors`
+Retrieves current connection errors for all active channels.
+**Params:**
+- `clear`: (Boolean, optional) If true, clears the errors after reading.
+- `channelType`: (String, optional) Target a specific channel.
 
 ---
 

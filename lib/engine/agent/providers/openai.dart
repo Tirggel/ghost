@@ -76,17 +76,30 @@ class OpenAIProvider implements AIModelProvider {
       apiMessages.add({'role': 'system', 'content': systemPrompt});
     }
 
+    final skippedToolCallIds = <String>{};
+
     for (final m in messages) {
       // Reasoning models (deepseek-reasoner) require `reasoning_content` in
-      // assistant messages that have tool_calls, which we don't track.
-      // To avoid 400 errors, we skip those assistant+tool message pairs.
+      // assistant messages that have tool_calls.
       if (isReasoningModel &&
           m.role == 'assistant' &&
           m.metadata.containsKey('tool_calls')) {
-        continue;
+        if (!m.metadata.containsKey('reasoning_content')) {
+          // Record skipped IDs to skip corresponding tool outputs
+          final calls = m.metadata['tool_calls'] as List<dynamic>;
+          for (final c in calls) {
+            final id = (c as Map<String, dynamic>)['id'];
+            if (id != null) skippedToolCallIds.add(id);
+          }
+          continue;
+        }
       }
+
       if (isReasoningModel && m.role == 'tool') {
-        continue;
+        final id = m.metadata['tool_call_id'];
+        if (id == null || skippedToolCallIds.contains(id)) {
+          continue;
+        }
       }
 
       final dynamic content;
@@ -114,6 +127,10 @@ class OpenAIProvider implements AIModelProvider {
         'role': m.role,
         'content': content,
       };
+
+      if (m.metadata.containsKey('reasoning_content')) {
+        msg['reasoning_content'] = m.metadata['reasoning_content'];
+      }
 
       // Add tool_call_id for tool outputs
       if (m.role == 'tool' && m.metadata.containsKey('tool_call_id')) {
@@ -185,6 +202,7 @@ class OpenAIProvider implements AIModelProvider {
     final message = choice['message'] as Map<String, dynamic>;
 
     final textContent = message['content'] as String? ?? '';
+    final reasoningContent = message['reasoning_content'] as String?;
     final toolCalls = <ToolCall>[];
 
     if (message.containsKey('tool_calls') && message['tool_calls'] != null) {
@@ -222,6 +240,7 @@ class OpenAIProvider implements AIModelProvider {
 
     return AIResponse(
       content: textContent,
+      reasoningContent: reasoningContent,
       toolCalls: toolCalls,
       stopReason: choice['finish_reason'] as String?,
       usage: usage != null
@@ -294,7 +313,7 @@ class OpenAIProvider implements AIModelProvider {
   static Future<List<String>> listModels(String apiKey,
       {String? baseUrl}) async {
     final url = Uri.parse('${baseUrl ?? 'https://api.openai.com/v1'}/models');
-    _log.info('Fetching models from $url...');
+    _log.fine('Fetching models from $url...');
     final response = await http.get(
       url,
       headers: {
@@ -313,11 +332,6 @@ class OpenAIProvider implements AIModelProvider {
 
 
     // Fallback known models if list fails
-    return [
-      'gpt-4o',
-      'gpt-4o-mini',
-      'o1-preview',
-      'o1-mini',
-    ];
+    return [];
   }
 }

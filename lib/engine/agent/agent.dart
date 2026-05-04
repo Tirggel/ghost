@@ -209,6 +209,7 @@ class Agent {
 
       final List<Map<String, dynamic>> executedToolSummaries = [];
       final contentBuffer = StringBuffer();
+      String? lastReasoningContent;
       Map<String, dynamic>? finalUsage;
       bool hitlWasTriggered = false; // set true if any tool was HITL-blocked
 
@@ -321,6 +322,9 @@ class Agent {
             systemPrompt: dynamicSystemPrompt,
             tools: activeTools,
           );
+          if (response.reasoningContent != null) {
+            lastReasoningContent = response.reasoningContent;
+          }
         } catch (e) {
           final errorStr = e.toString().toLowerCase();
           if (errorStr.contains('context_length_exceeded') ||
@@ -366,6 +370,8 @@ class Agent {
           timestamp: DateTime.now(),
           metadata: {
             'tool_calls': response.toolCalls.map((tc) => tc.toJson()).toList(),
+            if (response.reasoningContent != null)
+              'reasoning_content': response.reasoningContent,
             if (response.content.contains('Tool execution blocked'))
               'hitl_blocked': true,
           },
@@ -466,6 +472,8 @@ class Agent {
             'model': activeProvider.modelId,
             'usage': finalUsage,
             'tool_calls': executedToolSummaries,
+            if (lastReasoningContent != null)
+              'reasoning_content': lastReasoningContent,
             if (hitlWasTriggered) 'hitl_pending': true,
           },
         );

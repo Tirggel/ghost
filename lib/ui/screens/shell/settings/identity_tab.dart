@@ -27,6 +27,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
   List<String> _availableModels = [];
   final List<String> _mainAgentSkills = [];
   int _avatarNonce = 0;
+  bool _isEditing = false;
 
   @override
   void initState() {
@@ -110,6 +111,9 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
       if (_selectedModel != null) agentData['model'] = _selectedModel;
       
       await ref.read(configProvider.notifier).updateAgent(agentData);
+      if (mounted) {
+        setState(() => _isEditing = false);
+      }
     }, successMessage: 'settings.identity.saved'.tr());
   }
 
@@ -131,6 +135,8 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
+      onSave: _isEditing ? _save : null,
+      isSaveLoading: isSaveLoading,
       children: [
         BusinessCard(
           title: 'settings.identity.section',
@@ -242,6 +248,8 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
             ),
           ],
           maxViewFields: 3,
+          isEditing: _isEditing,
+          onEditToggle: () => setState(() => _isEditing = !_isEditing),
           onSave: _save,
           bottom: (context, isEditing) => _buildSkillsSection(isEditing),
         ),

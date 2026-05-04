@@ -70,7 +70,7 @@ class ProviderFactory {
   // ---------------------------------------------------------------------------
   static String _resolveProvider(String model, String? hint) {
     final resolved = _doResolve(model, hint);
-    _log.info('Resolved provider for "$model" (hint: $hint) -> $resolved');
+    _log.fine('Resolved provider for "$model" (hint: $hint) -> $resolved');
     return resolved;
   }
 
@@ -167,7 +167,9 @@ class ProviderFactory {
           displayName: 'DeepSeek',
           providerId: 'deepseek',
           isReasoningModel:
-              model.contains('reasoner') || model.contains('thinking'),
+              model.contains('reasoner') ||
+              model.contains('thinking') ||
+              model.contains('v4'),
         );
 
       case 'openrouter':
@@ -389,7 +391,7 @@ class ProviderFactory {
     required String apiKey,
     String? baseUrl,
   }) async {
-    _log.info('Listing models for provider: $provider (baseUrl: $baseUrl, apiKey: ${apiKey.startsWith('http') ? '[URL]' : '***'})');
+    _log.fine('Listing models for provider: $provider (baseUrl: $baseUrl, apiKey: ${apiKey.startsWith('http') ? '[URL]' : '***'})');
     List<String> models;
     
     // Auto-detect if apiKey is actually a baseUrl (common for local providers in UI)

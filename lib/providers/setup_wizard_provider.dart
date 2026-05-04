@@ -226,10 +226,10 @@ class SetupWizardNotifier extends Notifier<SetupWizardState> {
         
         state = state.copyWith(
           verifyingKey: false,
-          keyVerified: true,
+          keyVerified: models.isNotEmpty,
           models: models,
           selectedModel: (models.isNotEmpty) ? models.first : null,
-          keyError: null,
+          keyError: models.isEmpty ? 'errors.no_models_found'.tr() : null,
         );
       } else {
         state = state.copyWith(
@@ -239,7 +239,11 @@ class SetupWizardNotifier extends Notifier<SetupWizardState> {
         );
       }
     } catch (e) {
-      state = state.copyWith(verifyingKey: false, keyError: ErrorFormatter.format(e));
+      state = state.copyWith(
+        verifyingKey: false,
+        keyVerified: false,
+        keyError: ErrorFormatter.format(e),
+      );
     }
   }
 

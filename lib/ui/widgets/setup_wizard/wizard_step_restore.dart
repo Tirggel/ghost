@@ -1,5 +1,5 @@
-import 'dart:convert';
 import 'dart:io';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +10,7 @@ import '../../../providers/gateway_provider.dart';
 import '../../../providers/setup_wizard_provider.dart';
 import '../app_styles.dart';
 import '../app_snackbar.dart';
+import '../app_dialogs.dart';
 import 'wizard_step_base.dart';
 import 'wizard_utils.dart';
 
@@ -127,28 +128,57 @@ class _WizardStepRestoreState extends ConsumerState<WizardStepRestore> {
     if (result != null && result.files.single.path != null) {
       setState(() => _isRestoring = true);
       try {
-        final file = File(result.files.single.path!);
-        final bytes = await file.readAsBytes();
-        final zipBase64 = base64Encode(bytes);
+        // Send the local file path — the backend reads it directly.
+        // This avoids encoding hundreds of MB as base64 over the WebSocket.
+        final filePath = result.files.single.path!;
 
         final gateway = ref.read(gatewayClientProvider);
-        await gateway.call('config.restore', {'zip': zipBase64});
-        gateway.setRestoring();
-        
+
+        // Clear local token first so the frontend waits for the backend to provide the new one
+        await ref.read(authTokenProvider.notifier).clearLocalToken();
+
+        final response = await gateway.call('config.restore', {'path': filePath});
+        final restoredToken = response['token'] as String?;
+
         if (mounted) {
-          AppSnackBar.showSuccess(
-            context,
-            'settings.maintenance.status_restoring'.tr(),
+          setState(() => _isRestoring = false);
+          await showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AppAlertDialog(
+              title: const Text('System wiederhergestellt'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Das System wurde erfolgreich wiederhergestellt. Bitte starte die App neu.'),
+                  if (restoredToken != null) ...[
+                    const SizedBox(height: 16),
+                    const Text('Dein neuer Token lautet:'),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      restoredToken,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => exit(0),
+                  child: const Text('App schließen', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                ),
+              ],
+            ),
           );
-          // After a successful restore, the wizard should be closed.
-          Navigator.of(context).pop();
         }
       } catch (e) {
         if (mounted) {
           AppSnackBar.showError(context, e.toString());
-        }
-      } finally {
-        if (mounted) {
           setState(() => _isRestoring = false);
         }
       }

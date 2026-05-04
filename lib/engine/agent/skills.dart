@@ -15,10 +15,14 @@ final _log = Logger('Ghost.SkillManager');
 class SkillManager {
   SkillManager({
     required this.stateDir,
+    this.storage,
   });
 
   /// Typically `~/.ghost`
   final String stateDir;
+
+  /// Optional storage for vault integration
+  final dynamic storage;
 
   String get skillsDir => p.join(stateDir, 'skills');
   String get globalsFile => p.join(stateDir, 'skills_global.json');
@@ -604,6 +608,239 @@ class SkillManager {
       await skillFile.parent.create(recursive: true);
     }
     await skillFile.writeAsString(content);
+  }
+
+  /// Creates a new skill from a template.
+  Future<Skill> createSkillTemplate({
+    required String name,
+    required String description,
+    required String type, // 'python' or 'node'
+    String? emoji,
+  }) async {
+    final slug = name
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+
+    final targetPath = p.join(skillsDir, slug);
+    final targetDir = Directory(targetPath);
+
+    if (await targetDir.exists()) {
+      throw Exception('Skill with slug "$slug" already exists.');
+    }
+
+    await targetDir.create(recursive: true);
+
+    // 1. Create SKILL.md
+    final skillMd = '''---
+name: "$name"
+description: "$description"
+emoji: "${emoji ?? '🛠️'}"
+slug: "$slug"
+---
+
+# $name
+
+$description
+
+## Tools
+- `example_tool`: An example tool provided by this skill.
+''';
+    await File(p.join(targetPath, 'SKILL.md')).writeAsString(skillMd);
+
+    // 2. Create _meta.json
+    final metaJson = {
+      'name': name,
+      'slug': slug,
+      'description': description,
+      'emoji': emoji ?? '🛠️',
+      'mcp_command': type == 'python' 
+          ? (Platform.isWindows ? '.venv\\Scripts\\python.exe' : '.venv/bin/python') + ' server.py'
+          : 'node server.js',
+    };
+    await File(p.join(targetPath, '_meta.json')).writeAsString(jsonEncode(metaJson));
+
+    // 3. Create Runtime files
+    if (type == 'python') {
+      await File(p.join(targetPath, 'requirements.txt')).writeAsString('mcp\nrequests\n');
+      await File(p.join(targetPath, 'server.py')).writeAsString('''import asyncio
+from mcp.server.models import InitializationOptions
+from mcp.server import NotificationOptions, Server
+import mcp.types as types
+from mcp.server.stdio import stdio_server
+
+server = Server("$slug")
+
+@server.list_tools()
+async def handle_list_tools() -> list[types.Tool]:
+    return [
+        types.Tool(
+            name="example_tool",
+            description="An example tool that returns a greeting",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"}
+                },
+                "required": ["name"],
+            },
+        )
+    ]
+
+@server.call_tool()
+async def handle_call_tool(
+    name: str, arguments: dict | None
+) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
+    if name == "example_tool":
+        user_name = arguments.get("name", "World")
+        return [types.TextContent(type="text", text=f"Hello {user_name}! This is the $name skill.")]
+    raise ValueError(f"Unknown tool: {name}")
+
+async def main():
+    async with stdio_server() as (read_stream, write_stream):
+        await server.run(
+            read_stream,
+            write_stream,
+            InitializationOptions(
+                server_name="$slug",
+                server_version="0.1.0",
+                capabilities=server.get_capabilities(
+                    notification_options=NotificationOptions(),
+                    experimental_capabilities={},
+                ),
+            ),
+        )
+
+if __name__ == "__main__":
+    asyncio.run(main())
+''');
+    } else {
+      await File(p.join(targetPath, 'package.json')).writeAsString(jsonEncode({
+        'name': slug,
+        'version': '0.1.0',
+        'type': 'module',
+        'dependencies': {
+          '@modelcontextprotocol/sdk': 'latest'
+        }
+      }));
+      await File(p.join(targetPath, 'server.js')).writeAsString('''import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+
+const server = new Server(
+  { name: "$slug", version: "0.1.0" },
+  { capabilities: { tools: {} } }
+);
+
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: [
+    {
+      name: "example_tool",
+      description: "An example tool that returns a greeting",
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: { type: "string" }
+        },
+        required: ["name"]
+      }
+    }
+  ]
+}));
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  if (request.params.name === "example_tool") {
+    const name = request.params.arguments?.name ?? "World";
+    return {
+      content: [{ type: "text", text: `Hello \${name}! This is the $name skill.` }]
+    };
+  }
+  throw new Error("Tool not found");
+});
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+''');
+    }
+
+    return Skill(
+      slug: slug,
+      name: name,
+      description: description,
+      emoji: emoji,
+      hasPython: type == 'python',
+      hasNode: type == 'node',
+      hasMcp: true,
+      mcpCommand: metaJson['mcp_command'] as String,
+    );
+  }
+
+  /// Runs a skill's MCP command and captures output for debugging.
+  Future<String> debugSkill(String slug) async {
+    final skills = await loadSkills();
+    final skill = skills.firstWhere((s) => s.slug == slug, orElse: () => throw Exception('Skill not found: $slug'));
+    
+    if (skill.mcpCommand == null) {
+      throw Exception('Skill "$slug" has no MCP command defined.');
+    }
+
+    final skillPath = p.join(skillsDir, slug);
+    final cmdParts = skill.mcpCommand!.split(' ');
+    final executable = cmdParts.first;
+    final args = cmdParts.sublist(1);
+
+    _log.info('Debugging skill $slug: $executable ${args.join(' ')}');
+    
+    // Check if executable exists (especially for .venv)
+    final execFile = File(p.join(skillPath, executable));
+    final actualExecutable = await execFile.exists() ? execFile.path : executable;
+
+    try {
+      final process = await Process.start(
+        actualExecutable,
+        args,
+        workingDirectory: skillPath,
+      );
+
+      final stdoutBuffer = StringBuffer();
+      final stderrBuffer = StringBuffer();
+
+      // Collect output for 3 seconds or until process exits
+      final stdoutSub = process.stdout.transform(utf8.decoder).listen((data) {
+        stdoutBuffer.write(data);
+      });
+      final stderrSub = process.stderr.transform(utf8.decoder).listen((data) {
+        stderrBuffer.write(data);
+      });
+
+      await Future.any([
+        process.exitCode,
+        Future<void>.delayed(const Duration(seconds: 3)),
+      ]);
+
+      stdoutSub.cancel();
+      stderrSub.cancel();
+      
+      // Attempt to kill the process if it's still running
+      process.kill();
+
+      final output = stdoutBuffer.toString();
+      final errors = stderrBuffer.toString();
+
+      var result = '--- STDOUT ---\n${output.isEmpty ? '(no output)' : output}\n\n--- STDERR ---\n${errors.isEmpty ? '(no errors)' : errors}';
+      
+      // Try to parse if it's JSON-RPC
+      if (output.contains('jsonrpc')) {
+        result += '\n\n💡 MCP protocol detected in output.';
+      }
+
+      return result;
+    } catch (e) {
+      return 'Failed to execute skill: $e';
+    }
   }
 
   /// Builds context from the given skill slugs AND globally enabled skills.

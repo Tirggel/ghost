@@ -79,8 +79,9 @@ class ConfigRouter {
       return {
         'agent': agent.toJson(),
         'memory': memory.toJson(),
-        'customAgents':
-            customAgents.map((CustomAgentConfig a) => a.toJson()).toList(),
+        'customAgents': customAgents
+            .map((CustomAgentConfig a) => a.toJson())
+            .toList(),
         'gateway': {
           'port': config.gateway.port,
           'verbose': config.gateway.verbose,
@@ -91,22 +92,23 @@ class ConfigRouter {
         'channels': channels.toJson(),
         'tools': tools.toJson(),
         'security': security.toJson(),
-        'vault': {
-          'keys': await storage.listKeys(),
-        },
+        'vault': {'keys': await storage.listKeys()},
         'detectedLocalProviders': await _detectLocalProviders(),
       };
     });
 
     // 1b. Get channel token from vault
-    gateway.rpcRegistry.register('config.getChannelToken',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.getChannelToken', (
+      params,
+      context,
+    ) async {
       final channelId = params?['channelId'] as String?;
       if (channelId == null) {
         throw ProtocolError('Missing required parameter: channelId');
       }
-      final storageKey =
-          channelId == 'telegram' ? 'telegram_bot_token' : '${channelId}_token';
+      final storageKey = channelId == 'telegram'
+          ? 'telegram_bot_token'
+          : '${channelId}_token';
       final token = await storage.get(storageKey) ?? '';
       return {'token': token};
     });
@@ -118,13 +120,21 @@ class ConfigRouter {
         throw ProtocolError('Missing required parameter: service');
       }
       final storageKey = _getStorageKey(service);
-      final key = await storage.get(storageKey) ?? '';
-      return {'key': key};
+      var key = await storage.get(storageKey);
+
+      // Fallback: Check for suffixed version if raw version not found (internal keys)
+      if (key == null && !storageKey.endsWith('_api_key')) {
+        key = await storage.get('${storageKey}_api_key');
+      }
+
+      return {'key': key ?? ''};
     });
 
     // Legacy method for backward compatibility
-    gateway.rpcRegistry.register('config.getTelegramToken',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.getTelegramToken', (
+      params,
+      context,
+    ) async {
       final token = await storage.get('telegram_bot_token') ?? '';
       return {'token': token};
     });
@@ -143,18 +153,22 @@ class ConfigRouter {
         // Deletion attempt - check constraints
         final keys = await storage.listKeys();
         final providerKeys = keys
-            .where((k) =>
-                k.endsWith('_api_key') ||
-                k == 'ollama_base_url' ||
-                k == 'ipex-llm_base_url' ||
-                k == 'vllm_base_url' ||
-                k == 'litellm_base_url')
+            .where(
+              (k) =>
+                  k.endsWith('_api_key') ||
+                  k == 'ollama_base_url' ||
+                  k == 'ipex-llm_base_url' ||
+                  k == 'vllm_base_url' ||
+                  k == 'litellm_base_url' ||
+                  k == 'lmstudio_base_url',
+            )
             .toList();
 
         // 1. Ensure at least one provider remains
         if (providerKeys.length <= 1 && providerKeys.contains(storageKey)) {
           throw ProtocolError(
-              'Löschen fehlgeschlagen: Es muss mindestens ein API-Key im System vorhanden sein.');
+            'Löschen fehlgeschlagen: Es muss mindestens ein API-Key im System vorhanden sein.',
+          );
         }
 
         // 2. Ensure provider is not in use by Identity (Main Agent)
@@ -162,8 +176,9 @@ class ConfigRouter {
         final currentAgent = await _loadAgentFromVault() ?? config.agent;
         if (currentAgent.provider == service) {
           throw ProtocolError(
-              'Löschen fehlgeschlagen: Der Provider "$service" wird aktuell von der Identität benutzt. '
-              'Bitte wechsele zuerst bei der Identität den Provider und das Modell.');
+            'Löschen fehlgeschlagen: Der Provider "$service" wird aktuell von der Identität benutzt. '
+            'Bitte wechsele zuerst bei der Identität den Provider und das Modell.',
+          );
         }
 
         // 3. Ensure provider is not in use by any Custom Agent
@@ -172,12 +187,17 @@ class ConfigRouter {
         for (final ca in customAgents) {
           if (ca.provider == service) {
             throw ProtocolError(
-                'Löschen fehlgeschlagen: Der Provider "$service" wird aktuell vom Custom Agent "${ca.name}" benutzt. '
-                'Bitte wechsele zuerst bei diesem Agent den Provider und das Modell.');
+              'Löschen fehlgeschlagen: Der Provider "$service" wird aktuell vom Custom Agent "${ca.name}" benutzt. '
+              'Bitte wechsele zuerst bei diesem Agent den Provider und das Modell.',
+            );
           }
         }
 
         await storage.remove(storageKey);
+        // Also remove legacy/accidental suffixed version if this is an internal key
+        if (storageKey == service && !service.endsWith('_api_key')) {
+          await storage.remove('${service}_api_key');
+        }
         _log.info('Securely removed $service key via RPC');
       } else {
         await storage.set(storageKey, key);
@@ -202,7 +222,7 @@ class ConfigRouter {
         } else {
           return {
             'status': 'error',
-            'message': 'Google Workspace token expired or invalid'
+            'message': 'Google Workspace token expired or invalid',
           };
         }
       }
@@ -214,7 +234,7 @@ class ConfigRouter {
         } else {
           return {
             'status': 'error',
-            'message': 'Microsoft 365 token expired or invalid'
+            'message': 'Microsoft 365 token expired or invalid',
           };
         }
       }
@@ -236,8 +256,12 @@ class ConfigRouter {
 
       try {
         final isLocal =
-            service == 'ollama' || service == 'ipex-llm' || service == 'vllm' || service == 'litellm' || service == 'lmstudio';
-        
+            service == 'ollama' ||
+            service == 'ipex-llm' ||
+            service == 'vllm' ||
+            service == 'litellm' ||
+            service == 'lmstudio';
+
         String? baseUrlToTest;
         String apiKeyToTest = key;
 
@@ -264,8 +288,10 @@ class ConfigRouter {
     });
 
     // 2c. Test if a model supports embeddings
-    gateway.rpcRegistry.register('config.testEmbedding',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.testEmbedding', (
+      params,
+      context,
+    ) async {
       final provider = params?['provider'] as String?;
       final model = params?['model'] as String?;
       if (provider == null || model == null) {
@@ -283,7 +309,7 @@ class ConfigRouter {
         if (result.isEmpty) {
           return {
             'status': 'error',
-            'message': 'Embedding returned empty vector'
+            'message': 'Embedding returned empty vector',
           };
         }
         return {'status': 'ok', 'message': 'Embedding successful'};
@@ -335,7 +361,11 @@ class ConfigRouter {
         // If apiKey/baseUrl is empty, try to get it from storage
         String? baseUrl;
         final isLocal =
-            provider == 'ollama' || provider == 'ipex-llm' || provider == 'vllm' || provider == 'litellm' || provider == 'lmstudio';
+            provider == 'ollama' ||
+            provider == 'ipex-llm' ||
+            provider == 'vllm' ||
+            provider == 'litellm' ||
+            provider == 'lmstudio';
 
         if (isLocal) {
           if (apiKey != null && apiKey.startsWith('http')) {
@@ -368,8 +398,10 @@ class ConfigRouter {
     });
 
     // 4b. List Models with details (capabilities)
-    gateway.rpcRegistry.register('config.listModelsDetailed',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.listModelsDetailed', (
+      params,
+      context,
+    ) async {
       final provider = params?['provider'] as String?;
       String? apiKey = params?['apiKey'] as String?;
 
@@ -380,7 +412,11 @@ class ConfigRouter {
       try {
         String? baseUrl;
         final isLocal =
-            provider == 'ollama' || provider == 'ipex-llm' || provider == 'vllm' || provider == 'litellm' || provider == 'lmstudio';
+            provider == 'ollama' ||
+            provider == 'ipex-llm' ||
+            provider == 'vllm' ||
+            provider == 'litellm' ||
+            provider == 'lmstudio';
 
         if (apiKey == null || apiKey.isEmpty) {
           final storageKey = _getStorageKey(provider);
@@ -411,8 +447,10 @@ class ConfigRouter {
     });
 
     // 4c. Get capabilities for a specific model
-    gateway.rpcRegistry.register('config.getModelCapabilities',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.getModelCapabilities', (
+      params,
+      context,
+    ) async {
       final provider = params?['provider'] as String?;
       final model = params?['model'] as String?;
 
@@ -457,8 +495,10 @@ class ConfigRouter {
     });
 
     // 6. Update Identity Config — stored encrypted in vault, NOT in ghost.json
-    gateway.rpcRegistry.register('config.updateIdentity',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.updateIdentity', (
+      params,
+      context,
+    ) async {
       if (params == null) throw ProtocolError('Missing params');
       _log.info('Updating identity config (vault): $params');
 
@@ -513,8 +553,10 @@ class ConfigRouter {
     });
 
     // 7a. Get Google OAuth credentials from vault
-    gateway.rpcRegistry.register('config.getGoogleCredentials',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.getGoogleCredentials', (
+      params,
+      context,
+    ) async {
       final clientIdWeb = await storage.get('google_client_id_web') ?? '';
       final clientIdDesktop =
           await storage.get('google_client_id_desktop') ?? '';
@@ -527,8 +569,10 @@ class ConfigRouter {
     });
 
     // 7b. Update Integrations Config
-    gateway.rpcRegistry.register('config.updateIntegrations',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.updateIntegrations', (
+      params,
+      context,
+    ) async {
       if (params == null) throw ProtocolError('Missing params');
 
       final config = await loadConfig(configPath);
@@ -551,8 +595,10 @@ class ConfigRouter {
     });
 
     // 7c. Update Channels Config
-    gateway.rpcRegistry.register('config.updateChannels',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.updateChannels', (
+      params,
+      context,
+    ) async {
       if (params == null) throw ProtocolError('Missing params');
 
       final config = await loadConfig(configPath);
@@ -633,7 +679,8 @@ class ConfigRouter {
         // Check if token was updated in this specific request params
         final settings = channelParams['settings'] as Map<String, dynamic>?;
         final tokenKey = channelId == 'telegram' ? 'botToken' : 'token';
-        final hasNewTokenInParams = settings != null &&
+        final hasNewTokenInParams =
+            settings != null &&
             settings[tokenKey] != null &&
             (settings[tokenKey] as String).isNotEmpty;
 
@@ -644,7 +691,8 @@ class ConfigRouter {
 
         if (enabledChanged || settingsChanged || hasNewTokenInParams) {
           _log.info(
-              'Restarting channel $channelId due to configuration change (Enabled: $enabledChanged, Settings: $settingsChanged, Token: $hasNewTokenInParams)');
+            'Restarting channel $channelId due to configuration change (Enabled: $enabledChanged, Settings: $settingsChanged, Token: $hasNewTokenInParams)',
+          );
           await channelManager.updateChannel(
             channelId,
             newConfig.enabled,
@@ -652,7 +700,8 @@ class ConfigRouter {
           );
         } else {
           _log.info(
-              'Channel $channelId configuration unchanged or non-critical, skipping restart');
+            'Channel $channelId configuration unchanged or non-critical, skipping restart',
+          );
         }
       }
 
@@ -666,8 +715,10 @@ class ConfigRouter {
     });
 
     // 8. Custom Agent Management
-    gateway.rpcRegistry.register('config.addCustomAgent',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.addCustomAgent', (
+      params,
+      context,
+    ) async {
       if (params == null) throw ProtocolError('Missing params');
 
       final config = await loadConfig(configPath);
@@ -681,7 +732,9 @@ class ConfigRouter {
 
       await _saveCustomAgentsToVault(updatedAgents);
       await saveConfig(
-          config.copyWith(customAgents: updatedAgents), configPath);
+        config.copyWith(customAgents: updatedAgents),
+        configPath,
+      );
 
       await _syncAgentManagerConfig();
       await agentManager.reloadCustomAgents(updatedAgents);
@@ -689,8 +742,10 @@ class ConfigRouter {
       return {'status': 'ok', 'agent': newAgent.toJson()};
     });
 
-    gateway.rpcRegistry.register('config.updateCustomAgent',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.updateCustomAgent', (
+      params,
+      context,
+    ) async {
       if (params == null) throw ProtocolError('Missing params');
 
       final config = await loadConfig(configPath);
@@ -700,8 +755,9 @@ class ConfigRouter {
       final currentAgents =
           await _loadCustomAgentsFromVault() ?? config.customAgents;
       final updatedAgents = currentAgents
-          .map((CustomAgentConfig a) =>
-              a.id == updatedAgent.id ? updatedAgent : a)
+          .map(
+            (CustomAgentConfig a) => a.id == updatedAgent.id ? updatedAgent : a,
+          )
           .toList();
 
       if (updatedAgent.provider == null ||
@@ -709,12 +765,15 @@ class ConfigRouter {
           updatedAgent.model == null ||
           updatedAgent.model!.isEmpty) {
         throw ProtocolError(
-            'Provider und Modell für den Custom Agent dürfen nicht leer sein.');
+          'Provider und Modell für den Custom Agent dürfen nicht leer sein.',
+        );
       }
 
       await _saveCustomAgentsToVault(updatedAgents);
       await saveConfig(
-          config.copyWith(customAgents: updatedAgents), configPath);
+        config.copyWith(customAgents: updatedAgents),
+        configPath,
+      );
 
       await _syncAgentManagerConfig();
       await agentManager.reloadCustomAgents(updatedAgents);
@@ -722,8 +781,10 @@ class ConfigRouter {
       return {'status': 'ok', 'agent': updatedAgent.toJson()};
     });
 
-    gateway.rpcRegistry.register('config.deleteCustomAgent',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.deleteCustomAgent', (
+      params,
+      context,
+    ) async {
       final agentId = params?['id'] as String?;
       if (agentId == null) throw ProtocolError('Missing agent id');
 
@@ -743,7 +804,9 @@ class ConfigRouter {
 
       await _saveCustomAgentsToVault(updatedAgents);
       await saveConfig(
-          config.copyWith(customAgents: updatedAgents), configPath);
+        config.copyWith(customAgents: updatedAgents),
+        configPath,
+      );
 
       await _syncAgentManagerConfig();
       await agentManager.reloadCustomAgents(updatedAgents);
@@ -772,8 +835,10 @@ class ConfigRouter {
       return {'status': 'ok', 'skill': skill.toJson()};
     });
 
-    gateway.rpcRegistry.register('skills.downloadFromGithub',
-        (params, context) async {
+    gateway.rpcRegistry.register('skills.downloadFromGithub', (
+      params,
+      context,
+    ) async {
       if (params == null) throw ProtocolError('Missing params');
       final url = params['url'] as String?;
       if (url == null) throw ProtocolError('Missing GitHub URL');
@@ -789,8 +854,9 @@ class ConfigRouter {
       final path = params['path'] as String?;
       if (path == null) throw ProtocolError('Missing path');
 
-      final skill =
-          await agentManager.skillManager.installSkillFromDirectory(path);
+      final skill = await agentManager.skillManager.installSkillFromDirectory(
+        path,
+      );
       await _syncAgentManagerConfig();
       gateway.broadcast('skills.changed');
       return {'status': 'ok', 'skill': skill.toJson()};
@@ -806,8 +872,10 @@ class ConfigRouter {
       return {'status': 'ok', 'deletedSlug': slug};
     });
 
-    gateway.rpcRegistry.register('skills.updateGlobal',
-        (params, context) async {
+    gateway.rpcRegistry.register('skills.updateGlobal', (
+      params,
+      context,
+    ) async {
       final slug = params?['slug'] as String?;
       final isGlobal = params?['isGlobal'] as bool?;
       if (slug == null || isGlobal == null) {
@@ -828,8 +896,10 @@ class ConfigRouter {
       return {'status': 'ok', 'slug': slug, 'content': content};
     });
 
-    gateway.rpcRegistry.register('skills.updateMarkdown',
-        (params, context) async {
+    gateway.rpcRegistry.register('skills.updateMarkdown', (
+      params,
+      context,
+    ) async {
       final slug = params?['slug'] as String?;
       final content = params?['content'] as String?;
       if (slug == null || content == null) {
@@ -858,10 +928,7 @@ class ConfigRouter {
 
     gateway.rpcRegistry.register('channels.getErrors', (params, context) async {
       final errors = channelManager.connectionErrors.entries
-          .map((e) => {
-                'channelType': e.key,
-                'message': e.value,
-              })
+          .map((e) => {'channelType': e.key, 'message': e.value})
           .toList();
 
       if (params?['clear'] == true) {
@@ -872,8 +939,10 @@ class ConfigRouter {
     });
 
     // 16. Update memory config
-    gateway.rpcRegistry.register('config.updateMemory',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.updateMemory', (
+      params,
+      context,
+    ) async {
       if (params == null) throw ProtocolError('Missing params');
 
       final config = await loadConfig(configPath);
@@ -890,7 +959,8 @@ class ConfigRouter {
         chunkSize: (params['chunkSize'] as num?)?.toInt() ?? current.chunkSize,
         chunkOverlap:
             (params['chunkOverlap'] as num?)?.toInt() ?? current.chunkOverlap,
-        vectorWeight: (params['vectorWeight'] as num?)?.toDouble() ??
+        vectorWeight:
+            (params['vectorWeight'] as num?)?.toDouble() ??
             current.vectorWeight,
         bm25Weight:
             (params['bm25Weight'] as num?)?.toDouble() ?? current.bm25Weight,
@@ -932,8 +1002,10 @@ class ConfigRouter {
     });
 
     // 19. Update security config
-    gateway.rpcRegistry.register('config.updateSecurity',
-        (params, context) async {
+    gateway.rpcRegistry.register('config.updateSecurity', (
+      params,
+      context,
+    ) async {
       if (params == null) throw ProtocolError('Missing params');
 
       final config = await loadConfig(configPath);
@@ -961,63 +1033,69 @@ class ConfigRouter {
     });
 
     // 20. Factory Reset
-    gateway.rpcRegistry.register('config.factoryReset', (params, context) async {
+    gateway.rpcRegistry.register('config.factoryReset', (
+      params,
+      context,
+    ) async {
       _log.info('Factory reset requested via RPC');
 
-      // Schedule the actual reset for later so we can return the RPC response first
-      unawaited(Future<void>.delayed(const Duration(milliseconds: 500)).then((_) async {
-        _log.info('Executing factory reset background task...');
+      // 1. Properly shutdown all managers and releases file handles
+      try {
+        await channelManager.shutdown();
+        await agentManager.shutdown(); // Closes memory engines
+        await agentManager.sessionManager.shutdown(); // Closes session store
+      } catch (e) {
+        _log.warning('Error during managers shutdown: $e');
+      }
 
-        // 1. Properly shutdown all managers and releases file handles
+      // 2. Final vault/storage cleanup
+      try {
+        await storage
+            .deleteVault(); // Specifically closes and deletes the vault box
+        // Do not call storage.close() because we might need it, or it breaks things
+      } catch (e) {
+        _log.warning('Could not cleanup storage/vault: $e');
+      }
+
+      // 3. Final safety measure: close ALL other open Hive boxes
+      try {
+        await Hive.close();
+      } catch (e) {
+        _log.warning('Error closing remaining Hive boxes: $e');
+      }
+
+      // 4. Delete ~/.ghost directory contents
+      final ghostDir = Directory(p.dirname(configPath));
+      if (await ghostDir.exists()) {
         try {
-          await channelManager.shutdown();
-          await agentManager.shutdown(); // Closes memory engines
-          await agentManager.sessionManager.shutdown(); // Closes session store
-        } catch (e) {
-          _log.warning('Error during managers shutdown: $e');
-        }
-
-        // 2. Stop the gateway (closes avatars box)
-        try {
-          await gateway.stop();
-        } catch (e) {
-          _log.warning('Error stopping gateway: $e');
-        }
-
-        // 3. Final vault/storage cleanup
-        try {
-          await storage.deleteVault(); // Specifically closes and deletes the vault box
-          await storage.close();
-        } catch (e) {
-          _log.warning('Could not cleanup storage/vault: $e');
-        }
-
-        // 4. Final safety measure: close ALL other open Hive boxes
-        try {
-          await Hive.close();
-        } catch (e) {
-          _log.warning('Error closing remaining Hive boxes: $e');
-        }
-
-        // 5. Delete ~/.ghost directory contents
-        final ghostDir = Directory(p.dirname(configPath));
-        if (await ghostDir.exists()) {
-          try {
-            // Delete everything inside recursive except the directory itself to avoid issues
-            final entities = ghostDir.listSync();
-            for (final entity in entities) {
-              await entity.delete(recursive: true);
-            }
-            _log.info('Deleted all data in ${ghostDir.path}');
-          } catch (e) {
-            _log.severe('Failed to delete ghost directory: $e');
-            // Note: we can't throw ProtocolError here anymore because we are in a background task
+          // Delete everything inside recursive except the directory itself to avoid issues
+          final entities = ghostDir.listSync();
+          for (final entity in entities) {
+            await entity.delete(recursive: true);
           }
+          _log.info('Deleted all data in ${ghostDir.path}');
+        } catch (e) {
+          _log.severe('Failed to delete ghost directory: $e');
         }
+      }
 
-        // 6. Trigger restart
-        _triggerGatewayRestart('Werkseinstellungen werden angewendet — System startet neu…');
-      }));
+      // Schedule the restart for later so we can return the RPC response first
+      unawaited(
+        Future<void>.delayed(const Duration(milliseconds: 500)).then((_) async {
+          _log.info('Executing gateway restart background task...');
+          // 5. Stop the gateway (closes avatars box)
+          try {
+            await gateway.stop();
+          } catch (e) {
+            _log.warning('Error stopping gateway: $e');
+          }
+
+          // 6. Trigger restart
+          _triggerGatewayRestart(
+            'Werkseinstellungen werden angewendet — System startet neu…',
+          );
+        }),
+      );
 
       return {'status': 'resetting'};
     });
@@ -1030,44 +1108,100 @@ class ConfigRouter {
         throw ProtocolError('Config directory not found');
       }
 
+      // Parse optional sections list; if absent, back up everything
+      final sectionsList = (params?['sections'] as List<dynamic>?)
+          ?.cast<String>();
+      final sectionsSet = sectionsList != null
+          ? Set<String>.from(sectionsList)
+          : <String>{};
+      final backupAll = sectionsSet.isEmpty;
+
+      _log.info('Backup sections: ${backupAll ? "all" : sectionsSet}');
+
       try {
         final encoder = ZipFileEncoder();
-        final tempZipPath = p.join(Directory.systemTemp.path, 'ghost-backup-${DateTime.now().millisecondsSinceEpoch}.zip');
+        final tempZipPath = p.join(
+          Directory.systemTemp.path,
+          'ghost-backup-${DateTime.now().millisecondsSinceEpoch}.zip',
+        );
         encoder.create(tempZipPath);
-        
-        // Add ~/.ghost directory (flattened)
-        await encoder.addDirectory(ghostDir, includeDirName: false);
 
-        // --- NEW: Export Vault to JSON (for platform-neutral backup) ---
-        try {
-          final keys = await storage.listKeys();
-          final vaultData = <String, String>{};
-          for (final k in keys) {
-            final v = await storage.get(k);
-            if (v != null) vaultData[k] = v;
+        // Helper: should a section be included?
+        bool include(String name) => backupAll || sectionsSet.contains(name);
+
+        // 1. Config files (ghost.json + hive boxes)
+        if (include('config')) {
+          for (final entity in ghostDir.listSync()) {
+            final name = p.basename(entity.path);
+            // Skip sessions directory (handled separately) and vault.json
+            if (name == 'sessions' || name == 'vault.json') continue;
+            if (entity is File) {
+              await encoder.addFile(entity, name);
+            } else if (entity is Directory) {
+              // Skip memory/rag dirs if memory not selected
+              if ((name == 'memory' || name == 'rag') && !include('memory'))
+                continue;
+              await encoder.addDirectory(entity, includeDirName: true);
+            }
           }
-          if (vaultData.isNotEmpty) {
-            final vaultJsonFile = File(p.join(Directory.systemTemp.path, 'vault.json'));
-            await vaultJsonFile.writeAsString(jsonEncode(vaultData));
-            await encoder.addFile(vaultJsonFile);
-            await vaultJsonFile.delete();
-            _log.info('Vault secrets exported to backup zip');
-          }
-        } catch (e) {
-          _log.warning('Could not export vault to backup: $e');
         }
-        // ---------------------------------------------------------------
+
+        // 2. Sessions (chat history)
+        if (include('sessions')) {
+          final sessionsDir = Directory(p.join(ghostDir.path, 'sessions'));
+          if (await sessionsDir.exists()) {
+            await encoder.addDirectory(sessionsDir, includeDirName: true);
+          }
+        }
+
+        // 3. Skills
+        if (include('skills')) {
+          final skillsDir = Directory(p.join(ghostDir.path, 'skills'));
+          if (await skillsDir.exists()) {
+            await encoder.addDirectory(skillsDir, includeDirName: true);
+          }
+        }
+
+        // 4. Memory (standard + rag)
+        if (include('memory') && !include('config')) {
+          for (final dirName in ['memory', 'rag']) {
+            final dir = Directory(p.join(ghostDir.path, dirName));
+            if (await dir.exists()) {
+              await encoder.addDirectory(dir, includeDirName: true);
+            }
+          }
+        }
+
+        // 5. Vault (encrypted secrets)
+        if (include('vault')) {
+          try {
+            final keys = await storage.listKeys();
+            final vaultData = <String, String>{};
+            for (final k in keys) {
+              final v = await storage.get(k);
+              if (v != null) vaultData[k] = v;
+            }
+            if (vaultData.isNotEmpty) {
+              final vaultJsonFile = File(
+                p.join(Directory.systemTemp.path, 'vault.json'),
+              );
+              await vaultJsonFile.writeAsString(jsonEncode(vaultData));
+              await encoder.addFile(vaultJsonFile);
+              await vaultJsonFile.delete();
+              _log.info('Vault secrets exported to backup zip');
+            }
+          } catch (e) {
+            _log.warning('Could not export vault to backup: $e');
+          }
+        }
 
         await encoder.close();
 
-        final bytes = await File(tempZipPath).readAsBytes();
-        await File(tempZipPath).delete(); // Cleanup temp file
-
-        return {
-          'status': 'ok',
-          'zip': base64Encode(bytes),
-          'filename': 'ghost-backup-${DateTime.now().year}-${DateTime.now().month}-${DateTime.now().day}.zip'
-        };
+        // Return the temp file path — the client reads it directly from disk.
+        // This avoids sending hundreds of MB of base64 over WebSocket.
+        final filename =
+            'ghost-backup-${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}.zip';
+        return {'status': 'ok', 'path': tempZipPath, 'filename': filename};
       } catch (e) {
         _log.severe('Backup failed: $e');
         throw ProtocolError('Backup fehlgeschlagen: $e');
@@ -1076,13 +1210,54 @@ class ConfigRouter {
 
     // 22. Restore
     gateway.rpcRegistry.register('config.restore', (params, context) async {
+      // Schedule all destructive work via unawaited so the RPC response
+      // ('restoring') is flushed to the client before the gateway shuts down.
+      // This mirrors the config.factoryReset pattern and fixes the
+      // TimeoutException that occurred when shutdown closed the WS connection
+      // before the response frame could be sent.
+      // Accept either a local file path (preferred, no WebSocket overhead)
+      // or legacy base64 zip data for backward compatibility.
+      final zipPath = params?['path'] as String?;
       final zipBase64 = params?['zip'] as String?;
-      if (zipBase64 == null) throw ProtocolError('Missing zip data');
+      if (zipPath == null && zipBase64 == null)
+        throw ProtocolError('Missing zip path or data');
 
-      _log.info('System restore requested via RPC');
+      _log.info('System restore requested via RPC (path: $zipPath)');
+
+      // Validate the file is readable and decode the archive before returning
+      // so we can surface errors synchronously. All destructive work is deferred
+      // via unawaited so the '{'status': 'restoring'}' response is flushed to the
+      // client before the gateway shuts down (same pattern as factoryReset).
+      final List<int> bytes;
+      try {
+        if (zipPath != null) {
+          bytes = await File(zipPath).readAsBytes();
+        } else {
+          bytes = base64Decode(zipBase64!);
+        }
+        // Quick decode check — throws if the bytes are not a valid ZIP.
+        ZipDecoder().decodeBytes(bytes);
+      } catch (e) {
+        _log.severe('Restore failed (pre-check): $e');
+        throw ProtocolError('Wiederherstellung fehlgeschlagen: $e');
+      }
+
+      String? restoredToken;
+      try {
+        final archive = ZipDecoder().decodeBytes(bytes);
+        for (final file in archive) {
+          if (p.basename(file.name) == 'vault.json' && file.isFile) {
+            final raw = utf8.decode(file.content as List<int>);
+            final data = jsonDecode(raw) as Map<String, dynamic>;
+            restoredToken = data['auth_token'] as String?;
+            break;
+          }
+        }
+      } catch (e) {
+        _log.warning('Could not extract token from backup zip: $e');
+      }
 
       try {
-        final bytes = base64Decode(zipBase64);
         final archive = ZipDecoder().decodeBytes(bytes);
 
         // 1. Prepare for wipe
@@ -1105,7 +1280,10 @@ class ConfigRouter {
 
         // 3. Determine common root prefix to strip if all files share it (backward compatibility)
         String commonPrefix = '';
-        final filenames = archive.where((f) => f.isFile).map((f) => f.name).toList();
+        final filenames = archive
+            .where((f) => f.isFile)
+            .map((f) => f.name)
+            .toList();
         if (filenames.isNotEmpty) {
           final firstParts = p.split(p.normalize(filenames.first));
           if (firstParts.length > 1) {
@@ -1141,13 +1319,15 @@ class ConfigRouter {
             await outFile.parent.create(recursive: true);
             await outFile.writeAsBytes(data);
           } else {
-            await Directory(p.join(ghostDir.path, filename)).create(recursive: true);
+            await Directory(
+              p.join(ghostDir.path, filename),
+            ).create(recursive: true);
           }
         }
 
         _log.info('System restored from ZIP');
 
-        // --- NEW: Restore Vault from JSON ---
+        // 5. Restore Vault from JSON
         try {
           final vaultJsonFile = File(p.join(ghostDir.path, 'vault.json'));
           if (await vaultJsonFile.exists()) {
@@ -1162,9 +1342,8 @@ class ConfigRouter {
         } catch (e) {
           _log.warning('Could not restore vault from backup: $e');
         }
-        // ------------------------------------
 
-        // --- FIX: Re-initialize storage with restored keys ---
+        // 6. Re-initialize storage with restored keys
         try {
           final restoredConfig = await loadConfig(configPath);
           final tokenHash = restoredConfig.gateway.auth.tokenHash;
@@ -1174,22 +1353,29 @@ class ConfigRouter {
           final sessionKey = Uint8List.fromList(
             sha256.convert(utf8.encode(seedString)).bytes,
           );
-
           await storage.reinitialize(sessionKey);
           _log.info('Secure storage re-initialized with restored keys');
         } catch (e) {
           _log.warning('Failed to re-initialize storage after restore: $e');
         }
-        // -----------------------------------------------------
 
-        // 4. Trigger restart
-        _triggerGatewayRestart('Backup wurde wiederhergestellt — System startet neu…');
-
-        return {'status': 'restoring'};
+        // Defer restart so the RPC response is sent first.
+        unawaited(
+          Future<void>.delayed(const Duration(milliseconds: 300)).then((
+            _,
+          ) async {
+            // 7. Trigger restart
+            _triggerGatewayRestart(
+              'Backup wurde wiederhergestellt — System startet neu…',
+            );
+          }),
+        );
       } catch (e) {
         _log.severe('Restore failed: $e');
         throw ProtocolError('Wiederherstellung fehlgeschlagen: $e');
       }
+
+      return {'status': 'restoring', 'token': restoredToken};
     });
   }
 
@@ -1201,10 +1387,14 @@ class ConfigRouter {
     });
 
     Future<void>.delayed(const Duration(milliseconds: 500)).then((_) async {
-      await gateway.stop();
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-      // Re-initialize logic if necessary, but gateway.start() usually does it
-      await gateway.start();
+      if (gateway.onRestart != null) {
+        await gateway.onRestart!();
+      } else {
+        await gateway.stop();
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        // Re-initialize logic if necessary, but gateway.start() usually does it
+        await gateway.start(isRestart: true);
+      }
       _log.info('Gateway restarted after maintenance');
     });
   }
@@ -1228,10 +1418,7 @@ class ConfigRouter {
             .get(Uri.parse('$url/models'))
             .timeout(const Duration(milliseconds: 500));
         if (response.statusCode == 200) {
-          results.add({
-            'id': entry.key,
-            'url': url,
-          });
+          results.add({'id': entry.key, 'url': url});
         }
       } catch (_) {
         // Skip if not reachable
@@ -1251,6 +1438,17 @@ class ConfigRouter {
       return 'google_client_id_desktop';
     }
     if (service == 'google_client_secret') return 'google_client_secret';
+    if (service.endsWith('_api_key') ||
+        service.endsWith('_CLIENT_ID') ||
+        service.endsWith('_CLIENT_SECRET') ||
+        service.endsWith('_ACCESS_TOKEN') ||
+        service.endsWith('_REFRESH_TOKEN') ||
+        service.endsWith('_client_id') ||
+        service.endsWith('_client_secret') ||
+        service.endsWith('_access_token') ||
+        service.endsWith('_refresh_token')) {
+      return service;
+    }
     if (service == 'ollama' ||
         service == 'ipex-llm' ||
         service == 'vllm' ||
@@ -1336,14 +1534,17 @@ class ConfigRouter {
       // Self-heal: many users have "ghost" defaults from previous bugs.
       // 1. OpenAI default (text-embedding-3-small)
       // 2. OpenRouter default (nvidia/llama-nemotron-embed-vl-1b-v2:free)
-      final isOpenAIDefault = memory.embeddingProvider == 'openai' &&
+      final isOpenAIDefault =
+          memory.embeddingProvider == 'openai' &&
           memory.embeddingModel == 'text-embedding-3-small';
-      final isOpenRouterDefault = memory.embeddingProvider == 'openrouter' &&
+      final isOpenRouterDefault =
+          memory.embeddingProvider == 'openrouter' &&
           memory.embeddingModel == 'nvidia/llama-nemotron-embed-vl-1b-v2:free';
 
       if ((isOpenAIDefault || isOpenRouterDefault) && !memory.ragEnabled) {
         _log.info(
-            'Clearing "ghost" embedding defaults from vault (${memory.embeddingProvider})');
+          'Clearing "ghost" embedding defaults from vault (${memory.embeddingProvider})',
+        );
         final corrected = MemoryConfig(
           enabled: memory.enabled,
           ragEnabled: false,
@@ -1367,8 +1568,10 @@ class ConfigRouter {
   }
 
   Future<void> _saveCustomAgentsToVault(List<CustomAgentConfig> agents) async {
-    await storage.set(_customAgentsVaultKey,
-        jsonEncode(agents.map((a) => a.toJson()).toList()));
+    await storage.set(
+      _customAgentsVaultKey,
+      jsonEncode(agents.map((a) => a.toJson()).toList()),
+    );
     _log.info('Saved custom agents config to vault (encrypted)');
   }
 
@@ -1732,7 +1935,10 @@ class ConfigRouter {
   }
 
   ChannelsConfig _setChannelConfigById(
-      ChannelsConfig channels, String id, ChannelConfig config) {
+    ChannelsConfig channels,
+    String id,
+    ChannelConfig config,
+  ) {
     return channels.copyWith(
       telegram: id == 'telegram' ? config : null,
       discord: id == 'discord' ? config : null,
@@ -1768,7 +1974,7 @@ class ConfigRouter {
         'msTeams',
         'nextcloudTalk',
         'tlon',
-        'zalo'
+        'zalo',
       ];
 
       bool changed = false;
@@ -1777,21 +1983,26 @@ class ConfigRouter {
       for (final type in channelTypes) {
         final channelConfig = _getChannelConfigById(currentChannels, type);
         if (channelConfig != null) {
-          final storageKey =
-              type == 'telegram' ? 'telegram_bot_token' : '${type}_token';
+          final storageKey = type == 'telegram'
+              ? 'telegram_bot_token'
+              : '${type}_token';
           final token = await storage.get(storageKey);
 
           if (token == null || token.isEmpty) {
             if (channelConfig.enabled ||
                 channelConfig.dmPolicy != DmPolicy.disabled) {
               _log.warning(
-                  'Channel $type has no token but is not fully disabled. Enforcing disabled state.');
+                'Channel $type has no token but is not fully disabled. Enforcing disabled state.',
+              );
               final newChanConfig = channelConfig.copyWith(
                 enabled: false,
                 dmPolicy: DmPolicy.disabled,
               );
-              updatedChannels =
-                  _setChannelConfigById(updatedChannels, type, newChanConfig);
+              updatedChannels = _setChannelConfigById(
+                updatedChannels,
+                type,
+                newChanConfig,
+              );
               changed = true;
 
               // Also update manager in case it was running

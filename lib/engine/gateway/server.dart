@@ -372,7 +372,8 @@ class GatewayServer {
     if (!client.isAuthenticated) {
       try {
         final request = RpcRequest.fromJsonString(raw);
-        if (request.method != 'auth.login') {
+        if (request.method != 'auth.login' &&
+            request.method != 'config.factoryReset') {
           final error = RpcErrorResponse(
             id: request.id,
             code: RpcErrorCodes.authRequired,
@@ -397,11 +398,18 @@ class GatewayServer {
       isAuthenticated: client.isAuthenticated,
     );
 
-    _log.info('RPC Request from ${client.id}: $raw');
+    final isListModels = raw.contains('"method":"config.listModels"') ||
+        raw.contains('"method":"config.listModelsDetailed"');
+
+    if (!isListModels) {
+      _log.info('RPC Request from ${client.id}: $raw');
+    }
 
     final response = await rpcRegistry.handleRequest(raw, context);
     if (response != null) {
-      _log.info('RPC Response to ${client.id}: $response');
+      if (!isListModels && !response.contains('"models":[')) {
+        _log.info('RPC Response to ${client.id}: $response');
+      }
       _send(client, response);
     }
   }
@@ -571,6 +579,7 @@ class GatewayServer {
 
     if (request.method == 'DELETE') {
       if (storage != null) {
+        await storage!.set('client_token', '');
         await storage!.remove('client_token');
       } else if (await tokenFile.exists()) {
         await tokenFile.delete();

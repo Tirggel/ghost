@@ -24,6 +24,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab>
     with SingleTickerProviderStateMixin, SettingsSaveMixin {
   final _controllers = <String, TextEditingController>{};
   int _avatarNonce = 0;
+  bool _isEditing = false;
 
   final List<String> _subTabLabels = [
     'settings.user.tab',
@@ -84,6 +85,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab>
       };
 
       await ref.read(configProvider.notifier).updateUser(config);
+      if (mounted) {
+        setState(() => _isEditing = false);
+      }
     }, successMessage: 'settings.user.saved'.tr());
   }
 
@@ -107,6 +111,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab>
       onSubTabChanged: (index) => ref.read(shellProvider.notifier).setSettingsSubTabIndex(0, index),
       onBack: currentIndex == 0 ? widget.onBack : () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(0, 0),
       onNext: currentIndex == 0 ? () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(0, 1) : widget.onNext,
+      onSave: (currentIndex == 0 && _isEditing) ? _save : null,
+      isSaveLoading: isSaveLoading,
       body: IndexedStack(
         index: currentIndex,
         children: [
@@ -191,6 +197,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab>
             ),
           ],
           maxViewFields: 3,
+          isEditing: _isEditing,
+          onEditToggle: () => setState(() => _isEditing = !_isEditing),
           onSave: _save,
         ),
       ],

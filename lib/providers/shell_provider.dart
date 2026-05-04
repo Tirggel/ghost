@@ -8,12 +8,14 @@ class ShellState {
     this.collapsedFolders = const {},
     this.settingsTabIndex = 0,
     this.settingsSubTabIndices = const {},
+    this.pendingSettingsOpen = false,
   });
   final String? activeSessionId;
   final String searchQuery;
   final Set<String> collapsedFolders;
   final int settingsTabIndex;
   final Map<int, int> settingsSubTabIndices;
+  final bool pendingSettingsOpen;
 
   ShellState copyWith({
     String? activeSessionId,
@@ -22,6 +24,7 @@ class ShellState {
     int? settingsTabIndex,
     Map<int, int>? settingsSubTabIndices,
     bool clearActiveSession = false,
+    bool? pendingSettingsOpen,
   }) {
     return ShellState(
       activeSessionId: clearActiveSession
@@ -31,6 +34,7 @@ class ShellState {
       collapsedFolders: collapsedFolders ?? this.collapsedFolders,
       settingsTabIndex: settingsTabIndex ?? this.settingsTabIndex,
       settingsSubTabIndices: settingsSubTabIndices ?? this.settingsSubTabIndices,
+      pendingSettingsOpen: pendingSettingsOpen ?? this.pendingSettingsOpen,
     );
   }
 }
@@ -68,6 +72,10 @@ class ShellNotifier extends Notifier<ShellState> {
 
   void setSettingsTabIndex(int index) {
     state = state.copyWith(settingsTabIndex: index);
+  }
+
+  void setPendingSettingsOpen(bool value) {
+    state = state.copyWith(pendingSettingsOpen: value);
   }
 
   void setSettingsSubTabIndex(int mainTabIndex, int subTabIndex) {

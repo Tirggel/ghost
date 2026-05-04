@@ -34,20 +34,19 @@ class WizardStepProvider extends ConsumerWidget {
             value: state.selectedProvider,
             hint: 'settings.identity.choose_provider',
             items: providers.map((p) => p['id']!).toList(),
-            displayValue: (id) =>
-                providers.firstWhere((p) => p['id'] == id)['label']!,
+            displayValue: (id) => AppConstants.getProviderLabel(id),
             itemBuilder: (id) {
-              final p = providers.firstWhere((p) => p['id'] == id);
               return WizardDropdownItem(
-                label: p['label']!,
-                iconPath: 'assets/icons/llm/${p['icon']}',
+                label: AppConstants.getProviderLabel(id),
+                iconPath: AppConstants.getProviderIcon(id),
               );
             },
             selectedItemBuilder: (BuildContext context) {
               return providers.map((p) {
+                final id = p['id']!;
                 return WizardDropdownItem(
-                  label: p['label']!,
-                  iconPath: 'assets/icons/llm/${p['icon']}',
+                  label: AppConstants.getProviderLabel(id),
+                  iconPath: AppConstants.getProviderIcon(id),
                   isSelected: true,
                 );
               }).toList();

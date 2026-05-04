@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +9,7 @@ import '../../../../core/constants.dart';
 import '../../../../core/gateway.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../../providers/usage_provider.dart';
+import '../../../../providers/shell_provider.dart';
 import '../../../../core/internal_gateway.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_dialogs.dart';
@@ -41,6 +42,9 @@ class _GatewayTabState extends ConsumerState<GatewayTab> {
   void initState() {
     super.initState();
     _fetchAll();
+
+    // Auto-scroll to bottom on first load
+    _scrollLogsToBottom();
 
     // Auto-refresh status every 5 s
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -98,18 +102,30 @@ class _GatewayTabState extends ConsumerState<GatewayTab> {
 
     setState(() => _restarting = true);
     final client = ref.read(gatewayClientProvider);
-    client.setRestoring();
     try {
       await client.call('gateway.restart');
+      if (mounted) {
+        setState(() => _restarting = false);
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AppAlertDialog(
+            title: const Text('System Neustart'),
+            content: const Text('Das System wird neu gestartet. Bitte starte die App neu.'),
+            actions: [
+              TextButton(
+                onPressed: () => exit(0),
+                child: const Text('App schließen', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+              ),
+            ],
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         showAppErrorDialog(context, e.toString());
+        setState(() => _restarting = false);
       }
-    } finally {
-      if (mounted) setState(() => _restarting = false);
-      // Give the server time to come back and the app to auto-reconnect
-      await Future<void>.delayed(const Duration(seconds: 3));
-      if (mounted) unawaited(_fetchStatus());
     }
   }
 
@@ -137,6 +153,13 @@ class _GatewayTabState extends ConsumerState<GatewayTab> {
     // Auto-scroll on new entries
     ref.listen(gatewayLogsProvider, (prev, next) {
       if (next.length != (prev?.length ?? 0)) {
+        _scrollLogsToBottom();
+      }
+    });
+
+    // Auto-scroll when switching to this tab
+    ref.listen(shellProvider.select((s) => s.settingsTabIndex), (prev, next) {
+      if (next == 7) { // Index of GatewayTab in SettingsDialog
         _scrollLogsToBottom();
       }
     });

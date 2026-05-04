@@ -59,6 +59,7 @@ class AppAlertDialog extends StatelessWidget {
     required BuildContext context,
     required String message,
     String? title,
+    VoidCallback? onOk,
   }) {
     return showDialog(
       context: context,
@@ -76,7 +77,10 @@ class AppAlertDialog extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () {
+              Navigator.pop(ctx);
+              onOk?.call();
+            },
             child: Text('common.ok'.tr()),
           ),
         ],

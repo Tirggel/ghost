@@ -32,9 +32,10 @@ dependencies:
   record: ^6.2.0
   flutter_secure_storage: ^10.0.0
   objectbox_flutter_libs: ^5.3.1
+  window_manager: ^0.4.3
 
   # Logic & Backend
-  archive: ^3.6.1
+  archive: ^4.0.9
   args: ^2.5.0
   cron: ^0.6.2
   crypto: ^3.0.6
@@ -79,3 +80,4 @@ flutter:
     - assets/icons/llm/
     - assets/icons/logo/
     - assets/icons/channels/
+    - assets/icons/tech/

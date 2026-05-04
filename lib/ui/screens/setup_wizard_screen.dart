@@ -41,7 +41,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
   final _identNameCtrl = TextEditingController();
   final _identCreatureCtrl = TextEditingController();
   final _identVibeCtrl = TextEditingController();
-  final _identEmojiCtrl = TextEditingController(text: '👻');
+  final _identEmojiCtrl = TextEditingController(text: '🤖');
   final _identNotesCtrl = TextEditingController();
   final _identAvatarCtrl = TextEditingController();
   final _workspaceCtrl = TextEditingController();
@@ -138,6 +138,24 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
     // Set initial language
     if (mounted) {
       notifier.updateLanguage(context.locale.languageCode);
+    }
+
+    // Load existing API key if provider is set
+    if (agent.provider != null) {
+      notifier.updateProvider(agent.provider);
+      // Fetch the actual key from the vault if it exists
+      final key = await ref.read(configProvider.notifier).getKey(
+        agent.provider == 'google' ? 'google_api_key' : '${agent.provider}_api_key',
+      );
+      if (key != null && key.isNotEmpty) {
+        notifier.updateApiKey(key);
+        // If we have a key, try to verify it to load models
+        if (AppConstants.isLocalProvider(agent.provider!)) {
+          await notifier.fetchLocalModels(agent.provider!);
+        } else {
+          await notifier.verifyKey();
+        }
+      }
     }
   }
 

@@ -252,6 +252,7 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
             ),
             label: 'settings.channels.gchat_sa_label',
             hint: 'settings.channels.gchat_sa_hint',
+            obscureText: false,
           ),
         if (policy != 'disabled')
           AppSettingsInputField(
@@ -262,6 +263,7 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
             ),
             label: 'settings.channels.gchat_project_label',
             hint: 'settings.channels.gchat_project_hint',
+            obscureText: false,
           ),
         if (policy != 'disabled')
           AppSettingsInputField(
@@ -272,6 +274,7 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
             ),
             label: 'settings.channels.gchat_sub_label',
             hint: 'settings.channels.gchat_sub_hint',
+            obscureText: false,
           ),
       ];
       onSave = () => _saveGenericChannelConfig(channelId);
@@ -286,6 +289,7 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
             ),
             label: 'settings.channels.tg_token_label',
             hint: 'settings.channels.tg_token_hint',
+            obscureText: false,
           ),
         ];
       } else {
@@ -303,6 +307,7 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
             ),
             label: 'settings.channels.config_label',
             hint: 'settings.channels.config_hint',
+            obscureText: false,
           ),
         ];
       } else {
@@ -322,6 +327,7 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
           ),
           label: 'settings.channels.dm_policy_pairing_code',
           hint: 'settings.channels.dm_policy_pairing_code_hint',
+          obscureText: false,
         ),
       );
     } else if (policy == 'allowlist') {
@@ -332,6 +338,7 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
           controller: _getController(channelId, 'allowFrom', currentAllowFrom),
           label: 'settings.channels.dm_policy_allowlist_field',
           hint: 'settings.channels.dm_policy_allowlist_hint',
+          obscureText: false,
         ),
       );
     }

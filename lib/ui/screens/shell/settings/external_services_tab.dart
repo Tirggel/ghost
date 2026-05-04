@@ -53,7 +53,9 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
     // The gateway allows config.setKey for any service.
     // We will just save it.
     try {
-      await ref.read(configProvider.notifier).setKey(serviceId, key);
+      // Standard for external services is to have _api_key suffix in vault
+      final vaultKey = serviceId.endsWith('_api_key') ? serviceId : '${serviceId}_api_key';
+      await ref.read(configProvider.notifier).setKey(vaultKey, key);
       _getApiController(serviceId).clear();
       setState(() {
         _visibleKeyProvider = null;
@@ -120,6 +122,8 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
           ),
         ),
         const SizedBox(height: 16),
+        _buildAddServiceTile(),
+        const SizedBox(height: 16),
         ..._buildServiceSections(vaultKeys),
       ],
     );
@@ -127,12 +131,34 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
 
   List<Widget> _buildServiceSections(Set<String> vaultKeys) {
     final aiProviderIds = AppConstants.aiProviders.map((p) => p['id']).toSet();
-    
-    // Find external keys that end in _api_key but are not AI providers
+
+    // Find external keys that end in _api_key but are not AI providers,
+    // not internal integration keys, and not OAuth-related
     final externalKeys = vaultKeys.where((k) {
+      // Must end with _api_key
       if (!k.endsWith('_api_key')) return false;
       final sid = k.replaceAll('_api_key', '');
-      return !aiProviderIds.contains(sid);
+
+      // Exclude known AI providers
+      if (aiProviderIds.contains(sid)) return false;
+
+      // Exclude internal integration keys
+      if (sid == 'ms_client_id' ||
+          sid == 'google_client_id_web' ||
+          sid == 'google_client_id_desktop' ||
+          sid == 'google_client_secret') {
+        return false;
+      }
+
+      // Exclude keys that contain OAuth data (e.g. 'spotify_api_key' storing combined client credentials)
+      // Detect by checking whether any matching OAuth key exists for the same service prefix
+      final prefix = sid.toUpperCase();
+      final hasOAuthSibling = vaultKeys.any((other) =>
+          other.toUpperCase() == '${prefix}_CLIENT_ID' ||
+          other.toUpperCase() == '${prefix}_CLIENT_SECRET');
+      if (hasOAuthSibling) return false;
+
+      return true;
     }).toList()
       ..sort();
 
@@ -151,18 +177,10 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
     } else {
       for (final keyName in externalKeys) {
         final serviceId = keyName.replaceAll('_api_key', '');
-        // Create a display-friendly name nicely capitalized
         final displayName = serviceId.split('_').map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' ');
         widgets.add(_buildExistingServiceTile(serviceId, displayName));
       }
     }
-
-    // Add Service Tile
-    widgets.add(const Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Divider(color: AppColors.border),
-    ));
-    widgets.add(_buildAddServiceTile());
 
     return widgets;
   }
@@ -179,13 +197,18 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
       isEditing: isEditing,
       isAlreadySet: true,
       isVerifying: isVerifying,
-      obscureText: true,
+      obscureText: false,
       hint: 'settings.external_services.key_hint',
-      onEdit: () {
-        setState(() {
-          _visibleKeyProvider = serviceId;
-          _isAddingNew = false;
-        });
+      onEdit: () async {
+        final vaultKey = serviceId.endsWith('_api_key') ? serviceId : '${serviceId}_api_key';
+        final key = await ref.read(configProvider.notifier).getKey(vaultKey);
+        if (mounted) {
+          _getApiController(serviceId).text = key ?? '';
+          setState(() {
+            _visibleKeyProvider = serviceId;
+            _isAddingNew = false;
+          });
+        }
       },
       onDelete: () => _deleteApiKey(serviceId, displayName),
       onSave: () => _verifyAndSaveKey(serviceId, _getApiController(serviceId).text),
@@ -209,7 +232,7 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
           controller: _newKeyController,
           label: 'settings.external_services.key_label',
           hint: 'settings.external_services.key_hint',
-          obscureText: true,
+          obscureText: false,
         ),
       ],
       isEditing: _isAddingNew,

@@ -426,7 +426,7 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
               height: AppConstants.integrationIconSize,
             ),
             isEditing: _editingOAuthField == 'ms_workspace',
-            isAlreadySet: vaultKeys.contains('ms_client_id'),
+            isAlreadySet: vaultKeys.contains('ms_client_id') || vaultKeys.contains('ms_client_id_api_key'),
             isVerifying: _signingIn && _editingOAuthField == 'ms_workspace',
             inputs: [
               AppSettingsInputField(
@@ -505,7 +505,7 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
         const SizedBox(height: 12),
         if (_signingIn && _editingOAuthField != 'google_workspace' && _editingOAuthField != 'ms_workspace')
           const Center(child: CircularProgressIndicator())
-        else if (vaultKeys.contains('ms_client_id') && msAuthState == null)
+        else if ((vaultKeys.contains('ms_client_id') || vaultKeys.contains('ms_client_id_api_key')) && msAuthState == null)
           ElevatedButton.icon(
             onPressed: _handleMicrosoftSignIn,
             icon: const Icon(Icons.login, size: AppConstants.settingsIconSize),

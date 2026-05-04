@@ -171,14 +171,6 @@ class _ModelSearchDialogState extends State<_ModelSearchDialog> {
     super.dispose();
   }
 
-  /// Patterns that identify embedding-only models (not suitable for chat).
-  static const List<String> _embeddingModelPatterns = [
-    //'embed', // mistral-embed, mistral-embed-2312
-    //'text-embedding', // text-embedding-3-small, text-embedding-004
-    //'embedding', // deepseek-embedding
-    //'ada-002', // text-ada-002 (old OpenAI embed)
-  ];
-
 
 
   void _sortAndFilter() {

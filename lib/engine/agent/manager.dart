@@ -43,7 +43,7 @@ class AgentManager {
     required this.stateDir,
     this.configPath,
   }) {
-    skillManager = SkillManager(stateDir: stateDir);
+    skillManager = SkillManager(stateDir: stateDir, storage: storage);
     memoryEngine = MemoryEngine(
       config: config.memory,
       storage: storage,

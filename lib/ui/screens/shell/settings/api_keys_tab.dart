@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/constants.dart';
-import '../../../../core/models/config_models.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_settings_input.dart';
@@ -103,7 +102,7 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
 
     // Check if provider is used by any custom agent
     final isUsedByCustom = config.customAgents.any(
-      (agent) => (agent as Map<String, dynamic>)['provider'] == service,
+      (agent) => agent.provider == service,
     );
 
     if (isUsedByMain || isUsedByCustom) {
@@ -128,6 +127,12 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
     if (confirmed == true) {
       try {
         await ref.read(configProvider.notifier).setKey(service, '');
+        // Force a second refresh after a short delay to handle potential
+        // stale state from the secure storage backend.
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        if (mounted) {
+          await ref.read(configProvider.notifier).refresh();
+        }
         if (mounted) {
           AppSnackBar.showSuccess(
             context,
@@ -165,6 +170,7 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
             color: AppColors.textDim,
           ),
         ),
+        const SizedBox(height: 16),
         const SizedBox(height: 16),
         TextField(
           controller: _searchController,
@@ -271,7 +277,10 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
 
     return AppSettingsInput(
       title: 'providers.$service',
-      subtitle: isLocalProvider && detectedUrl != null && !vaultKeys.contains('${service}_base_url')
+      subtitle:
+          isLocalProvider &&
+              detectedUrl != null &&
+              !vaultKeys.contains('${service}_base_url')
           ? detectedUrl
           : null,
       translateSubtitle: false,

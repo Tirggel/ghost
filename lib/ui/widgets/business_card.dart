@@ -32,6 +32,7 @@ class BusinessCard extends StatefulWidget {
     this.onEditToggle,
     this.onDelete,
     this.initialEdit = false,
+    this.isEditing,
     this.isEnabled,
     this.onToggleEnabled,
     this.bottom,
@@ -48,6 +49,7 @@ class BusinessCard extends StatefulWidget {
   final VoidCallback? onEditToggle;
   final Future<void> Function()? onDelete;
   final bool initialEdit;
+  final bool? isEditing;
   final bool? isEnabled;
   final ValueChanged<bool>? onToggleEnabled;
   final Widget Function(BuildContext context, bool isEditing)? bottom;
@@ -58,27 +60,33 @@ class BusinessCard extends StatefulWidget {
 }
 
 class _BusinessCardState extends State<BusinessCard> with SettingsSaveMixin {
-  late bool _isEditing;
+  bool? _internalIsEditing;
+
+  bool get _isEditing => widget.isEditing ?? _internalIsEditing ?? false;
 
   @override
   void initState() {
     super.initState();
-    _isEditing = widget.initialEdit;
+    if (widget.isEditing == null) {
+      _internalIsEditing = widget.initialEdit;
+    }
   }
 
   void _toggleEdit() {
-    setState(() {
-      _isEditing = !_isEditing;
-    });
+    if (widget.isEditing == null) {
+      setState(() {
+        _internalIsEditing = !_isEditing;
+      });
+    }
     widget.onEditToggle?.call();
   }
 
   Future<void> _handleSave() async {
     await handleSave(() async {
       await widget.onSave();
-      if (mounted) {
+      if (mounted && widget.isEditing == null) {
         setState(() {
-          _isEditing = false;
+          _internalIsEditing = false;
         });
       }
     });

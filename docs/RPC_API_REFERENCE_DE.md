@@ -39,14 +39,40 @@ Verwaltet API-Schlüssel im verschlüsselten Tresor (Vault).
 - `service`: (String, z.B. "openai", "google_workspace", "telegram")
 - `key`: (String)
 
+### `config.getChannelToken`
+Ruft den sicheren Token für einen Kommunikationskanal ab.
+**Parameter:**
+- `channelId`: (String, z.B. "telegram", "whatsapp")
+
+**Antwort:**
+- `token`: (String)
+
 ### `config.testKey`
 Testet eine Verbindung oder die Gültigkeit eines Schlüssels.
 
 ### `config.listModels` / `config.listModelsDetailed`
 Listet verfügbare Modelle für einen Provider auf.
+**Parameter:**
+- `provider`: (String)
+- `apiKey`: (String, optional)
 
-### `config.updateAgent` / `config.updateUser` / `config.updateIdentity` / `config.updateIntegrations`
-Aktualisiert spezifische Konfigurationsblöcke.
+### `config.getModelCapabilities`
+Gibt Details darüber zurück, was ein bestimmtes Modell unterstützt (z. B. Tools, Vision).
+**Parameter:**
+- `provider`: (String)
+- `model`: (String)
+
+### `config.testEmbedding`
+Testet, ob eine Provider/Modell-Kombination Vektor-Embeddings unterstützt.
+**Parameter:**
+- `provider`: (String)
+- `model`: (String)
+
+### `config.updateAgent` / `config.updateUser` / `config.updateIdentity` / `config.updateIntegrations` / `config.updateChannels` / `config.updateMemory` / `config.updateTools` / `config.updateSecurity`
+Aktualisiert spezifische Konfigurationsblöcke. Alle sensiblen Daten (Schlüssel, Token) werden automatisch in den verschlüsselten Tresor gefiltert und niemals im Klartext gespeichert.
+
+### `config.getGoogleCredentials`
+Ruft die Google OAuth Client-IDs und Secrets aus dem Tresor ab.
 
 ---
 
@@ -92,6 +118,11 @@ Sichert oder stellt die Standard-Datenbank (Stichworte) wieder her.
 ### `memory.rag.backup` / `memory.rag.restore`
 Sichert oder stellt die RAG-Datenbank (Vektoren) wieder her.
 
+### `config.clearMemory`
+Löscht die angegebene Memory-Datenbank.
+**Parameter:**
+- `type`: (String, "standard" oder "rag")
+
 ---
 
 ## 🛠️ Agenten-Management
@@ -100,6 +131,11 @@ Sichert oder stellt die RAG-Datenbank (Vektoren) wieder her.
 Erstellt einen neuen Custom Agent.
 **Parameter:**
 - `agent`: (Object) { `name`, `systemPrompt`, `skills`, `cronSchedule`, `cronMessage`, ... }
+
+### `config.updateCustomAgent`
+Aktualisiert einen bestehenden Custom Agent.
+**Parameter:**
+- `agent`: (Object) { `id`, ... }
 
 ### `config.deleteCustomAgent`
 Löscht einen Custom Agent.
@@ -113,13 +149,60 @@ Löscht einen Custom Agent.
 ### `skills.list`
 Listet alle installierten Skills auf.
 
-### `skills.install` / `skills.import`
-Installiert einen neuen Skill aus einem ZIP oder einem lokalen Verzeichnis.
+### `skills.install` / `skills.import` / `skills.downloadFromGithub`
+Installiert einen neuen Skill aus einem ZIP, einem lokalen Verzeichnis oder einer GitHub-URL.
+
+### `skills.updateGlobal`
+Aktiviert oder deaktiviert einen Skill global für alle Agenten.
+**Parameter:**
+- `slug`: (String)
+- `isGlobal`: (Boolean)
+
+### `skills.getMarkdown` / `skills.updateMarkdown`
+Liest oder ändert die Markdown-basierte Logik eines Skills.
+**Parameter:**
+- `slug`: (String)
+- `content`: (String, für Update)
+
+### `skills.backup` / `skills.restore`
+Sichert oder stellt die gesamte Skill-Bibliothek wieder her.
 
 ### `skills.delete`
 Löscht einen Skill.
 **Parameter:**
 - `slug`: (String) Der Skill-Slug.
+
+---
+
+## 🛠️ Wartung & System
+
+### `config.factoryReset`
+Löscht den gesamten Anwendungszustand, einschließlich aller Datenbanken und des Tresors. Startet das Gateway im "Erststart"-Modus neu.
+
+### `config.backup`
+Erstellt ein verschlüsseltes ZIP-Archiv des Systemzustands.
+**Parameter:**
+- `sections`: (Array von Strings, optional) z.B. `["config", "sessions", "skills", "memory", "vault"]`
+
+**Antwort:**
+- `path`: (String) Pfad zur temporären ZIP-Datei auf dem Host.
+- `filename`: (String) Vorgeschlagener Dateiname.
+
+### `config.restore`
+Stellt das System aus einem ZIP-Archiv wieder her.
+**Parameter:**
+- `path`: (String) Pfad zur ZIP-Datei auf dem Host.
+- `zip`: (String, optional) Alternativ Base64-kodierte ZIP-Daten.
+
+---
+
+## 💬 Kanal-Management
+
+### `channels.getErrors`
+Ruft aktuelle Verbindungsfehler für alle aktiven Kanäle ab.
+**Parameter:**
+- `clear`: (Boolean, optional) Wenn true, werden die Fehler nach dem Lesen gelöscht.
+- `channelType`: (String, optional) Zielt auf einen bestimmten Kanal ab.
 
 ---
 

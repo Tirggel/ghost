@@ -29,7 +29,11 @@ Future<Map<String, String?>?> performGoogleOAuth({
       return {
         'accessToken': token,
         'email': json['email'] as String? ?? 'unknown',
-        'displayName': json['name'] as String?,
+        'displayName': (json['name'] as String?)?.isNotEmpty == true
+            ? json['name'] as String?
+            : (json['given_name'] != null || json['family_name'] != null)
+                ? '${json['given_name'] ?? ''} ${json['family_name'] ?? ''}'.trim()
+                : null,
         'photoUrl': json['picture'] as String?,
       };
     }

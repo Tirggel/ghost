@@ -6,6 +6,8 @@ import '../core/oauth/microsoft_oauth.dart';
 import 'gateway_provider.dart';
 
 const List<String> _kScopes = [
+  'openid',
+  'profile',
   'email',
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/gmail.modify',
@@ -15,7 +17,6 @@ const List<String> _kScopes = [
 
 /// Holds the signed-in user info.
 class GoogleUser {
-
   GoogleUser({
     required this.email,
     this.displayName,
@@ -90,9 +91,7 @@ class AuthNotifier extends Notifier<GoogleUser?> {
       if (result['status'] != 'ok') {
         ref
             .read(authErrorProvider.notifier)
-            .setError(
-              'Your Google Workspace session has expired. Please sign in again via Settings > Integrations.',
-            );
+            .setError('settings.integrations.google_session_expired');
         await signOut();
       }
     } catch (_) {}
@@ -139,6 +138,19 @@ class AuthNotifier extends Notifier<GoogleUser?> {
           'googleDisplayName': user.displayName,
           'googlePhotoUrl': user.photoUrl,
         });
+
+        // Also update the main user profile if it's empty
+        final currentConfig = ref.read(configProvider);
+        final updates = <String, dynamic>{};
+        if (currentConfig.user.name.isEmpty && user.displayName != null) {
+          updates['name'] = user.displayName;
+        }
+        if (currentConfig.user.avatar == null && user.photoUrl != null) {
+          updates['avatar'] = user.photoUrl;
+        }
+        if (updates.isNotEmpty) {
+          await configNotifier.updateUser(updates);
+        }
       }
     } catch (e) {
       // Ignored
@@ -170,9 +182,10 @@ class MicrosoftUser {
   final String accessToken;
 }
 
-final microsoftAuthStateProvider = NotifierProvider<MicrosoftAuthNotifier, MicrosoftUser?>(
-  () => MicrosoftAuthNotifier(),
-);
+final microsoftAuthStateProvider =
+    NotifierProvider<MicrosoftAuthNotifier, MicrosoftUser?>(
+      () => MicrosoftAuthNotifier(),
+    );
 
 class MicrosoftAuthNotifier extends Notifier<MicrosoftUser?> {
   @override
@@ -181,9 +194,12 @@ class MicrosoftAuthNotifier extends Notifier<MicrosoftUser?> {
     final integrations = config.integrations;
 
     final email = integrations['microsoftEmail'] as String?;
-    final vaultKeys = (config.vault['keys'] as List<dynamic>?)?.cast<String>() ?? [];
+    final vaultKeys =
+        (config.vault['keys'] as List<dynamic>?)?.cast<String>() ?? [];
 
-    if (email != null && email.isNotEmpty && vaultKeys.contains('ms_graph_access_token')) {
+    if (email != null &&
+        email.isNotEmpty &&
+        vaultKeys.contains('ms_graph_access_token')) {
       return MicrosoftUser(
         email: email,
         displayName: integrations['microsoftDisplayName'] as String?,
@@ -198,7 +214,9 @@ class MicrosoftAuthNotifier extends Notifier<MicrosoftUser?> {
     if (clientId.isEmpty) return;
 
     try {
-      print('[MicrosoftAuth] Starting sign-in with clientId: ${clientId.substring(0, 8)}...');
+      print(
+        '[MicrosoftAuth] Starting sign-in with clientId: ${clientId.substring(0, 8)}...',
+      );
       final result = await performMicrosoftOAuth(
         clientId: clientId,
         scopes: [
@@ -216,7 +234,9 @@ class MicrosoftAuthNotifier extends Notifier<MicrosoftUser?> {
 
       if (result != null) {
         final token = result['accessToken'] ?? '';
-        print('[MicrosoftAuth] OAuth successful, email: ${result['email']}, token length: ${token.length}');
+        print(
+          '[MicrosoftAuth] OAuth successful, email: ${result['email']}, token length: ${token.length}',
+        );
 
         final configNotifier = ref.read(configProvider.notifier);
 
@@ -226,7 +246,8 @@ class MicrosoftAuthNotifier extends Notifier<MicrosoftUser?> {
         if (photoBase64 != null) {
           try {
             final photoBytes = base64Decode(photoBase64);
-            final wsUrl = ref.read(gatewayUrlProvider).value ?? 'ws://127.0.0.1:18789';
+            final wsUrl =
+                ref.read(gatewayUrlProvider).value ?? 'ws://127.0.0.1:18789';
             photoPath = await configNotifier.uploadAvatar(
               'ms_profile_photo.jpg',
               photoBytes,

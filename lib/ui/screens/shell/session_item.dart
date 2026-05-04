@@ -323,7 +323,7 @@ class _ModelPickerButtonState extends ConsumerState<_ModelPickerButton> {
       ).copyWith(
         foregroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
           if (states.contains(WidgetState.hovered)) {
-            return Colors.blueAccent;
+            return Colors.greenAccent;
           }
           return AppColors.white;
         }),

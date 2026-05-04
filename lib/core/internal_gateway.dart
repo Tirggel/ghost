@@ -141,7 +141,18 @@ class InternalGatewayManager {
         
         // Sync raw token to secure storage so UI can find it
         await storage.set('auth_token', tokenData.raw);
+        // Also sync as client_token so /client-token endpoint returns it
+        await storage.set('client_token', tokenData.raw);
         _log.info('Fresh auth token generated and synced to vault.');
+      } else {
+        // Existing config (e.g. after a backup restore): ensure client_token
+        // is in sync with auth_token so the /client-token endpoint always
+        // returns the correct token without requiring manual input.
+        final existingToken = await storage.get('auth_token');
+        if (existingToken != null && existingToken.isNotEmpty) {
+          await storage.set('client_token', existingToken);
+          _log.info('Synced existing auth_token to client_token after start.');
+        }
       }
 
       // 4. Setup Session Key
@@ -164,11 +175,12 @@ class InternalGatewayManager {
       // Register tools (Replicating bin/ghost.dart registration)
       SearchTools.registerAll(toolRegistry);
       SessionTools.registerAll(toolRegistry, sessionStore);
-      ExecTools.registerAll(toolRegistry);
+      ExecTools.registerAll(toolRegistry, storage);
       FileSystemTools.registerAll(toolRegistry);
       GithubTools.registerAll(toolRegistry);
       GoogleWorkspaceTools.registerAll(toolRegistry, storage);
       MicrosoftGraphTools.registerAll(toolRegistry, storage);
+      VaultTools.registerAll(toolRegistry, storage);
       
       // Browser tools might be disabled on some platforms (e.g. mobile)
       if (!kIsWeb && (p.extension(Platform.resolvedExecutable) != '.js')) {

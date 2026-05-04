@@ -10,10 +10,18 @@ import 'ui/screens/shell_screen.dart';
 import 'core/internal_gateway.dart';
 
 import 'package:easy_localization/easy_localization.dart';
+import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
+  await windowManager.ensureInitialized();
+
+  windowManager.waitUntilReadyToShow(null, () async {
+    await windowManager.maximize();
+    await windowManager.show();
+    await windowManager.focus();
+  });
 
   // Only show warnings and errors from easy_localization
   EasyLocalization.logger.enableLevels = [
@@ -55,7 +63,7 @@ class MainApp extends ConsumerWidget {
     final isInitializing =
         savedTokenAsync.isLoading || gatewayUrlAsync.isLoading;
 
-    // Auto-connect if we have a token but are disconnected or in error state
+    // Auto-connect if we have a token but are disconnected or in error state.
     if (!isInitializing &&
         savedToken != null &&
         (authStatus.value == ConnectionStatus.disconnected ||
@@ -71,15 +79,19 @@ class MainApp extends ConsumerWidget {
           await client.connect();
           final success = await client.login(savedToken);
           if (!success) {
-            // Auto-login failed (e.g., token was reset) — clear it to drop to AuthScreen
+            // Auto-login failed (e.g., token was reset) — clear it and trigger re-discovery
             await ref.read(authTokenProvider.notifier).logout();
+            ref.invalidate(authTokenProvider);
           }
         } catch (_) {}
       });
     }
 
+    // (The restoring state is now handled by modal dialogs that require the user to exit the app.)
+
     return MaterialApp(
       title: AppConstants.appName,
+      navigatorKey: AppConstants.navigatorKey,
       theme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: AppConstants.snackbarKey,
@@ -119,13 +131,6 @@ class MainApp extends ConsumerWidget {
             status: s,
             onAction: () => ref.read(authTokenProvider.notifier).logout(),
             actionLabel: 'auth.back_to_login'.tr(),
-          );
-        }
-
-        // Show a dedicated restore screen
-        if (s == ConnectionStatus.restoring) {
-          return LoadingScreen(
-            message: 'settings.maintenance.status_restoring'.tr(),
           );
         }
 

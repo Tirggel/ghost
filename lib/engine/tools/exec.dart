@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import '../config/secure_storage.dart';
 import '../tools/registry.dart';
 
 /// Tools for executing processes.
@@ -7,14 +8,37 @@ class ExecTools {
   ExecTools._();
 
   /// Register all execution tools.
-  static void registerAll(ToolRegistry registry) {
-    registry.register(BashTool());
-    registry.register(TerminalTool());
+  static void registerAll(ToolRegistry registry, [SecureStorage? storage]) {
+    registry.register(BashTool(storage: storage));
+    registry.register(TerminalTool(storage: storage));
+  }
+
+  /// Builds a map of environment variables by extracting API keys from the secure vault.
+  static Future<Map<String, String>> buildVaultEnvironment(SecureStorage? storage) async {
+    final env = <String, String>{};
+    if (storage == null) return env;
+
+    try {
+      final keys = await storage.listKeys();
+      for (final key in keys) {
+        final value = await storage.get(key);
+        if (value != null && value.isNotEmpty) {
+          // Normalize key name for environment (e.g. spotify_client_id -> SPOTIFY_CLIENT_ID)
+          env[key.toUpperCase()] = value;
+        }
+      }
+    } catch (e) {
+      // Ignore storage errors, just return empty env
+    }
+    return env;
   }
 }
 
 /// Tool to run a shell command.
 class BashTool extends Tool {
+  BashTool({this.storage});
+  final SecureStorage? storage;
+
   @override
   String get name => 'bash';
 
@@ -72,10 +96,14 @@ class BashTool extends Tool {
         finalCommand = '$envPrefix$finalCommand';
       }
 
+      // 3. Inject Vault API Keys
+      final vaultEnv = await ExecTools.buildVaultEnvironment(storage);
+
       final result = await Process.run(
         Platform.isWindows ? 'cmd' : 'bash',
         Platform.isWindows ? ['/c', finalCommand] : ['-c', finalCommand],
         workingDirectory: workingDir,
+        environment: vaultEnv,
       );
 
       final output = [
@@ -96,6 +124,9 @@ class BashTool extends Tool {
 
 /// Tool to run a command in a visible terminal window.
 class TerminalTool extends Tool {
+  TerminalTool({this.storage});
+  final SecureStorage? storage;
+
   @override
   String get name => 'terminal';
 
@@ -162,6 +193,9 @@ class TerminalTool extends Tool {
         commandToRun = '$envPrefix$commandToRun';
       }
 
+      // 3. Inject Vault API Keys
+      final vaultEnv = await ExecTools.buildVaultEnvironment(storage);
+
       if (Platform.isLinux) {
         // Construct the wrapper script to keep terminal open
         final fullCommand =
@@ -205,6 +239,7 @@ class TerminalTool extends Tool {
           foundTerminal,
           args,
           workingDirectory: workingDir,
+          environment: vaultEnv,
           mode: ProcessStartMode.detached,
         );
       } else if (Platform.isWindows) {
@@ -212,6 +247,7 @@ class TerminalTool extends Tool {
           'cmd.exe',
           ['/c', 'start', '"$title"', 'cmd', '/k', commandToRun],
           workingDirectory: workingDir,
+          environment: vaultEnv,
           mode: ProcessStartMode.detached,
         );
       } else {

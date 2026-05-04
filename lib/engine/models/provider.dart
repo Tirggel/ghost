@@ -86,6 +86,7 @@ class ModelCapabilities {
 class AIResponse {
   const AIResponse({
     required this.content,
+    this.reasoningContent,
     this.toolCalls = const [],
     this.usage,
     this.stopReason,
@@ -93,6 +94,9 @@ class AIResponse {
 
   /// The text response content.
   final String content;
+
+  /// The reasoning content (for models with thinking mode).
+  final String? reasoningContent;
 
   /// Tool calls requested by the model.
   final List<ToolCall> toolCalls;
@@ -108,12 +112,14 @@ class AIResponse {
 
   AIResponse copyWith({
     String? content,
+    String? reasoningContent,
     List<ToolCall>? toolCalls,
     TokenUsage? usage,
     String? stopReason,
   }) {
     return AIResponse(
       content: content ?? this.content,
+      reasoningContent: reasoningContent ?? this.reasoningContent,
       toolCalls: toolCalls ?? this.toolCalls,
       usage: usage ?? this.usage,
       stopReason: stopReason ?? this.stopReason,
