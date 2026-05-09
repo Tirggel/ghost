@@ -455,62 +455,52 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
     final config = ref.watch(configProvider);
     final channelsMap = config.channels as Map<String, dynamic>? ?? {};
 
-    return Column(
+    return AppSettingsPage(
+      onBack: widget.onBack,
+      onNext: widget.onNext,
+      subTabLabels: const ['settings.channels.tab'],
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppConstants.settingsPagePadding,
-              AppConstants.settingsTopPadding,
-              AppConstants.settingsPagePadding,
-              AppConstants.settingsPagePadding,
-            ),
-            children: [
-              const AppSectionHeader(
-                'settings.channels.section_title',
-                large: true,
-              ),
-              TextField(
-                controller: _searchController,
-                style: const TextStyle(color: AppColors.white, fontSize: 13),
-                decoration:
-                    AppInputDecoration.compact(
-                      hint: 'settings.channels.search_placeholder'.tr(),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(
-                                Icons.clear,
-                                size: 16,
-                                color: AppColors.textDim,
-                              ),
-                              onPressed: () => _searchController.clear(),
-                            )
-                          : null,
-                    ).copyWith(
-                      prefixIcon: const Icon(
-                        Icons.search,
-                        color: AppColors.textDim,
-                        size: 18,
-                      ),
-                      fillColor: AppColors.background,
-                    ),
-              ),
-              const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 24.0),
-                child: Text(
-                  'settings.channels.summary'.tr(),
-                  style: const TextStyle(
-                    color: AppColors.textDim,
-                    fontSize: AppConstants.fontSizeBody,
-                  ),
+        const AppSectionHeader(
+          'settings.channels.section_title',
+          large: true,
+        ),
+        TextField(
+          controller: _searchController,
+          style: const TextStyle(color: AppColors.white, fontSize: 13),
+          decoration:
+              AppInputDecoration.compact(
+                hint: 'settings.channels.search_placeholder'.tr(),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(
+                          Icons.clear,
+                          size: 16,
+                          color: AppColors.textDim,
+                        ),
+                        onPressed: () => _searchController.clear(),
+                      )
+                    : null,
+              ).copyWith(
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: AppColors.textDim,
+                  size: 18,
                 ),
+                fillColor: AppColors.background,
               ),
-              ..._buildChannelSections(AppConstants.chatChannels, channelsMap),
-            ],
+        ),
+        const SizedBox(height: AppConstants.settingsElementSpacing),
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppConstants.settingsSectionSpacing),
+          child: Text(
+            'settings.channels.summary'.tr(),
+            style: const TextStyle(
+              color: AppColors.textDim,
+              fontSize: AppConstants.fontSizeBody,
+            ),
           ),
         ),
-        _buildNavButtons(),
+        ..._buildChannelSections(AppConstants.chatChannels, channelsMap),
       ],
     );
   }
@@ -561,10 +551,10 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
 
     if (inactive.isNotEmpty) {
       if (active.isNotEmpty) {
-        widgets.add(const SizedBox(height: 32));
+        widgets.add(const SizedBox(height: AppConstants.settingsSectionSpacing));
         widgets.add(
           const Padding(
-            padding: EdgeInsets.only(bottom: 12),
+            padding: EdgeInsets.only(bottom: AppConstants.settingsHeaderSpacing),
             child: AppSectionLabel('settings.channels.other_channels'),
           ),
         );
@@ -584,7 +574,4 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
     return widgets;
   }
 
-  Widget _buildNavButtons() {
-    return AppSettingsNavBar(onBack: widget.onBack, onNext: widget.onNext);
-  }
 }

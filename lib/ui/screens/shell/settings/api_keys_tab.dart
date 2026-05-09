@@ -161,6 +161,7 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
+      topPadding: 0,
       children: [
         const AppSectionHeader('settings.api_keys.section', large: true),
         Text(
@@ -170,8 +171,7 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
             color: AppColors.textDim,
           ),
         ),
-        const SizedBox(height: 16),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
         TextField(
           controller: _searchController,
           style: const TextStyle(color: AppColors.white, fontSize: 13),
@@ -194,7 +194,7 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
                 : null,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppConstants.settingsElementSpacing),
         ...buildProviderSections(providers, vaultKeys, config),
       ],
     );
@@ -238,10 +238,10 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
 
     if (inactive.isNotEmpty) {
       if (active.isNotEmpty) {
-        widgets.add(const SizedBox(height: 32));
+        widgets.add(const SizedBox(height: AppConstants.settingsSectionSpacing));
         widgets.add(
           const Padding(
-            padding: EdgeInsets.only(bottom: 12),
+            padding: EdgeInsets.only(bottom: AppConstants.settingsHeaderSpacing),
             child: AppSectionLabel('settings.api_keys.other_providers'),
           ),
         );

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../providers/shell_provider.dart';
-import '../../../widgets/settings_sub_nav_bar.dart';
+import '../../../widgets/app_styles.dart';
 import 'skills_tab.dart';
+import 'design_systems_tab.dart';
 import 'memory_tab.dart';
 import 'browser_tab.dart';
 import 'filesystem_tab.dart';
@@ -26,6 +27,7 @@ class _ToolboxTabState extends ConsumerState<ToolboxTab> {
 
   final List<String> _subTabLabels = [
     'settings.skills.tab',
+    'settings.design_systems.section',
     'settings.memory.tab',
     'settings.browser.tab',
     'settings.workspace.tab',
@@ -35,38 +37,40 @@ class _ToolboxTabState extends ConsumerState<ToolboxTab> {
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(shellProvider.select((s) => s.settingsSubTabIndices[_mainTabIndex] ?? 0));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SettingsSubNavBar(
-          items: _subTabLabels,
-          currentIndex: currentIndex,
-          onTap: (index) => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, index),
-        ),
-        Expanded(
-          child: IndexedStack(
-            index: currentIndex,
-            children: [
-              SkillsTab(
-                onBack: widget.onBack,
-                onNext: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 1),
-              ),
-              MemoryTab(
-                onBack: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 0),
-                onNext: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 2),
-              ),
-              BrowserTab(
-                onBack: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 1),
-                onNext: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 3),
-              ),
-              FilesystemTab(
-                onBack: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 2),
-                onNext: widget.onNext,
-              ),
-            ],
+    return AppSettingsPage(
+      subTabLabels: _subTabLabels,
+      currentSubTabIndex: currentIndex,
+      onSubTabChanged: (index) => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, index),
+      body: IndexedStack(
+        index: currentIndex,
+        children: [
+          SkillsTab(
+            topPadding: 0,
+            onBack: widget.onBack,
+            onNext: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 1),
           ),
-        ),
-      ],
+          DesignSystemsTab(
+            topPadding: 0,
+            onBack: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 0),
+            onNext: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 2),
+          ),
+          MemoryTab(
+            topPadding: 0,
+            onBack: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 1),
+            onNext: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 3),
+          ),
+          BrowserTab(
+            topPadding: 0,
+            onBack: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 2),
+            onNext: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 4),
+          ),
+          FilesystemTab(
+            topPadding: 0,
+            onBack: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 3),
+            onNext: widget.onNext,
+          ),
+        ],
+      ),
     );
   }
 }

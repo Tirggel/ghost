@@ -17,6 +17,7 @@ import 'memory.dart';
 import 'rag_memory.dart';
 import 'providers/factory.dart';
 import 'skills.dart';
+import 'design_system_manager.dart';
 import 'memory_system.dart';
 import '../models/provider.dart';
 
@@ -44,6 +45,7 @@ class AgentManager {
     this.configPath,
   }) {
     skillManager = SkillManager(stateDir: stateDir, storage: storage);
+    designSystemManager = DesignSystemManager(stateDir: stateDir);
     memoryEngine = MemoryEngine(
       config: config.memory,
       storage: storage,
@@ -79,6 +81,7 @@ class AgentManager {
 
   late Agent defaultAgent;
   late final SkillManager skillManager;
+  late final DesignSystemManager designSystemManager;
   late final MemoryEngine memoryEngine;
   late final RAGMemoryEngine ragMemoryEngine;
   late final MemorySystem memorySystem;
@@ -106,8 +109,14 @@ class AgentManager {
 
     // 1.6. Initialize SkillManager
     await skillManager.initialize();
+    await designSystemManager.initialize();
 
-    // 2. Initialize default agent
+    String defaultDesignSystemContent = '';
+    if (config.agent.designSystem.isNotEmpty) {
+      final ds = await designSystemManager.getDesignSystem(config.agent.designSystem);
+      defaultDesignSystemContent = ds?.content ?? '';
+    }
+
     defaultAgent = Agent(
       id: 'default-agent',
       provider: defaultProvider,
@@ -119,6 +128,7 @@ class AgentManager {
         workspaceDir: workspaceDir,
         skillsContext:
             await skillManager.buildSkillContext(config.agent.skills),
+        designSystemContent: defaultDesignSystemContent,
       ),
       workspaceDir: workspaceDir,
       stateDir: stateDir,
@@ -153,10 +163,17 @@ class AgentManager {
           storage: storage,
         );
 
+        String dsContent = '';
+        if (agentConfig.designSystem.isNotEmpty) {
+          final ds = await designSystemManager.getDesignSystem(agentConfig.designSystem);
+          dsContent = ds?.content ?? '';
+        }
+
         final finalPrompt = config.buildSystemPrompt(
           workspaceDir: workspaceDir,
           skillsContext:
               await skillManager.buildSkillContext(agentConfig.skills),
+          designSystemContent: dsContent,
         );
 
         final agent = Agent(
@@ -309,11 +326,18 @@ class AgentManager {
       storage: storage,
     );
 
+    String defaultDesignSystemContent = '';
+    if (config.agent.designSystem.isNotEmpty) {
+      final ds = await designSystemManager.getDesignSystem(config.agent.designSystem);
+      defaultDesignSystemContent = ds?.content ?? '';
+    }
+
     defaultAgent.workspaceDir = config.agent.workspace ?? workspaceDir;
     workspaceDir = defaultAgent.workspaceDir;
     defaultAgent.systemPrompt = config.buildSystemPrompt(
       workspaceDir: workspaceDir,
       skillsContext: await skillManager.buildSkillContext(config.agent.skills),
+      designSystemContent: defaultDesignSystemContent,
     );
     defaultAgent.browserHeadless = config.tools.browserHeadless;
     defaultAgent.security = config.security;
@@ -338,10 +362,17 @@ class AgentManager {
           storage: storage,
         );
 
+        String dsContent = '';
+        if (agentConfig.designSystem.isNotEmpty) {
+          final ds = await designSystemManager.getDesignSystem(agentConfig.designSystem);
+          dsContent = ds?.content ?? '';
+        }
+
         final finalPrompt = config.buildSystemPrompt(
           workspaceDir: workspaceDir,
           skillsContext:
               await skillManager.buildSkillContext(agentConfig.skills),
+          designSystemContent: dsContent,
         );
 
         agent.workspaceDir = workspaceDir;
@@ -545,4 +576,6 @@ class AgentManager {
       _log.warning('Unknown memory type to clear: $type');
     }
   }
+
+  // (Deleted _resolveDesignSystem since it is now in DesignSystemManager)
 }

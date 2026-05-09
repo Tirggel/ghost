@@ -112,6 +112,7 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
+      topPadding: 0,
       children: [
         const AppSectionHeader('settings.external_services.section', large: true),
         Text(
@@ -121,9 +122,9 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
             color: AppColors.textDim,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
         _buildAddServiceTile(),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppConstants.settingsSectionSpacing),
         ..._buildServiceSections(vaultKeys),
       ],
     );

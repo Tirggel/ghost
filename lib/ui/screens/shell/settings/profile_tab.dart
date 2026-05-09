@@ -132,8 +132,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab>
         AppConstants.settingsPagePadding,
       ),
       children: [
+        const AppSectionHeader('settings.user.section', large: true),
         BusinessCard(
-          title: 'settings.user.section',
           avatarBuilder: (context, isEditing) => ListenableBuilder(
             listenable: _controllers['avatar']!,
             builder: (context, _) => GestureDetector(
@@ -215,7 +215,6 @@ class _ProfileTabState extends ConsumerState<ProfileTab>
       ),
       children: [
         const AppSectionHeader('settings.language.section', large: true),
-        const SizedBox(height: 12),
         ...context.supportedLocales.map((locale) {
           final langCode = locale.languageCode;
           final label = 'settings.language.$langCode'.tr();

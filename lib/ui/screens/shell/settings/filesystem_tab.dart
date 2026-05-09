@@ -9,9 +9,10 @@ import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_snackbar.dart';
 
 class FilesystemTab extends ConsumerStatefulWidget {
-  const FilesystemTab({super.key, this.onBack, this.onNext});
+  const FilesystemTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
   ConsumerState<FilesystemTab> createState() => _FilesystemTabState();
@@ -52,6 +53,7 @@ class _FilesystemTabState extends ConsumerState<FilesystemTab> with SettingsSave
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
+      topPadding: widget.topPadding,
       onSave: _save,
       isSaveLoading: isSaveLoading,
       children: [
@@ -60,7 +62,7 @@ class _FilesystemTabState extends ConsumerState<FilesystemTab> with SettingsSave
           'settings.workspace.desc'.tr(),
           style: const TextStyle(color: AppColors.textDim, fontSize: AppConstants.fontSizeBody),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
         AppFormField.text(
           controller: _controller,
           label: 'settings.workspace.path_label',
@@ -81,7 +83,7 @@ class _FilesystemTabState extends ConsumerState<FilesystemTab> with SettingsSave
           ),
           onSubmitted: (_) {},
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppConstants.settingsElementSpacing),
         OutlinedButton.icon(
           onPressed: () async {
             _controller.clear();

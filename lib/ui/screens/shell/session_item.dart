@@ -8,7 +8,6 @@ import 'session_model_dialog.dart';
 import '../../widgets/app_dialogs.dart';
 
 class SessionItem extends ConsumerStatefulWidget {
-
   const SessionItem({
     super.key,
     required this.id,
@@ -39,10 +38,9 @@ class _SessionItemState extends ConsumerState<SessionItem> {
     final provider = widget.data['provider'] as String?;
     final agentName = widget.data['agentName'] as String?;
     final channelType = widget.data['channelType'] as String?;
-    final modelShort =
-        model == null
-            ? null
-            : (model.contains('/') ? model.split('/').last : model);
+    final modelShort = model == null
+        ? null
+        : (model.contains('/') ? model.split('/').last : model);
 
     String subtitle;
     if (widget.isPending) {
@@ -76,8 +74,13 @@ class _SessionItemState extends ConsumerState<SessionItem> {
         agentName ??
         config.identity.name;
 
-    if (displayTitle.isEmpty || displayTitle == config.identity.name && widget.data['title'] == null && agentName == null && cronTitle == null) {
-      displayTitle = '${'chat.session_label'.tr()} ${widget.id.substring(0, 8)}';
+    if (displayTitle.isEmpty ||
+        displayTitle == config.identity.name &&
+            widget.data['title'] == null &&
+            agentName == null &&
+            cronTitle == null) {
+      displayTitle =
+          '${'chat.session_label'.tr()} ${widget.id.substring(0, 8)}';
     }
 
     if (channelType != null && channelType != 'gateway') {
@@ -114,10 +117,9 @@ class _SessionItemState extends ConsumerState<SessionItem> {
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   decoration: BoxDecoration(
-                    color:
-                        highlight
-                            ? AppColors.primary.withValues(alpha: 0.1)
-                            : AppColors.transparent,
+                    color: highlight
+                        ? AppColors.primary.withValues(alpha: 0.1)
+                        : AppColors.transparent,
                     borderRadius: BorderRadius.circular(
                       AppConstants.buttonBorderRadius,
                     ),
@@ -144,11 +146,12 @@ class _SessionItemState extends ConsumerState<SessionItem> {
                               displayTitle,
                               style: TextStyle(
                                 fontSize: AppConstants.fontSizeSidebarLabel,
-                                fontWeight:
-                                    widget.isActive
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                color: highlight ? AppColors.white : AppColors.textDim,
+                                fontWeight: widget.isActive
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: highlight
+                                    ? AppColors.white
+                                    : AppColors.textDim,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -178,8 +181,12 @@ class _SessionItemState extends ConsumerState<SessionItem> {
                                       ),
                                       decoration: BoxDecoration(
                                         color: highlight
-                                            ? AppColors.white.withValues(alpha: 0.2)
-                                            : AppColors.white.withValues(alpha: 0.1),
+                                            ? AppColors.white.withValues(
+                                                alpha: 0.2,
+                                              )
+                                            : AppColors.white.withValues(
+                                                alpha: 0.1,
+                                              ),
                                         borderRadius: BorderRadius.circular(
                                           AppConstants.borderRadiusSmall,
                                         ),
@@ -190,7 +197,9 @@ class _SessionItemState extends ConsumerState<SessionItem> {
                                             : modelShort,
                                         style: TextStyle(
                                           fontSize: 9,
-                                          color: highlight ? AppColors.white : AppColors.textDim,
+                                          color: highlight
+                                              ? AppColors.white
+                                              : AppColors.textDim,
                                           fontWeight: FontWeight.bold,
                                         ),
                                         overflow: TextOverflow.ellipsis,
@@ -227,10 +236,7 @@ class _SessionItemState extends ConsumerState<SessionItem> {
                     left: 0,
                     top: 0,
                     bottom: 0,
-                    child: Container(
-                      width: 2,
-                      color: AppColors.primary,
-                    ),
+                    child: Container(width: 2, color: AppColors.primary),
                   ),
               ],
             ),
@@ -242,7 +248,6 @@ class _SessionItemState extends ConsumerState<SessionItem> {
 }
 
 class _DeleteButton extends ConsumerWidget {
-
   const _DeleteButton({required this.sessionId, required this.onDeleted});
   final String sessionId;
   final VoidCallback onDeleted;
@@ -251,20 +256,21 @@ class _DeleteButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return IconButton(
       icon: const Icon(Icons.delete_outline_rounded, size: 16),
-      style: IconButton.styleFrom(
-        foregroundColor: AppColors.white,
-        padding: const EdgeInsets.all(4),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        overlayColor: Colors.transparent,
-      ).copyWith(
-        foregroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
-          if (states.contains(WidgetState.hovered)) {
-            return AppColors.error;
-          }
-          return AppColors.white;
-        }),
-      ),
+      style:
+          IconButton.styleFrom(
+            foregroundColor: AppColors.white,
+            padding: const EdgeInsets.all(4),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            overlayColor: Colors.transparent,
+          ).copyWith(
+            foregroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
+              if (states.contains(WidgetState.hovered)) {
+                return AppColors.error;
+              }
+              return AppColors.white;
+            }),
+          ),
 
       onPressed: () async {
         final confirmed = await AppAlertDialog.showConfirmation(
@@ -276,7 +282,9 @@ class _DeleteButton extends ConsumerWidget {
         );
 
         if (confirmed == true) {
-          unawaited(ref.read(sessionsProvider.notifier).deleteSession(sessionId));
+          unawaited(
+            ref.read(sessionsProvider.notifier).deleteSession(sessionId),
+          );
           onDeleted();
         }
       },
@@ -286,7 +294,6 @@ class _DeleteButton extends ConsumerWidget {
 }
 
 class _ModelPickerButton extends ConsumerStatefulWidget {
-
   const _ModelPickerButton({
     required this.sessionId,
     required this.sessionData,
@@ -314,20 +321,21 @@ class _ModelPickerButtonState extends ConsumerState<_ModelPickerButton> {
   Widget build(BuildContext context) {
     return IconButton(
       icon: const Icon(Icons.smart_toy_outlined, size: 16),
-      style: IconButton.styleFrom(
-        foregroundColor: AppColors.white,
-        padding: const EdgeInsets.all(4),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        overlayColor: Colors.transparent,
-      ).copyWith(
-        foregroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
-          if (states.contains(WidgetState.hovered)) {
-            return Colors.greenAccent;
-          }
-          return AppColors.white;
-        }),
-      ),
+      style:
+          IconButton.styleFrom(
+            foregroundColor: AppColors.white,
+            padding: const EdgeInsets.all(4),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            overlayColor: Colors.transparent,
+          ).copyWith(
+            foregroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
+              if (states.contains(WidgetState.hovered)) {
+                return Colors.greenAccent;
+              }
+              return AppColors.white;
+            }),
+          ),
       onPressed: _showPicker,
       tooltip: 'chat.change_model_tooltip'.tr(),
     );

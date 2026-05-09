@@ -61,6 +61,18 @@ Ghost startet den Server dann automatisch im Hintergrund und stellt die Tools al
 
 ---
 
+## 🏗️ Skills über das UI erstellen (Empfohlen)
+
+Der einfachste Weg, einen neuen Skill zu erstellen, ist direkt über die Ghost-Benutzeroberfläche.
+
+1.  Öffne die Ghost App und navigiere zu **Einstellungen > Skills**.
+2.  Klicke auf die Schaltfläche **+ Neu erstellen**.
+3.  Wähle eine **Vorlage** (z. B. Python, Node.js oder nur Markdown).
+4.  Ghost generiert automatisch die Verzeichnisstruktur und die erforderlichen Dateien (wie `SKILL.md`).
+5.  Du kannst die `SKILL.md` dann direkt im integrierten Editor bearbeiten oder den Ordner in deiner bevorzugten IDE öffnen.
+
+---
+
 ## 📦 Paketierung & Installation
 
 ### Option 1: ZIP-Archiv
@@ -72,8 +84,14 @@ Komprimiere deinen Skill-Ordner in eine `.zip`-Datei.
 ### Option 2: GitHub-Synchronisation
 Du kannst deine Skills auf GitHub hosten.
 1.  Pushe deinen Skill-Ordner in ein öffentliches GitHub-Repository.
-2.  Nutze in Ghost die Option **Von GitHub herunterladen**.
+2.  Nutze in Ghost die Option **Von URL importieren**.
 3.  Gib die URL zum Skill-Ordner an (z. B. `https://github.com/user/repo/tree/main/skills/mein-skill`).
+
+### Option 3: Backup & Wiederherstellung
+Du kannst deine gesamte Skill-Bibliothek als einzelnes Archiv sichern.
+1.  Gehe zu **Einstellungen > Wartung**.
+2.  Nutze die **Backup**-Funktion, um deine Skills zu exportieren.
+3.  Nutze die **Wiederherstellung**, um sie später oder auf einem anderen Rechner wieder zu importieren.
 
 ---
 

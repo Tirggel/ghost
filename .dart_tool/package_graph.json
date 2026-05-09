@@ -52,7 +52,8 @@
         "url_launcher",
         "uuid",
         "watcher",
-        "web_socket_channel"
+        "web_socket_channel",
+        "window_manager"
       ],
       "devDependencies": [
         "build_runner",
@@ -312,7 +313,7 @@
     },
     {
       "name": "puppeteer",
-      "version": "3.16.0",
+      "version": "3.19.0",
       "dependencies": [
         "archive",
         "async",
@@ -321,7 +322,8 @@
         "logging",
         "path",
         "petitparser",
-        "pool"
+        "pool",
+        "web"
       ]
     },
     {
@@ -452,10 +454,19 @@
     },
     {
       "name": "archive",
-      "version": "3.6.1",
+      "version": "4.0.9",
       "dependencies": [
-        "crypto",
-        "path"
+        "path",
+        "posix"
+      ]
+    },
+    {
+      "name": "window_manager",
+      "version": "0.4.3",
+      "dependencies": [
+        "flutter",
+        "path",
+        "screen_retriever"
       ]
     },
     {
@@ -1232,6 +1243,26 @@
       ]
     },
     {
+      "name": "posix",
+      "version": "6.5.0",
+      "dependencies": [
+        "ffi",
+        "meta",
+        "path"
+      ]
+    },
+    {
+      "name": "screen_retriever",
+      "version": "0.2.0",
+      "dependencies": [
+        "flutter",
+        "screen_retriever_linux",
+        "screen_retriever_macos",
+        "screen_retriever_platform_interface",
+        "screen_retriever_windows"
+      ]
+    },
+    {
       "name": "flutter_secure_storage_windows",
       "version": "4.1.0",
       "dependencies": [
@@ -1838,6 +1869,39 @@
         "meta",
         "path",
         "vm_service"
+      ]
+    },
+    {
+      "name": "screen_retriever_windows",
+      "version": "0.2.0",
+      "dependencies": [
+        "flutter",
+        "screen_retriever_platform_interface"
+      ]
+    },
+    {
+      "name": "screen_retriever_platform_interface",
+      "version": "0.2.0",
+      "dependencies": [
+        "flutter",
+        "json_annotation",
+        "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "screen_retriever_macos",
+      "version": "0.2.0",
+      "dependencies": [
+        "flutter",
+        "screen_retriever_platform_interface"
+      ]
+    },
+    {
+      "name": "screen_retriever_linux",
+      "version": "0.2.0",
+      "dependencies": [
+        "flutter",
+        "screen_retriever_platform_interface"
       ]
     },
     {

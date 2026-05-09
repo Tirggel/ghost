@@ -3,7 +3,6 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../../core/constants.dart';
 
 class SidebarHeader extends StatelessWidget {
-
   const SidebarHeader({
     super.key,
     required this.onNewChat,

@@ -10,6 +10,7 @@ import '../../../widgets/searchable_model_picker.dart';
 import '../../../widgets/business_card.dart';
 import '../../../widgets/skills_selector_widget.dart';
 import '../../../widgets/app_snackbar.dart';
+import '../../../widgets/design_system_picker.dart';
 
 class IdentityTab extends ConsumerStatefulWidget {
   const IdentityTab({super.key, this.onBack, this.onNext});
@@ -24,6 +25,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
   final _controllers = <String, TextEditingController>{};
   String? _selectedProvider;
   String? _selectedModel;
+  String _selectedDesignSystem = '';
   List<String> _availableModels = [];
   final List<String> _mainAgentSkills = [];
   int _avatarNonce = 0;
@@ -46,6 +48,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
     final emojiText = identity.emoji ?? '🤖';
     final notesText = identity.notes ?? '';
     final avatarText = (identity.avatar?.startsWith('blob:') ?? false) ? '' : (identity.avatar ?? '');
+    final designSystemText = agent.designSystem;
 
     if (_controllers.isEmpty) {
       _controllers['name'] = TextEditingController(text: nameText);
@@ -54,6 +57,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
       _controllers['emoji'] = TextEditingController(text: emojiText);
       _controllers['notes'] = TextEditingController(text: notesText);
       _controllers['avatar'] = TextEditingController(text: avatarText);
+      _controllers['designSystem'] = TextEditingController(text: designSystemText);
     } else {
       _controllers['name']!.text = nameText;
       _controllers['creature']!.text = creatureText;
@@ -61,6 +65,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
       _controllers['emoji']!.text = emojiText;
       _controllers['notes']!.text = notesText;
       _controllers['avatar']!.text = avatarText;
+      _selectedDesignSystem = designSystemText;
     }
 
     _selectedProvider = agent.provider;
@@ -106,6 +111,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
       
       final agentData = <String, dynamic>{
         'skills': _mainAgentSkills,
+        'designSystem': _selectedDesignSystem.trim(),
       };
       if (_selectedProvider != null) agentData['provider'] = _selectedProvider;
       if (_selectedModel != null) agentData['model'] = _selectedModel;
@@ -137,9 +143,10 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
       onNext: widget.onNext,
       onSave: _isEditing ? _save : null,
       isSaveLoading: isSaveLoading,
+      topPadding: 0,
       children: [
+        const AppSectionHeader('settings.identity.section', large: true),
         BusinessCard(
-          title: 'settings.identity.section',
           avatarBuilder: (context, isEditing) => ListenableBuilder(
             listenable: _controllers['avatar']!,
             builder: (context, _) => ListenableBuilder(
@@ -246,6 +253,16 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
                 },
               ),
             ),
+            BusinessCardField(
+              label: 'settings.agents.design_system_label',
+              hint: 'settings.agents.design_system_hint',
+              controller: TextEditingController(),
+              value: _selectedDesignSystem.isEmpty ? 'settings.agents.design_system_none'.tr() : _selectedDesignSystem,
+              customEditWidget: DesignSystemPicker(
+                selectedId: _selectedDesignSystem,
+                onChanged: (val) => setState(() => _selectedDesignSystem = val),
+              ),
+            ),
           ],
           maxViewFields: 3,
           isEditing: _isEditing,
@@ -253,7 +270,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
           onSave: _save,
           bottom: (context, isEditing) => _buildSkillsSection(isEditing),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppConstants.settingsSectionSpacing),
       ],
     );
   }

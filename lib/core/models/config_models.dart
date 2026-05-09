@@ -116,6 +116,7 @@ class AgentConfig {
     this.model,
     this.workspace,
     this.skills = const [],
+    this.designSystem = '',
   });
 
   factory AgentConfig.fromJson(Map<String, dynamic> json) {
@@ -124,12 +125,14 @@ class AgentConfig {
       model: json['model'] as String?,
       workspace: json['workspace'] as String?,
       skills: (json['skills'] as List<dynamic>?)?.cast<String>() ?? [],
+      designSystem: json['designSystem'] as String? ?? '',
     );
   }
   final String? provider;
   final String? model;
   final String? workspace;
   final List<String> skills;
+  final String designSystem;
 
   Map<String, dynamic> toJson() {
     return {
@@ -137,6 +140,7 @@ class AgentConfig {
       'model': model,
       'workspace': workspace,
       'skills': skills,
+      'designSystem': designSystem,
     };
   }
 }
@@ -154,6 +158,7 @@ class CustomAgentConfig {
     this.enabled = true,
     this.avatar,
     this.shouldSendChatHistory = true,
+    this.designSystem = '',
   });
 
   factory CustomAgentConfig.fromJson(Map<String, dynamic> json) {
@@ -169,6 +174,7 @@ class CustomAgentConfig {
       enabled: json['enabled'] as bool? ?? true,
       avatar: json['avatar'] as String?,
       shouldSendChatHistory: json['shouldSendChatHistory'] as bool? ?? true,
+      designSystem: json['designSystem'] as String? ?? '',
     );
   }
 
@@ -183,6 +189,7 @@ class CustomAgentConfig {
   final bool enabled;
   final String? avatar;
   final bool shouldSendChatHistory;
+  final String designSystem;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -196,6 +203,7 @@ class CustomAgentConfig {
         'enabled': enabled,
         if (avatar != null) 'avatar': avatar,
         'shouldSendChatHistory': shouldSendChatHistory,
+        'designSystem': designSystem,
       };
 
   CustomAgentConfig copyWith({
@@ -210,6 +218,7 @@ class CustomAgentConfig {
     bool? enabled,
     String? avatar,
     bool? shouldSendChatHistory,
+    String? designSystem,
   }) {
     return CustomAgentConfig(
       id: id ?? this.id,
@@ -224,6 +233,7 @@ class CustomAgentConfig {
       avatar: avatar ?? this.avatar,
       shouldSendChatHistory:
           shouldSendChatHistory ?? this.shouldSendChatHistory,
+      designSystem: designSystem ?? this.designSystem,
     );
   }
 }

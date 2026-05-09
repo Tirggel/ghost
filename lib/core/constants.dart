@@ -8,7 +8,7 @@ class AppConstants {
       GlobalKey<ScaffoldMessengerState>();
 
   static const String appName = 'Ghost';
-  static const String appVersion = 'v1.0.0-alpha';
+  static const String appVersion = 'v0.10.0-alpha';
   static const String logoGhost = 'assets/icons/logo/ghost.png';
 
   // UI Constants
@@ -43,9 +43,15 @@ class AppConstants {
   static const double buttonBorderRadius = 0.0;
 
   // Spacing
+  static const double settingsTopPadding = 10.0;
+  static const double settingsTabBottomPadding = 10.0;
   static const double settingsPagePadding = 20.0;
-  static const double settingsTopPadding = 24.0;
-  static const double settingsHeaderBottomPadding = 16.0;
+  
+  // Standard Settings Spacing (Monolith Unified)
+  static const double settingsSectionSpacing = 32.0; // Gap between sections
+  static const double settingsHeaderSpacing = 12.0;  // Gap after section header (before desc/content)
+  static const double settingsContentSpacing = 20.0; // Gap between description and interactive elements
+  static const double settingsElementSpacing = 16.0; // Gap between individual inputs/elements in a list
 
   // Standard Spacing
   static const double spacingTiny = 4.0;
@@ -123,10 +129,7 @@ class AppConstants {
   }
 
   static Map<String, String> getProvider(String id) {
-    return aiProviders.firstWhere(
-      (p) => p['id'] == id,
-      orElse: () => {},
-    );
+    return aiProviders.firstWhere((p) => p['id'] == id, orElse: () => {});
   }
 
   static String getProviderLabel(String id) {

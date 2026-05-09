@@ -16,27 +16,22 @@ import '../../../widgets/app_dialogs.dart';
 import '../../../widgets/app_snackbar.dart';
 
 class SkillsTab extends StatelessWidget {
-  const SkillsTab({super.key, this.onBack, this.onNext});
+  const SkillsTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const Expanded(child: _SkillsTabContent()),
-        _buildNavButtons(context),
-      ],
-    );
-  }
-
-  Widget _buildNavButtons(BuildContext context) {
-    return AppSettingsNavBar(onBack: onBack, onNext: onNext);
+    return _SkillsTabContent(onBack: onBack, onNext: onNext, topPadding: topPadding);
   }
 }
 
 class _SkillsTabContent extends ConsumerStatefulWidget {
-  const _SkillsTabContent();
+  const _SkillsTabContent({this.onBack, this.onNext, this.topPadding});
+  final VoidCallback? onBack;
+  final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
   ConsumerState<_SkillsTabContent> createState() => _SkillsTabContentState();
@@ -53,13 +48,13 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AppAlertDialog(
-        title: Text('settings.skills.download_github_title'.tr()),
+        title: Text('settings.skills.download_title'.tr()),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'settings.skills.download_github_desc'.tr(),
+              'settings.skills.download_desc'.tr(),
               style: const TextStyle(color: AppColors.textDim, fontSize: 13),
             ),
             const SizedBox(height: 16),
@@ -68,8 +63,8 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
               autofocus: true,
               style: const TextStyle(color: AppColors.white),
               decoration: AppInputDecoration.standard(
-                'settings.skills.download_github_url_label'.tr(),
-              ).copyWith(hintText: 'https://github.com/...'),
+                'settings.skills.url_label'.tr(),
+              ).copyWith(hintText: 'https://...'),
             ),
           ],
         ),
@@ -208,181 +203,182 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
     }
   }
 
+  void _createNew() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => const _SkillCreateDialog(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final skillsAsync = ref.watch(skillsProvider);
 
-    return Column(
+    return AppSettingsPage(
+      onBack: widget.onBack,
+      onNext: widget.onNext,
+      topPadding: widget.topPadding,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppConstants.settingsPagePadding,
-            AppConstants.settingsTopPadding,
-            AppConstants.settingsPagePadding,
-            AppConstants.settingsPagePadding,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const AppSectionHeader(
-                      'settings.skills.section',
-                      large: true,
-                    ),
-                    Text(
-                      'settings.skills.desc'.tr(),
-                      style: TextStyle(
-                        color: AppColors.textDim.withValues(alpha: 0.8),
-                        fontSize: AppConstants.fontSizeBody,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              ElevatedButton.icon(
-                onPressed: _isInstalling || _isDownloading
-                    ? null
-                    : _installSkill,
-                icon: _isInstalling
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(
-                        Icons.upload_file,
-                        size: AppConstants.settingsIconSize,
-                      ),
-                label: Text('settings.skills.install'.tr()),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.black,
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: _isInstalling || _isDownloading
-                    ? null
-                    : _downloadFromGithub,
-                icon: _isDownloading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(
-                        Icons.download,
-                        size: AppConstants.settingsIconSize,
-                      ),
-                label: Text('settings.skills.download_github'.tr()),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.surface,
-                  foregroundColor: AppColors.white,
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: _isInstalling || _isDownloading || _isBackingUp
-                    ? null
-                    : _backupSkills,
-                icon: _isBackingUp
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(
-                        Icons.backup,
-                        size: AppConstants.settingsIconSize,
-                      ),
-                label: Text('settings.skills.backup'.tr()),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.surface,
-                  foregroundColor: AppColors.white,
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: _isInstalling || _isDownloading || _isRestoring
-                    ? null
-                    : _restoreSkills,
-                icon: _isRestoring
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(
-                        Icons.restore,
-                        size: AppConstants.settingsIconSize,
-                      ),
-                label: Text('settings.skills.restore'.tr()),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.surface,
-                  foregroundColor: AppColors.white,
-                ),
-              ),
-            ],
+        const AppSectionHeader(
+          'settings.skills.section',
+          large: true,
+        ),
+        Text(
+          'settings.skills.desc'.tr(),
+          style: TextStyle(
+            color: AppColors.textDim.withValues(alpha: 0.8),
+            fontSize: AppConstants.fontSizeBody,
           ),
         ),
-        const Divider(height: 1),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: AppConstants.settingsPagePadding),
-            child: SkillsSelector(
-              isManagement: true,
-              title: '', // No internal header
-              onGlobalChanged: (slug, val) => ref
-                  .read(configProvider.notifier)
-                  .updateSkillGlobal(slug, val),
-              onTap: (slug) {
-                final skills = skillsAsync.value ?? [];
-                final skill = skills.firstWhere((s) => s['slug'] == slug);
-                showDialog<void>(
-                  context: context,
-                  builder: (ctx) => _SkillEditDialog(
-                    slug: slug,
-                    name: (skill['name'] as String?) ?? slug,
-                  ),
-                );
-              },
-              onDelete: (slug) async {
-                final skills = skillsAsync.value ?? [];
-                final skill = skills.firstWhere((s) => s['slug'] == slug);
-                final config = ref.read(configProvider);
-                final isUsedByIdentity = config.agent.skills.contains(slug);
-                final isUsedByCustomAgent = config.customAgents.any((agent) {
-                  return agent.skills.contains(slug);
-                });
-
-                if (isUsedByIdentity || isUsedByCustomAgent) {
-                  if (mounted) {
-                    showAppErrorDialog(
-                      context,
-                      'settings.skills.delete_error_used'.tr(),
-                    );
-                  }
-                  return;
-                }
-
-                final confirmed = await AppAlertDialog.showConfirmation(
-                  context: context,
-                  title: 'settings.skills.delete_title'.tr(),
-                  content: 'settings.skills.delete_content'.tr(
-                    namedArgs: {'name': (skill['name'] as String?) ?? slug},
-                  ),
-                  confirmLabel: 'common.delete'.tr(),
-                  isDestructive: true,
-                );
-                if (confirmed == true) {
-                  await ref.read(configProvider.notifier).deleteSkill(slug);
-                }
-              },
+        const SizedBox(height: AppConstants.settingsContentSpacing),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ElevatedButton.icon(
+              onPressed: _createNew,
+              icon: const Icon(
+                Icons.add,
+                size: AppConstants.settingsIconSize,
+              ),
+              label: Text('settings.skills.create_new'.tr()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.black,
+              ),
             ),
-          ),
+            ElevatedButton.icon(
+              onPressed: _isInstalling || _isDownloading
+                  ? null
+                  : _installSkill,
+              icon: _isInstalling
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(
+                      Icons.upload_file,
+                      size: AppConstants.settingsIconSize,
+                    ),
+              label: Text('settings.skills.install'.tr()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.black,
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: _isInstalling || _isDownloading
+                  ? null
+                  : _downloadFromGithub,
+              icon: _isDownloading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(
+                      Icons.cloud_download,
+                      size: AppConstants.settingsIconSize,
+                    ),
+              label: Text('settings.skills.download_url'.tr()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.white,
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: _isInstalling || _isDownloading || _isBackingUp
+                  ? null
+                  : _backupSkills,
+              icon: _isBackingUp
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(
+                      Icons.backup,
+                      size: AppConstants.settingsIconSize,
+                    ),
+              label: Text('settings.skills.backup'.tr()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.white,
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: _isInstalling || _isDownloading || _isRestoring
+                  ? null
+                  : _restoreSkills,
+              icon: _isRestoring
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(
+                      Icons.restore,
+                      size: AppConstants.settingsIconSize,
+                    ),
+              label: Text('settings.skills.restore'.tr()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.white,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppConstants.settingsSectionSpacing),
+        SkillsSelector(
+          isManagement: true,
+          title: '', // No internal header
+          onGlobalChanged: (slug, val) => ref
+              .read(configProvider.notifier)
+              .updateSkillGlobal(slug, val),
+          onTap: (slug) {
+            final skills = skillsAsync.value ?? [];
+            final skill = skills.firstWhere((s) => s['slug'] == slug);
+            showDialog<void>(
+              context: context,
+              builder: (ctx) => _SkillEditDialog(
+                slug: slug,
+                name: (skill['name'] as String?) ?? slug,
+              ),
+            );
+          },
+          onDelete: (slug) async {
+            final skills = skillsAsync.value ?? [];
+            final skill = skills.firstWhere((s) => s['slug'] == slug);
+            final config = ref.read(configProvider);
+            final isUsedByIdentity = config.agent.skills.contains(slug);
+            final isUsedByCustomAgent = config.customAgents.any((agent) {
+              return agent.skills.contains(slug);
+            });
+
+            if (isUsedByIdentity || isUsedByCustomAgent) {
+              if (mounted) {
+                showAppErrorDialog(
+                  context,
+                  'settings.skills.delete_error_used'.tr(),
+                );
+              }
+              return;
+            }
+
+            final confirmed = await AppAlertDialog.showConfirmation(
+              context: context,
+              title: 'settings.skills.delete_title'.tr(),
+              content: 'settings.skills.delete_content'.tr(
+                namedArgs: {'name': (skill['name'] as String?) ?? slug},
+              ),
+              confirmLabel: 'common.delete'.tr(),
+              isDestructive: true,
+            );
+            if (confirmed == true) {
+              await ref.read(configProvider.notifier).deleteSkill(slug);
+            }
+          },
         ),
       ],
     );
@@ -450,6 +446,124 @@ class _SkillEditDialogState extends ConsumerState<_SkillEditDialog> {
           },
           label: 'common.save',
           isLoading: _isSaving,
+        ),
+      ],
+    );
+  }
+}
+
+class _SkillCreateDialog extends ConsumerStatefulWidget {
+  const _SkillCreateDialog();
+
+  @override
+  ConsumerState<_SkillCreateDialog> createState() => _SkillCreateDialogState();
+}
+
+class _SkillCreateDialogState extends ConsumerState<_SkillCreateDialog> {
+  final _nameController = TextEditingController();
+  final _descController = TextEditingController();
+  final _emojiController = TextEditingController(text: '🛠️');
+  String _type = 'python';
+  bool _isCreating = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppAlertDialog(
+      title: Text('settings.skills.new_title'.tr()),
+      content: SizedBox(
+        width: 500,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _nameController,
+              autofocus: true,
+              style: const TextStyle(color: AppColors.white),
+              decoration: AppInputDecoration.standard(
+                'settings.skills.name_label'.tr(),
+              ).copyWith(hintText: 'settings.skills.name_hint'.tr()),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _descController,
+              style: const TextStyle(color: AppColors.white),
+              decoration: AppInputDecoration.standard(
+                'settings.skills.desc_label'.tr(),
+              ).copyWith(hintText: 'settings.skills.desc_hint'.tr()),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _emojiController,
+              style: const TextStyle(color: AppColors.white),
+              decoration: AppInputDecoration.standard(
+                'settings.skills.emoji_label'.tr(),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'settings.skills.type_label'.tr(),
+              style: const TextStyle(color: AppColors.textDim, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: Text('settings.skills.type_python'.tr(), style: const TextStyle(color: AppColors.white, fontSize: 14)),
+                    value: 'python',
+                    groupValue: _type,
+                    onChanged: (val) => setState(() => _type = val!),
+                    activeColor: AppColors.primary,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: Text('settings.skills.type_node'.tr(), style: const TextStyle(color: AppColors.white, fontSize: 14)),
+                    value: 'node',
+                    groupValue: _type,
+                    onChanged: (val) => setState(() => _type = val!),
+                    activeColor: AppColors.primary,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('common.cancel'.tr(), style: const TextStyle(color: AppColors.textDim)),
+        ),
+        AppSaveButton(
+          onPressed: () async {
+            if (_nameController.text.trim().isEmpty) return;
+            
+            setState(() => _isCreating = true);
+            try {
+              await ref.read(configProvider.notifier).createSkill(
+                    name: _nameController.text.trim(),
+                    description: _descController.text.trim(),
+                    type: _type,
+                    emoji: _emojiController.text.trim(),
+                  );
+              if (mounted) {
+                AppSnackBar.showSuccess(context, 'settings.skills.create_success'.tr());
+                Navigator.pop(context);
+              }
+            } catch (e) {
+              if (mounted) {
+                showAppErrorDialog(context, e.toString());
+              }
+            } finally {
+              if (mounted) setState(() => _isCreating = false);
+            }
+          },
+          label: 'settings.skills.create_button',
+          isLoading: _isCreating,
         ),
       ],
     );

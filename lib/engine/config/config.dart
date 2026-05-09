@@ -132,6 +132,7 @@ class GhostConfig {
   String buildSystemPrompt({
     String workspaceDir = '.',
     String skillsContext = '',
+    String designSystemContent = '',
   }) {
     final i = identity;
     final u = user;
@@ -172,6 +173,12 @@ class GhostConfig {
       if (googleContext.isNotEmpty) googleContext,
       if (agentAwareness.isNotEmpty) agentAwareness,
       if (skillsContext.isNotEmpty) skillsContext,
+      if (designSystemContent.isNotEmpty) ...[
+        '',
+        '### Design System Guidelines ###',
+        'When generating UI code (Web, Mobile, Desktop), STRICTLY adhere to the following design system rules:',
+        designSystemContent,
+      ],
       if (security.promptHardening) ...[
         '',
         '### SECURITY INSTRUCTIONS ###',
@@ -469,6 +476,7 @@ class CustomAgentConfig {
     this.enabled = true,
     this.avatar,
     this.shouldSendChatHistory = true,
+    this.designSystem = '',
   });
 
   factory CustomAgentConfig.fromJson(Map<String, dynamic> json) {
@@ -487,6 +495,7 @@ class CustomAgentConfig {
       enabled: json['enabled'] as bool? ?? true,
       avatar: json['avatar'] as String?,
       shouldSendChatHistory: json['shouldSendChatHistory'] as bool? ?? true,
+      designSystem: json['designSystem'] as String? ?? '',
     );
   }
 
@@ -501,6 +510,7 @@ class CustomAgentConfig {
   final bool enabled;
   final String? avatar;
   final bool shouldSendChatHistory;
+  final String designSystem;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -514,6 +524,7 @@ class CustomAgentConfig {
         'enabled': enabled,
         if (avatar != null) 'avatar': avatar,
         'shouldSendChatHistory': shouldSendChatHistory,
+        'designSystem': designSystem,
       };
 
   CustomAgentConfig copyWith({
@@ -528,6 +539,7 @@ class CustomAgentConfig {
     bool? enabled,
     String? avatar,
     bool? shouldSendChatHistory,
+    String? designSystem,
   }) {
     return CustomAgentConfig(
       id: id ?? this.id,
@@ -542,6 +554,7 @@ class CustomAgentConfig {
       avatar: avatar ?? this.avatar,
       shouldSendChatHistory:
           shouldSendChatHistory ?? this.shouldSendChatHistory,
+      designSystem: designSystem ?? this.designSystem,
     );
   }
 }
@@ -554,6 +567,7 @@ class AgentConfig {
     this.maxTokens = 4096,
     this.thinkingMode = 'auto',
     this.skills = const [],
+    this.designSystem = '',
   });
 
   factory AgentConfig.fromJson(Map<String, dynamic> json) {
@@ -567,6 +581,7 @@ class AgentConfig {
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      designSystem: json['designSystem'] as String? ?? '',
     );
   }
 
@@ -576,6 +591,7 @@ class AgentConfig {
   final int maxTokens;
   final String thinkingMode;
   final List<String> skills;
+  final String designSystem;
 
   Map<String, dynamic> toJson() => {
         'model': model,
@@ -584,6 +600,7 @@ class AgentConfig {
         'maxTokens': maxTokens,
         'thinkingMode': thinkingMode,
         'skills': skills,
+        'designSystem': designSystem,
       };
 
   AgentConfig copyWith({
@@ -593,6 +610,7 @@ class AgentConfig {
     int? maxTokens,
     String? thinkingMode,
     List<String>? skills,
+    String? designSystem,
   }) {
     return AgentConfig(
       model: model ?? this.model,
@@ -601,6 +619,7 @@ class AgentConfig {
       maxTokens: maxTokens ?? this.maxTokens,
       thinkingMode: thinkingMode ?? this.thinkingMode,
       skills: skills ?? this.skills,
+      designSystem: designSystem ?? this.designSystem,
     );
   }
 }

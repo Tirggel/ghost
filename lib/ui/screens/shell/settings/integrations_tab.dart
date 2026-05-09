@@ -215,6 +215,7 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
+      subTabLabels: const ['settings.integrations.tab'],
       children: [
         const AppSectionHeader('settings.integrations.google_section', large: true),
         Padding(
@@ -373,7 +374,7 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
             verifySaveTooltip: 'settings.api_keys.verify_save_tooltip',
           ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: AppConstants.settingsHeaderSpacing),
         if (_signingIn)
           const Center(child: CircularProgressIndicator())
         else if ((kIsWeb && vaultKeys.contains('google_client_id_web')) ||
@@ -388,7 +389,7 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
             ),
           ),
           
-        const SizedBox(height: 32),
+        const SizedBox(height: AppConstants.settingsSectionSpacing),
         const AppSectionHeader('settings.integrations.ms_graph_section', large: true),
         Padding(
           padding: const EdgeInsets.only(bottom: 16),

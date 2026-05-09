@@ -17,7 +17,6 @@ import '../widgets/app_dialogs.dart';
 import '../../core/models/chat_message.dart';
 import '../../core/models/chat_session.dart';
 
-
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key, required this.sessionId});
 
@@ -70,7 +69,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  void _scrollToActiveMatch(Map<int, int> messageMatchOffsets, int totalMessages) {
+  void _scrollToActiveMatch(
+    Map<int, int> messageMatchOffsets,
+    int totalMessages,
+  ) {
     if (messageMatchOffsets.isEmpty) return;
 
     // Find which message contains _currentSearchIndex.
@@ -85,7 +87,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final int endOffset = (e + 1 < sortedEntries.length)
           ? sortedEntries[e + 1].value
           : 999999;
-      if (_currentSearchIndex >= startOffset && _currentSearchIndex < endOffset) {
+      if (_currentSearchIndex >= startOffset &&
+          _currentSearchIndex < endOffset) {
         targetMessageIndex = sortedEntries[e].key;
         break;
       }
@@ -109,8 +112,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ensureVisible();
     } else {
       if (_scrollController.hasClients) {
-        final fraction = targetMessageIndex / (totalMessages == 0 ? 1 : totalMessages);
-        final targetOffset = _scrollController.position.maxScrollExtent * fraction;
+        final fraction =
+            targetMessageIndex / (totalMessages == 0 ? 1 : totalMessages);
+        final targetOffset =
+            _scrollController.position.maxScrollExtent * fraction;
         _scrollController.jumpTo(targetOffset);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           ensureVisible();
@@ -149,15 +154,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     _textController.clear();
     final notifier = ref.read(chatProvider.notifier);
-    
+
     final List<ChatAttachment> chatAttachments = [];
     for (final file in attachments) {
       if (file.bytes != null) {
-        chatAttachments.add(ChatAttachment(
-          name: file.name,
-          mimeType: _getMimeType(file.extension),
-          data: base64Encode(file.bytes!),
-        ));
+        chatAttachments.add(
+          ChatAttachment(
+            name: file.name,
+            mimeType: _getMimeType(file.extension),
+            data: base64Encode(file.bytes!),
+          ),
+        );
       }
     }
 
@@ -173,17 +180,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       // Prefer session-specific model over global config
       final sessions = ref.read(sessionsProvider);
-      final ChatSession? currentSession = sessions.where(
-        (s) => s.id == widget.sessionId,
-      ).firstOrNull;
-      
+      final ChatSession? currentSession = sessions
+          .where((s) => s.id == widget.sessionId)
+          .firstOrNull;
+
       final AppConfig config = ref.read(configProvider);
-      final agentModel =
-          currentSession?.model ??
-          config.agent.model;
-      final agentProvider =
-          currentSession?.provider ??
-          config.agent.provider;
+      final agentModel = currentSession?.model ?? config.agent.model;
+      final agentProvider = currentSession?.provider ?? config.agent.provider;
       final sessionAgentId = currentSession?.agentId;
 
       await ref.read(gatewayClientProvider).call('agent.chat', {
@@ -200,20 +203,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   String _getMimeType(String? extension) {
     if (extension == null) return 'application/octet-stream';
     switch (extension.toLowerCase()) {
-      case 'pdf': return 'application/pdf';
+      case 'pdf':
+        return 'application/pdf';
       case 'jpg':
-      case 'jpeg': return 'image/jpeg';
-      case 'png': return 'image/png';
-      case 'gif': return 'image/gif';
-      case 'webp': return 'image/webp';
-      case 'mp4': return 'video/mp4';
-      case 'mov': return 'video/quicktime';
-      case 'mp3': return 'audio/mpeg';
-      case 'wav': return 'audio/wav';
-      case 'm4a': return 'audio/mp4';
-      case 'txt': return 'text/plain';
-      case 'md': return 'text/markdown';
-      default: return 'application/octet-stream';
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      case 'mp4':
+        return 'video/mp4';
+      case 'mov':
+        return 'video/quicktime';
+      case 'mp3':
+        return 'audio/mpeg';
+      case 'wav':
+        return 'audio/wav';
+      case 'm4a':
+        return 'audio/mp4';
+      case 'txt':
+        return 'text/plain';
+      case 'md':
+        return 'text/markdown';
+      default:
+        return 'application/octet-stream';
     }
   }
 
@@ -242,28 +258,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final allChatStates = ref.watch(chatProvider);
     final chatState = allChatStates[widget.sessionId] ?? ChatState.initial();
-    final visibleMessages =
-        chatState.messages.where((m) => !m.isSystem && !m.isHidden).toList();
+    final visibleMessages = chatState.messages
+        .where((m) => !m.isSystem && !m.isHidden)
+        .toList();
 
     int totalSearchMatches = 0;
     final Map<int, int> messageMatchOffsets = {};
 
     if (_searchQuery.isNotEmpty) {
-      final queryRegex = RegExp(RegExp.escape(_searchQuery), caseSensitive: false);
+      final queryRegex = RegExp(
+        RegExp.escape(_searchQuery),
+        caseSensitive: false,
+      );
       for (int i = 0; i < visibleMessages.length; i++) {
         // Strip markdown syntax before counting so count matches what the user sees.
-        final rawText = visibleMessages[i].content
-            .replaceAll(RegExp(r'[*_`#~>\[\]()!]'), '');
+        final rawText = visibleMessages[i].content.replaceAll(
+          RegExp(r'[*_`#~>\[\]()!]'),
+          '',
+        );
         final count = queryRegex.allMatches(rawText).length;
         if (count > 0) {
           messageMatchOffsets[i] = totalSearchMatches;
           totalSearchMatches += count;
         }
       }
-      
+
       if (chatState.isProcessing && chatState.streamedContent.isNotEmpty) {
-        final rawText = chatState.streamedContent
-            .replaceAll(RegExp(r'[*_`#~>\[\]()!]'), '');
+        final rawText = chatState.streamedContent.replaceAll(
+          RegExp(r'[*_`#~>\[\]()!]'),
+          '',
+        );
         final count = queryRegex.allMatches(rawText).length;
         if (count > 0) {
           messageMatchOffsets[visibleMessages.length] = totalSearchMatches;
@@ -279,9 +303,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     final sessions = ref.watch(sessionsProvider);
-    final ChatSession? currentSession = sessions.where(
-      (s) => s.id == widget.sessionId,
-    ).firstOrNull;
+    final ChatSession? currentSession = sessions
+        .where((s) => s.id == widget.sessionId)
+        .firstOrNull;
 
     // Auto-scroll on new content
     ref.listen(chatProvider, (prev, next) {
@@ -338,8 +362,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             child: Text(
                               currentSession?.title ??
                                   '${'chat.session_label'.tr()} ${widget.sessionId.substring(0, 8)}',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -406,38 +431,62 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       });
                       // Scroll to first match when query changes
                       WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _scrollToActiveMatch(messageMatchOffsets, visibleMessages.length + 1);
+                        _scrollToActiveMatch(
+                          messageMatchOffsets,
+                          visibleMessages.length + 1,
+                        );
                       });
                     },
                   ),
                 ),
                 if (_searchQuery.isNotEmpty) ...[
                   Text(
-                    totalSearchMatches > 0 ? '${_currentSearchIndex + 1} / $totalSearchMatches' : '0 / 0',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textDim),
+                    totalSearchMatches > 0
+                        ? '${_currentSearchIndex + 1} / $totalSearchMatches'
+                        : '0 / 0',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textDim,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.keyboard_arrow_up, size: 18),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    onPressed: totalSearchMatches > 0 ? () {
-                      setState(() {
-                        _currentSearchIndex = (_currentSearchIndex - 1 + totalSearchMatches) % totalSearchMatches;
-                      });
-                      _scrollToActiveMatch(messageMatchOffsets, visibleMessages.length + 1);
-                    } : null,
+                    onPressed: totalSearchMatches > 0
+                        ? () {
+                            setState(() {
+                              _currentSearchIndex =
+                                  (_currentSearchIndex -
+                                      1 +
+                                      totalSearchMatches) %
+                                  totalSearchMatches;
+                            });
+                            _scrollToActiveMatch(
+                              messageMatchOffsets,
+                              visibleMessages.length + 1,
+                            );
+                          }
+                        : null,
                   ),
                   IconButton(
                     icon: const Icon(Icons.keyboard_arrow_down, size: 18),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    onPressed: totalSearchMatches > 0 ? () {
-                      setState(() {
-                        _currentSearchIndex = (_currentSearchIndex + 1) % totalSearchMatches;
-                      });
-                      _scrollToActiveMatch(messageMatchOffsets, visibleMessages.length + 1);
-                    } : null,
+                    onPressed: totalSearchMatches > 0
+                        ? () {
+                            setState(() {
+                              _currentSearchIndex =
+                                  (_currentSearchIndex + 1) %
+                                  totalSearchMatches;
+                            });
+                            _scrollToActiveMatch(
+                              messageMatchOffsets,
+                              visibleMessages.length + 1,
+                            );
+                          }
+                        : null,
                   ),
                   const SizedBox(width: 8),
                 ],
@@ -481,9 +530,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       isStreaming: true,
                       metadata: {
                         'agentId': agentId,
-                        'model': currentSession?.model ??
+                        'model':
+                            currentSession?.model ??
                             ref.read(configProvider).agent.model,
-                        'provider': currentSession?.provider ??
+                        'provider':
+                            currentSession?.provider ??
                             ref.read(configProvider).agent.provider,
                       },
                       activity: chatState.activity,
@@ -510,9 +561,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                 );
               },
-              ),
             ),
           ),
+        ),
 
         // Input
         ChatInputField(
@@ -544,11 +595,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           }
         },
       },
-      child: Focus(
-        autofocus: true,
-        child: contentColumn,
-      ),
+      child: Focus(autofocus: true, child: contentColumn),
     );
   }
-
 }

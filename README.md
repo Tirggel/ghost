@@ -21,7 +21,8 @@
 Ghost features a modern, integrated architecture:
 - **Integrated Engine**: A high-performance backend managing AI agents, memory, and tools—built directly into the Flutter application.
 - **Sleek UI**: A minimalist, high-performance interface for Desktop (Linux, macOS, Windows) and Web.
-- **Agents & Skills**: Extensible AI capabilities added via a simple, Markdown-based system.
+- **Agents & Skills**: Extensible AI capabilities added via a modular, Markdown-based system.
+- **Design Systems**: Centralized theme management with custom branding, Markdown-based styling, and unified token distribution.
 - **Memory Engine**: Dual-mode memory using Hive (standard) and ObjectBox (RAG) for secure, local knowledge.
 
 ---
@@ -68,9 +69,9 @@ For new users, Ghost includes an interactive **Setup Wizard** that starts automa
 
 ### 🛠️ Maintenance & Backup
 Ghost features a dedicated **Maintenance Tab** in the settings, giving you full control over your system:
-- **Factory Reset**: Wipe the entire application to its original state (deletes all local data & databases).
-- **System Backup**: Create an encrypted ZIP archive of your entire configuration.
+- **System Backup**: Create an encrypted ZIP archive of your entire configuration (including agents, skills, and design systems).
 - **Restore**: Import a backup archive and seamlessly restore your Ghost assistant's state.
+- **Design Systems**: Manage, export, and restore visual themes independently.
 
 ### 📚 Further Documentation
 - **[Google Workspace Setup](docs/GOOGLE_WORKSPACE_SETUP_EN.md)**: Guide for configuring Gmail, Calendar, and Drive.
@@ -101,8 +102,14 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
 - **Extensible Skills**:
     - **Modular System**: Load and manage skills to extend agent capabilities.
     - **Global & Agent-specific Skills**: Enable features for all agents or just specific profiles.
+    - **UI-based Creation**: Create new skills directly in the app using pre-defined templates (Python/Node.js).
     - **Polyglot Runtimes**: Automatic management of **Python (venv)** and **Node.js (node_modules)** environments for skills.
     - **MCP Server Support**: Direct integration of Model Context Protocol servers as Ghost skills.
+- **Design Systems**:
+    - **Centralized Management**: Manage multiple visual themes in a dedicated settings hub.
+    - **Markdown-based Styling**: Create and edit design systems using a simple, structured Markdown format (`DESIGN.md`).
+    - **Backup & Restore**: Securely back up your design systems and restore them to any Ghost instance.
+    - **Unified Branding**: Apply a consistent look and feel across all agents with standardized design tokens.
 - **Advanced Tools**:
     - **Interactive Shell**: Execute shell scripts and Python code directly by the agent.
     - **Web Search**: Integrated web search via DuckDuckGo.
@@ -133,9 +140,9 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
     - **Avatar Management**: Images are stored directly in the database for maximum privacy.
     - **Self-hosted**: Full control over your data and codebase.
 - **Modern User Interface**:
-    - **Clean Design**: A minimalist and intuitive "Monolith Black" interface for a distraction-free experience.
+    - **"The Monolith" Design**: A minimalist, high-contrast interface inspired by "Ghost Minimalist Noir" for a distraction-free experience.
     - **Code Rendering**: Highlights and formats code blocks for easy reading.
-    - **Settings Hub**: Centrally manage all your configurations, including dedicated tabs for Gateway, Security, and **Maintenance**.
+    - **Settings Hub**: Centrally manage all your configurations, including dedicated tabs for Gateway, Security, **Skills**, **Design Systems**, and **Maintenance**.
 - **System Stability & Maintenance**:
     - **Gateway Status & Live Logs**: Real-time monitoring of gateway performance, connected clients, and system logs directly in the app.
     - **Secure Shutdown**: Robust background shutdown process ensuring all databases are properly closed before the system exits or resets.

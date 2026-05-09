@@ -8,7 +8,6 @@ import '../../widgets/settings_side_nav_tile.dart';
 import '../../widgets/app_dialogs.dart';
 
 class SidebarFooter extends ConsumerWidget {
-
   const SidebarFooter({super.key, required this.onShowSettings});
   final VoidCallback onShowSettings;
 

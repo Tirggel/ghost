@@ -6,9 +6,10 @@ import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 
 class BrowserTab extends ConsumerStatefulWidget {
-  const BrowserTab({super.key, this.onBack, this.onNext});
+  const BrowserTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
   ConsumerState<BrowserTab> createState() => _BrowserTabState();
@@ -33,63 +34,46 @@ class _BrowserTabState extends ConsumerState<BrowserTab> with SettingsSaveMixin 
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return AppSettingsPage(
+      onBack: widget.onBack,
+      onNext: widget.onNext,
+      topPadding: widget.topPadding,
+      onSave: _save,
+      isSaveLoading: isSaveLoading,
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppConstants.settingsPagePadding,
-              AppConstants.settingsTopPadding,
-              AppConstants.settingsPagePadding,
-              AppConstants.settingsPagePadding,
-            ),
-            children: [
-              const AppSectionHeader('settings.browser.section', large: true),
-              Text(
-                'settings.browser.headless_desc'.tr(),
-                style: const TextStyle(
-                  color: AppColors.textDim,
-                  fontSize: AppConstants.fontSizeBody,
-                ),
-              ),
-              const SizedBox(height: 24),
-              AppSettingsTile(
-                title: 'settings.browser.headless_label'.tr(),
-                subtitle: _browserHeadless 
-                    ? 'settings.browser.headless'.tr() 
-                    : 'settings.browser.headful'.tr(),
-                leading: const Icon(
-                  Icons.open_in_browser,
-                  color: AppConstants.iconColorPrimary,
-                  size: AppConstants.iconSizeLarge,
-                ),
-                trailing: Switch(
-                  value: _browserHeadless,
-                  onChanged: (val) async {
-                    setState(() => _browserHeadless = val);
-                    await _save();
-                  },
-                  activeThumbColor: AppColors.primary,
-                ),
-                onTap: () async {
-                  setState(() => _browserHeadless = !_browserHeadless);
-                  await _save();
-                },
-              ),
-            ],
+        const AppSectionHeader('settings.browser.section', large: true),
+        Text(
+          'settings.browser.headless_desc'.tr(),
+          style: const TextStyle(
+            color: AppColors.textDim,
+            fontSize: AppConstants.fontSizeBody,
           ),
         ),
-        _buildNavButtons(),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
+        AppSettingsTile(
+          title: 'settings.browser.headless_label'.tr(),
+          subtitle: _browserHeadless 
+              ? 'settings.browser.headless'.tr() 
+              : 'settings.browser.headful'.tr(),
+          leading: const Icon(
+            Icons.open_in_browser,
+            color: AppConstants.iconColorPrimary,
+            size: AppConstants.iconSizeLarge,
+          ),
+          trailing: Switch(
+            value: _browserHeadless,
+            onChanged: (val) async {
+              setState(() => _browserHeadless = val);
+              await _save();
+            },
+            activeThumbColor: AppColors.primary,
+          ),
+          onTap: () async {
+            setState(() => _browserHeadless = !_browserHeadless);
+            await _save();
+          },
+        ),
       ],
-    );
-  }
-
-  Widget _buildNavButtons() {
-    return AppSettingsNavBar(
-      onBack: widget.onBack,
-      onSave: _save,
-      onNext: widget.onNext,
-      isSaveLoading: isSaveLoading,
     );
   }
 }

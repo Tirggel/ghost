@@ -558,11 +558,9 @@ class SkillManager {
       }
 
       final zipBytes = encoder.encode(newArchive);
-      if (zipBytes != null) {
-        final installed = await installSkill(zipBytes);
-        firstSkill ??= installed;
-        _log.info('Installed skill: ${installed.slug} from $root');
-      }
+      final installed = await installSkill(zipBytes);
+      firstSkill ??= installed;
+      _log.info('Installed skill: ${installed.slug} from $root');
     }
 
     if (firstSkill == null) {

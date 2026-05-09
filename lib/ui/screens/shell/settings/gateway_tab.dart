@@ -167,22 +167,23 @@ class _GatewayTabState extends ConsumerState<GatewayTab> {
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
+      subTabLabels: const ['settings.gateway.tab'],
       children: [
         // ── Integrated Mode (INTERNAL HOST) ──────────────────────────
         _buildIntegratedModeSection(),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppConstants.settingsSectionSpacing),
 
         // ── Status ────────────────────────────────────────────────────
         _buildStatusSection(),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppConstants.settingsSectionSpacing),
 
         // ── Live Log ─────────────────────────────────────────────────
         _buildLogSection(logs),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppConstants.settingsSectionSpacing),
 
         // ── Registered Methods ────────────────────────────────────────
         _buildMethodsSection(),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppConstants.settingsSectionSpacing),
       ],
     );
   }
@@ -196,7 +197,6 @@ class _GatewayTabState extends ConsumerState<GatewayTab> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const AppSectionHeader('settings.gateway.integrated_mode', large: true),
-        const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(

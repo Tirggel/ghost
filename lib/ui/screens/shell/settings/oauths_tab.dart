@@ -155,6 +155,7 @@ class _OAuthsTabState extends ConsumerState<OAuthsTab> {
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
+      topPadding: 0,
       children: [
         const AppSectionHeader('settings.oauths.section', large: true),
         Text(
@@ -164,9 +165,9 @@ class _OAuthsTabState extends ConsumerState<OAuthsTab> {
             color: AppColors.textDim,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
         _buildAddCustomKeyButton(),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppConstants.settingsSectionSpacing),
         ..._buildCustomVaultSection(vaultKeys, config),
       ],
     );

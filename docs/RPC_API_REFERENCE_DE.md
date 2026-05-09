@@ -149,6 +149,14 @@ Löscht einen Custom Agent.
 ### `skills.list`
 Listet alle installierten Skills auf.
 
+### `skills.create`
+Erstellt einen neuen Skill aus einer Vorlage.
+**Parameter:**
+- `name`: (String)
+- `description`: (String, optional)
+- `type`: (String, z.B. "python", "node", "markdown")
+- `emoji`: (String, optional)
+
 ### `skills.install` / `skills.import` / `skills.downloadFromGithub`
 Installiert einen neuen Skill aus einem ZIP, einem lokalen Verzeichnis oder einer GitHub-URL.
 
@@ -174,6 +182,43 @@ Löscht einen Skill.
 
 ---
 
+## 🎨 Design-System-Management
+
+### `design.list`
+Listet alle installierten Design-Systeme auf.
+
+### `design.get`
+Ruft ein spezifisches Design-System ab.
+**Parameter:**
+- `id`: (String)
+
+### `design.save`
+Erstellt oder aktualisiert ein Design-System.
+**Parameter:**
+- `id`: (String)
+- `name`: (String)
+- `content`: (String, Markdown)
+
+### `design.delete`
+Löscht ein Design-System.
+**Parameter:**
+- `id`: (String)
+
+### `design.addFromUrl`
+Importiert ein Design-System von einer URL (z. B. einer Markdown-Datei).
+**Parameter:**
+- `url`: (String)
+
+### `design.backup` / `design.restore`
+Sichert oder stellt die gesamte Design-System-Bibliothek wieder her.
+
+### `design.install`
+Installiert ein Design-System aus einem ZIP-Archiv.
+**Parameter:**
+- `zip`: (String, Base64)
+
+---
+
 ## 🛠️ Wartung & System
 
 ### `config.factoryReset`
@@ -182,7 +227,7 @@ Löscht den gesamten Anwendungszustand, einschließlich aller Datenbanken und de
 ### `config.backup`
 Erstellt ein verschlüsseltes ZIP-Archiv des Systemzustands.
 **Parameter:**
-- `sections`: (Array von Strings, optional) z.B. `["config", "sessions", "skills", "memory", "vault"]`
+- `sections`: (Array von Strings, optional) z.B. `["config", "sessions", "skills", "design", "memory", "vault"]`
 
 **Antwort:**
 - `path`: (String) Pfad zur temporären ZIP-Datei auf dem Host.

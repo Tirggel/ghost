@@ -55,9 +55,12 @@ class MessageBubble extends ConsumerWidget {
       if (content.contains('validation errors for Validator') ||
           content.contains('Input should be a valid string') ||
           content.contains('BadRequestError')) {
-        displayContent = '⚠️ **Sicherheits-Fehler**\n\nDie Tool-Ausführung wurde wegen eines Protokollfehlers abgebrochen. Dies kann passieren, wenn der Chat-Verlauf eine blockierte Tool-Anfrage enthält.\n\n_Bitte starte einen neuen Chat oder bestätige mit "JA" im vorherigen Gespräch._';
-      } else if (content.contains('validation error') || (content.contains('error') && content.contains('type='))) {
-        displayContent = '⚠️ **Technischer Fehler**\n\nEin interner Fehler ist aufgetreten. Bitte versuche es erneut.';
+        displayContent =
+            '⚠️ **Sicherheits-Fehler**\n\nDie Tool-Ausführung wurde wegen eines Protokollfehlers abgebrochen. Dies kann passieren, wenn der Chat-Verlauf eine blockierte Tool-Anfrage enthält.\n\n_Bitte starte einen neuen Chat oder bestätige mit "JA" im vorherigen Gespräch._';
+      } else if (content.contains('validation error') ||
+          (content.contains('error') && content.contains('type='))) {
+        displayContent =
+            '⚠️ **Technischer Fehler**\n\nEin interner Fehler ist aufgetreten. Bitte versuche es erneut.';
       }
     }
 
@@ -67,7 +70,10 @@ class MessageBubble extends ConsumerWidget {
       int localMatchCount = 0;
       // dotAll:false avoids multiline matches, which would insert \n inside markers
       // and break the Markdown inline parser.
-      final queryRegex = RegExp(RegExp.escape(searchQuery), caseSensitive: false);
+      final queryRegex = RegExp(
+        RegExp.escape(searchQuery),
+        caseSensitive: false,
+      );
       displayContent = displayContent.replaceAllMapped(queryRegex, (match) {
         final idx = matchStartIndex + localMatchCount;
         localMatchCount++;
@@ -108,9 +114,12 @@ class MessageBubble extends ConsumerWidget {
     // Default Identity Config
     final identity = config.identity;
     String identityAvatarPath = identity.avatar ?? '';
-    String identityName =
-        identity.name.isEmpty ? 'settings.tabs.identity'.tr() : identity.name;
-    final identityEmoji = (identity.emoji == null || identity.emoji!.isEmpty) ? '🤖' : identity.emoji;
+    String identityName = identity.name.isEmpty
+        ? 'settings.tabs.identity'.tr()
+        : identity.name;
+    final identityEmoji = (identity.emoji == null || identity.emoji!.isEmpty)
+        ? '🤖'
+        : identity.emoji;
 
     // Check if this is a custom agent message
     final agentId = metadata?['agentId'] as String?;
@@ -186,7 +195,9 @@ class MessageBubble extends ConsumerWidget {
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1.5,
-                          color: isSystem ? AppColors.warning : AppColors.textMain,
+                          color: isSystem
+                              ? AppColors.warning
+                              : AppColors.textMain,
                         ),
                       ),
                       if (isAssistant && modelName != null)
@@ -224,11 +235,16 @@ class MessageBubble extends ConsumerWidget {
                 color: isSystem
                     ? AppColors.warning.withValues(alpha: 0.1)
                     : (isAssistant
-                        ? AppColors.surface.withValues(alpha: 0.3)
-                        : AppColors.surface.withValues(alpha: 0.6)),
-                borderRadius:
-                    BorderRadius.circular(AppConstants.borderRadiusDefault),
-                border: isSystem ? Border.all(color: AppColors.warning.withValues(alpha: 0.2)) : null,
+                          ? AppColors.surface.withValues(alpha: 0.3)
+                          : AppColors.surface.withValues(alpha: 0.6)),
+                borderRadius: BorderRadius.circular(
+                  AppConstants.borderRadiusDefault,
+                ),
+                border: isSystem
+                    ? Border.all(
+                        color: AppColors.warning.withValues(alpha: 0.2),
+                      )
+                    : null,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,9 +259,13 @@ class MessageBubble extends ConsumerWidget {
                           final isImage = a.mimeType.startsWith('image/');
                           if (isImage) {
                             return ClipRRect(
-                              borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+                              borderRadius: BorderRadius.circular(
+                                AppConstants.borderRadiusSmall,
+                              ),
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 300),
+                                constraints: const BoxConstraints(
+                                  maxHeight: 300,
+                                ),
                                 child: Image.memory(
                                   base64Decode(a.data),
                                   fit: BoxFit.contain,
@@ -254,18 +274,33 @@ class MessageBubble extends ConsumerWidget {
                             );
                           }
                           return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+                              borderRadius: BorderRadius.circular(
+                                AppConstants.borderRadiusSmall,
+                              ),
                               border: Border.all(color: AppColors.border),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(_getFileIcon(a.mimeType), size: 16, color: AppColors.textDim),
+                                Icon(
+                                  _getFileIcon(a.mimeType),
+                                  size: 16,
+                                  color: AppColors.textDim,
+                                ),
                                 const SizedBox(width: 8),
-                                Text(a.name, style: const TextStyle(fontSize: 11, color: AppColors.textMain)),
+                                Text(
+                                  a.name,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textMain,
+                                  ),
+                                ),
                               ],
                             ),
                           );
@@ -287,19 +322,26 @@ class MessageBubble extends ConsumerWidget {
                           launchUrl(Uri.parse(href));
                         }
                       },
-                      data: content.isEmpty && isAssistant ? '_${'chat.thinking'.tr()}_' : displayContent,
+                      data: content.isEmpty && isAssistant
+                          ? '_${'chat.thinking'.tr()}_'
+                          : displayContent,
                       inlineSyntaxes: [
-                        if (searchQuery.isNotEmpty && role != 'user') SearchMatchSyntax(),
+                        if (searchQuery.isNotEmpty && role != 'user')
+                          SearchMatchSyntax(),
                       ],
                       builders: {
                         'pre': CodeElementBuilder(),
                         'a': LinkElementBuilder(),
                         if (searchQuery.isNotEmpty && role != 'user')
-                          'search_match': SearchMatchBuilder(activeMatchIndex: activeMatchIndex),
+                          'search_match': SearchMatchBuilder(
+                            activeMatchIndex: activeMatchIndex,
+                          ),
                       },
                       styleSheet: MarkdownStyleSheet(
                         p: TextStyle(
-                          color: role == 'assistant' && content.isEmpty ? AppColors.textDim : AppColors.textMain,
+                          color: role == 'assistant' && content.isEmpty
+                              ? AppColors.textDim
+                              : AppColors.textMain,
                           height: 1.6,
                           fontSize: 15,
                         ),
@@ -308,14 +350,17 @@ class MessageBubble extends ConsumerWidget {
                           color: AppColors.primary,
                           fontFamily: 'monospace',
                         ),
-                        codeblockDecoration: const BoxDecoration(), // New widget handles decoration
+                        codeblockDecoration:
+                            const BoxDecoration(), // New widget handles decoration
                       ),
                     ),
                   _buildErrorRecoveryButton(context, ref),
                   if (isAssistant && metadata?['tool_calls'] != null) ...[
                     const SizedBox(height: 16),
                     Theme(
-                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      data: Theme.of(
+                        context,
+                      ).copyWith(dividerColor: Colors.transparent),
                       child: ExpansionTile(
                         title: Text(
                           '${'common.agent'.tr()} used ${(metadata?['tool_calls'] as List).length} tools',
@@ -332,19 +377,29 @@ class MessageBubble extends ConsumerWidget {
                         iconColor: AppColors.primary,
                         children: (metadata?['tool_calls'] as List).map((tc) {
                           final tcMap = tc as Map<String, dynamic>;
-                          final name = (tcMap['label'] as String?) ?? (tcMap['name'] as String?) ?? '';
+                          final name =
+                              (tcMap['label'] as String?) ??
+                              (tcMap['name'] as String?) ??
+                              '';
                           final summary = (tcMap['summary'] as String?) ?? '';
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Row(
                               children: [
-                                const Icon(Icons.check_circle_outline, size: 14, color: AppColors.primary),
+                                const Icon(
+                                  Icons.check_circle_outline,
+                                  size: 14,
+                                  color: AppColors.primary,
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                    child: Text(
-                                      '$name${summary.isNotEmpty ? ': $summary' : ''}',
-                                      style: const TextStyle(fontSize: 11, color: AppColors.textMain),
+                                  child: Text(
+                                    '$name${summary.isNotEmpty ? ': $summary' : ''}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textMain,
                                     ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -364,12 +419,22 @@ class MessageBubble extends ConsumerWidget {
                               icon: const Icon(Icons.check, size: 18),
                               label: Text('settings.security.hitl_yes'.tr()),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                                backgroundColor: AppColors.primary.withValues(
+                                  alpha: 0.2,
+                                ),
                                 foregroundColor: AppColors.primary,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
-                                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                                  borderRadius: BorderRadius.circular(
+                                    AppConstants.borderRadiusSmall,
+                                  ),
+                                  side: BorderSide(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                  ),
                                 ),
                                 elevation: 0,
                               ),
@@ -382,12 +447,22 @@ class MessageBubble extends ConsumerWidget {
                               icon: const Icon(Icons.close, size: 18),
                               label: Text('settings.security.hitl_no'.tr()),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.error.withValues(alpha: 0.2),
+                                backgroundColor: AppColors.error.withValues(
+                                  alpha: 0.2,
+                                ),
                                 foregroundColor: AppColors.error,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
-                                  side: BorderSide(color: AppColors.error.withValues(alpha: 0.3)),
+                                  borderRadius: BorderRadius.circular(
+                                    AppConstants.borderRadiusSmall,
+                                  ),
+                                  side: BorderSide(
+                                    color: AppColors.error.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                  ),
                                 ),
                                 elevation: 0,
                               ),
@@ -406,11 +481,18 @@ class MessageBubble extends ConsumerWidget {
                             Padding(
                               padding: const EdgeInsets.only(bottom: 16),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.green.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
-                                  border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                                  borderRadius: BorderRadius.circular(
+                                    AppConstants.borderRadiusSmall,
+                                  ),
+                                  border: Border.all(
+                                    color: Colors.green.withValues(alpha: 0.3),
+                                  ),
                                 ),
                                 child: Row(
                                   children: [
@@ -419,7 +501,10 @@ class MessageBubble extends ConsumerWidget {
                                       height: 16,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: const AlwaysStoppedAnimation(Colors.greenAccent),
+                                        valueColor:
+                                            const AlwaysStoppedAnimation(
+                                              Colors.greenAccent,
+                                            ),
                                       ),
                                     ),
                                     const SizedBox(width: 16),
@@ -460,10 +545,20 @@ class MessageBubble extends ConsumerWidget {
 
     // Also show if any sensitive tool name is in the tool calls list
     const sensitiveTools = {
-      'write_file', 'edit_file', 'delete_file', 'apply_patch',
-      'bash', 'terminal', 'exec', 'process',
-      'github', 'github_pr', 'github_commit',
-      'browser_open', 'browser_click', 'browser_type',
+      'write_file',
+      'edit_file',
+      'delete_file',
+      'apply_patch',
+      'bash',
+      'terminal',
+      'exec',
+      'process',
+      'github',
+      'github_pr',
+      'github_commit',
+      'browser_open',
+      'browser_click',
+      'browser_type',
     };
     for (final tc in toolCalls) {
       final name = (tc as Map<String, dynamic>)['name'] as String? ?? '';
@@ -493,12 +588,12 @@ class MessageBubble extends ConsumerWidget {
       // so the sanitizer removes the blocked turn on the next chat load.
       try {
         final sessions = ref.read(sessionsProvider);
-        final currentSession =
-            sessions.where((s) => s.id == sessionId).firstOrNull;
+        final currentSession = sessions
+            .where((s) => s.id == sessionId)
+            .firstOrNull;
         final config = ref.read(configProvider);
         final agentModel = currentSession?.model ?? config.agent.model;
-        final agentProvider =
-            currentSession?.provider ?? config.agent.provider;
+        final agentProvider = currentSession?.provider ?? config.agent.provider;
         await ref.read(gatewayClientProvider).call('agent.chat', {
           'content': '__HITL_DECLINED__',
           'sessionId': sessionId!,
@@ -521,7 +616,7 @@ class MessageBubble extends ConsumerWidget {
       'attachments': [],
     });
     notifier.setProcessing(sessionId!, true);
-    
+
     final sessions = ref.read(sessionsProvider);
     final currentSession = sessions.where((s) => s.id == sessionId).firstOrNull;
     final config = ref.read(configProvider);
@@ -542,7 +637,8 @@ class MessageBubble extends ConsumerWidget {
   Widget _buildErrorRecoveryButton(BuildContext context, WidgetRef ref) {
     if (sessionId == null) return const SizedBox.shrink();
 
-    final hasError = content.contains('⚠️ Provider returned error') ||
+    final hasError =
+        content.contains('⚠️ Provider returned error') ||
         content.contains('⚠️ Rate limit exceeded') ||
         content.contains('💡 Tipp');
 
@@ -577,9 +673,12 @@ class MessageBubble extends ConsumerWidget {
                     foregroundColor: AppColors.warning,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppConstants.borderRadiusSmall),
-                      side: BorderSide(color: AppColors.warning.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.borderRadiusSmall,
+                      ),
+                      side: BorderSide(
+                        color: AppColors.warning.withValues(alpha: 0.3),
+                      ),
                     ),
                     elevation: 0,
                   ),
@@ -591,7 +690,7 @@ class MessageBubble extends ConsumerWidget {
                   onPressed: () async {
                     const text = 'continue';
                     final notifier = ref.read(chatProvider.notifier);
-                    
+
                     notifier.addMessageEntry(sessionId!, {
                       'role': 'user',
                       'content': text,
@@ -599,15 +698,17 @@ class MessageBubble extends ConsumerWidget {
                       'attachments': <dynamic>[],
                     });
                     notifier.setProcessing(sessionId!, true);
-                    
+
                     final sessions = ref.read(sessionsProvider);
-                    final currentSession = sessions.where(
-                      (s) => s.id == sessionId,
-                    ).firstOrNull;
-                    
+                    final currentSession = sessions
+                        .where((s) => s.id == sessionId)
+                        .firstOrNull;
+
                     final config = ref.read(configProvider);
-                    final agentModel = currentSession?.model ?? config.agent.model;
-                    final agentProvider = currentSession?.provider ?? config.agent.provider;
+                    final agentModel =
+                        currentSession?.model ?? config.agent.model;
+                    final agentProvider =
+                        currentSession?.provider ?? config.agent.provider;
 
                     try {
                       await ref.read(gatewayClientProvider).call('agent.chat', {
@@ -626,9 +727,12 @@ class MessageBubble extends ConsumerWidget {
                     foregroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppConstants.borderRadiusSmall),
-                      side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.borderRadiusSmall,
+                      ),
+                      side: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                      ),
                     ),
                     elevation: 0,
                   ),
@@ -664,30 +768,46 @@ class MessageBubble extends ConsumerWidget {
     int localIdx = 0;
     for (final m in queryRegex.allMatches(text)) {
       if (m.start > cursor) {
-        spans.add(TextSpan(
-          text: text.substring(cursor, m.start),
-          style: const TextStyle(color: AppColors.textMain, fontSize: 15, height: 1.6),
-        ));
+        spans.add(
+          TextSpan(
+            text: text.substring(cursor, m.start),
+            style: const TextStyle(
+              color: AppColors.textMain,
+              fontSize: 15,
+              height: 1.6,
+            ),
+          ),
+        );
       }
       final globalIdx = startIndex + localIdx;
       final isActive = globalIdx == active;
-      spans.add(TextSpan(
-        text: m[0],
-        style: TextStyle(
-          backgroundColor: isActive ? Colors.green : Colors.green.withValues(alpha: 0.3),
-          color: isActive ? Colors.white : AppColors.textMain,
-          fontSize: 15,
-          height: 1.6,
+      spans.add(
+        TextSpan(
+          text: m[0],
+          style: TextStyle(
+            backgroundColor: isActive
+                ? Colors.green
+                : Colors.green.withValues(alpha: 0.3),
+            color: isActive ? Colors.white : AppColors.textMain,
+            fontSize: 15,
+            height: 1.6,
+          ),
         ),
-      ));
+      );
       localIdx++;
       cursor = m.end;
     }
     if (cursor < text.length) {
-      spans.add(TextSpan(
-        text: text.substring(cursor),
-        style: const TextStyle(color: AppColors.textMain, fontSize: 15, height: 1.6),
-      ));
+      spans.add(
+        TextSpan(
+          text: text.substring(cursor),
+          style: const TextStyle(
+            color: AppColors.textMain,
+            fontSize: 15,
+            height: 1.6,
+          ),
+        ),
+      );
     }
     return Text.rich(TextSpan(children: spans));
   }
@@ -725,14 +845,19 @@ class _LinkWidgetState extends State<LinkWidget> {
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: () async {
-          final isCtrlPressed = HardwareKeyboard.instance.logicalKeysPressed
-                  .contains(LogicalKeyboardKey.controlLeft) ||
-              HardwareKeyboard.instance.logicalKeysPressed
-                  .contains(LogicalKeyboardKey.controlRight) ||
-              HardwareKeyboard.instance.logicalKeysPressed
-                  .contains(LogicalKeyboardKey.metaLeft) ||
-              HardwareKeyboard.instance.logicalKeysPressed
-                  .contains(LogicalKeyboardKey.metaRight);
+          final isCtrlPressed =
+              HardwareKeyboard.instance.logicalKeysPressed.contains(
+                LogicalKeyboardKey.controlLeft,
+              ) ||
+              HardwareKeyboard.instance.logicalKeysPressed.contains(
+                LogicalKeyboardKey.controlRight,
+              ) ||
+              HardwareKeyboard.instance.logicalKeysPressed.contains(
+                LogicalKeyboardKey.metaLeft,
+              ) ||
+              HardwareKeyboard.instance.logicalKeysPressed.contains(
+                LogicalKeyboardKey.metaRight,
+              );
 
           if (isCtrlPressed && widget.href != null) {
             final uri = Uri.tryParse(widget.href!);
@@ -761,11 +886,7 @@ class LinkElementBuilder extends MarkdownElementBuilder {
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
     final text = element.textContent;
     final href = element.attributes['href'];
-    return LinkWidget(
-      text: text,
-      href: href,
-      preferredStyle: preferredStyle,
-    );
+    return LinkWidget(text: text, href: href, preferredStyle: preferredStyle);
   }
 }
 
@@ -773,7 +894,7 @@ class CodeElementBuilder extends MarkdownElementBuilder {
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
     var language = '';
-    
+
     // The 'pre' element usually contains a 'code' element as its first child
     if (element.children != null && element.children!.isNotEmpty) {
       final child = element.children![0];
@@ -824,16 +945,16 @@ class SearchMatchBuilder extends MarkdownElementBuilder {
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
     final idx = int.tryParse(element.attributes['index'] ?? '-1') ?? -1;
     final isMatchActive = idx == activeMatchIndex;
-    final baseStyle = preferredStyle ?? const TextStyle(
-      color: AppColors.textMain,
-      fontSize: 15,
-      height: 1.6,
-    );
+    final baseStyle =
+        preferredStyle ??
+        const TextStyle(color: AppColors.textMain, fontSize: 15, height: 1.6);
     return RichText(
       text: TextSpan(
         text: element.textContent,
         style: baseStyle.copyWith(
-          backgroundColor: isMatchActive ? Colors.green : Colors.green.withValues(alpha: 0.3),
+          backgroundColor: isMatchActive
+              ? Colors.green
+              : Colors.green.withValues(alpha: 0.3),
           color: isMatchActive ? Colors.white : AppColors.textMain,
         ),
       ),

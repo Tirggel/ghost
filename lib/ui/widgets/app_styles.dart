@@ -162,7 +162,7 @@ class AppFormField extends StatelessWidget {
     context.locale;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppConstants.settingsElementSpacing),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -274,7 +274,7 @@ class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
     );
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppConstants.settingsElementSpacing),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -492,7 +492,10 @@ class AppSectionHeader extends StatelessWidget {
     context.locale;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppConstants.settingsHeaderBottomPadding),
+      padding: EdgeInsets.only(
+        top: large ? AppConstants.settingsHeaderSpacing : 0,
+        bottom: AppConstants.settingsHeaderSpacing,
+      ),
       child: Text(
         title.tr().toUpperCase(),
         style: TextStyle(
@@ -1192,33 +1195,33 @@ class AppSettingsPage extends StatelessWidget {
     this.onBack,
     this.onNext,
     this.onSave,
-    this.saveLabel,
     this.isSaveLoading = false,
+    this.saveLabel,
     this.saveIcon = Icons.save,
+    this.topPadding,
   }) : assert(children != null || body != null, 'Either children or body must be provided');
 
-  final List<String>? subTabLabels;
-  final int? currentSubTabIndex;
-  final ValueChanged<int>? onSubTabChanged;
   final List<Widget>? children;
   final Widget? body;
   final VoidCallback? onBack;
   final VoidCallback? onNext;
   final VoidCallback? onSave;
-  final String? saveLabel;
   final bool isSaveLoading;
+  final String? saveLabel;
   final IconData saveIcon;
+  final List<String>? subTabLabels;
+  final int? currentSubTabIndex;
+  final ValueChanged<int>? onSubTabChanged;
+  final double? topPadding;
 
   @override
   Widget build(BuildContext context) {
-    final bool hasSubNav = subTabLabels != null && 
-                          currentSubTabIndex != null && 
-                          onSubTabChanged != null;
+    final bool hasSubNav = subTabLabels != null && subTabLabels!.isNotEmpty;
 
     final Widget content = body ?? ListView(
       padding: const EdgeInsets.fromLTRB(
         AppConstants.settingsPagePadding,
-        0, // Top padding is handled by Nav or SizedBox
+        0,
         AppConstants.settingsPagePadding,
         AppConstants.settingsPagePadding,
       ),
@@ -1230,22 +1233,23 @@ class AppSettingsPage extends StatelessWidget {
         if (hasSubNav)
           SettingsSubNavBar(
             items: subTabLabels!,
-            currentIndex: currentSubTabIndex!,
-            onTap: onSubTabChanged!,
+            currentIndex: currentSubTabIndex ?? 0,
+            onTap: onSubTabChanged ?? (index) {},
           )
         else
-          const SizedBox(height: AppConstants.spacingSmall),
+          SizedBox(height: topPadding ?? AppConstants.settingsSectionSpacing),
           
         Expanded(child: content),
         
-        AppSettingsNavBar(
-          onBack: onBack,
-          onNext: onNext,
-          onSave: onSave,
-          saveLabel: saveLabel,
-          isSaveLoading: isSaveLoading,
-          saveIcon: saveIcon,
-        ),
+        if (onBack != null || onNext != null || onSave != null)
+          AppSettingsNavBar(
+            onBack: onBack,
+            onNext: onNext,
+            onSave: onSave,
+            saveLabel: saveLabel,
+            isSaveLoading: isSaveLoading,
+            saveIcon: saveIcon,
+          ),
       ],
     );
   }

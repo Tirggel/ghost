@@ -1,33 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'app_selectable_card.dart';
+import 'app_styles.dart';
 import '../../core/constants.dart';
 import '../../providers/gateway_provider.dart';
-import 'app_styles.dart';
 
 class SkillsSelector extends ConsumerWidget {
-
   const SkillsSelector({
     super.key,
-    this.selectedSkills = const [],
-    this.onChanged = _defaultOnChanged,
-    this.isEditing = true,
     this.title,
+    this.selectedSkills = const [],
+    this.onChanged,
+    this.isEditing = true,
     this.isManagement = false,
     this.onGlobalChanged,
     this.onDelete,
     this.onTap,
   });
-  final List<String> selectedSkills;
-  final void Function(List<String>) onChanged;
-  final bool isEditing;
-  final String? title;
-  final bool isManagement;
-  final void Function(String slug, bool val)? onGlobalChanged;
-  final void Function(String slug)? onDelete;
-  final void Function(String slug)? onTap;
 
-  static void _defaultOnChanged(List<String> _) {}
+  final String? title;
+  final List<String> selectedSkills;
+  final Function(List<String>)? onChanged;
+  final bool isEditing;
+  final bool isManagement;
+  final Function(String slug, bool value)? onGlobalChanged;
+  final Function(String slug)? onDelete;
+  final Function(String slug)? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -52,10 +51,6 @@ class SkillsSelector extends ConsumerWidget {
               );
             }
 
-            // Filter non-global skills for manual selection
-            // Actually, keep them all but show global status?
-            // The request just said "list of skills", so I'll keep the current behavior.
-
             return Column(
               children: skills.map((skill) {
                 final slug = skill['slug'] as String;
@@ -72,13 +67,14 @@ class SkillsSelector extends ConsumerWidget {
                   isEditing: isEditing,
                   isManagement: isManagement,
                   onChanged: (val) {
+                    if (onChanged == null) return;
                     final next = List<String>.from(selectedSkills);
                     if (val == true) {
                       next.add(slug);
                     } else {
                       next.remove(slug);
                     }
-                    onChanged(next);
+                    onChanged!(next);
                   },
                   onGlobalChanged: onGlobalChanged != null
                       ? (val) => onGlobalChanged!(slug, val)
@@ -107,7 +103,6 @@ class SkillsSelector extends ConsumerWidget {
 }
 
 class _SkillItem extends StatelessWidget {
-
   const _SkillItem({
     required this.slug,
     required this.name,
@@ -122,6 +117,7 @@ class _SkillItem extends StatelessWidget {
     this.onDelete,
     this.onTap,
   });
+
   final String slug;
   final String name;
   final String description;
@@ -139,142 +135,123 @@ class _SkillItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool canToggle = isEditing && !isGlobal;
 
-    return GestureDetector(
+    return AppSelectableCard(
+      isSelected: isEnabled,
       onTap: isManagement ? onTap : (canToggle ? () => onChanged(!isEnabled) : null),
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(AppConstants.cardPadding),
-        decoration: BoxDecoration(
-          color: isEnabled ? AppColors.background : AppColors.surface,
-          borderRadius: BorderRadius.zero,
-          border: Border.all(
-            color: isEnabled
-                ? AppColors.primary
-                : AppColors.border,
-            width: 1,
+      leading: (emoji != null && emoji!.isNotEmpty)
+          ? Text(
+              emoji!,
+              style: const TextStyle(
+                fontSize: 24,
+                fontFamilyFallback: [
+                  'Apple Color Emoji',
+                  'Segoe UI Emoji',
+                  'Noto Color Emoji',
+                  'Android Emoji',
+                  'EmojiSymbols',
+                ],
+              ),
+            )
+          : const Icon(
+              Icons.psychology,
+              color: AppConstants.iconColorPrimary,
+              size: AppConstants.iconSizeLarge,
+            ),
+      title: Row(
+        children: [
+          Text(
+            name,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textMain,
+              fontSize: AppConstants.fontSizeBody,
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            // Leading Icon / Emoji
-            SizedBox(
-              width: 40,
-              child: (emoji != null && emoji!.isNotEmpty)
-                  ? Text(
-                      emoji!,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontFamilyFallback: [
-                          'Apple Color Emoji',
-                          'Segoe UI Emoji',
-                          'Noto Color Emoji',
-                          'Android Emoji',
-                          'EmojiSymbols',
-                        ],
-                      ),
-                    )
-                  : const Icon(
-                      Icons.psychology,
-                      color: AppConstants.iconColorPrimary,
-                      size: AppConstants.iconSizeLarge,
-                    ),
-            ),
-            const SizedBox(width: 14),
-            // Title & Subtitle
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textMain,
-                          fontSize: AppConstants.fontSizeBody,
-                        ),
-                      ),
-                      if (isGlobal) ...[
-                        const SizedBox(width: 8),
-                        const Icon(Icons.public,
-                            size: 12, color: AppColors.primary),
-                      ],
-                    ],
-                  ),
-                  Text(
-                    description,
-                    style: const TextStyle(
-                      fontSize: AppConstants.fontSizeSmall,
-                      color: AppColors.textDim,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
+          if (isGlobal) ...[
             const SizedBox(width: 8),
-            // Checkbox OR Management Actions
-            if (isManagement) ...[
-              // Global Switch
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'settings.skills.global'.tr().toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDim,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  SizedBox(
-                    height: 24,
-                    child: Switch(
-                      value: isGlobal,
-                      onChanged: onGlobalChanged,
-                      activeThumbColor: AppColors.primary,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 4),
-              // Delete Button
-              IconButton(
-                icon: const Icon(
-                  Icons.delete_outline,
-                  size: 20,
-                ),
-                style: IconButton.styleFrom(
-                  foregroundColor: AppColors.white,
-                ).copyWith(
-                  foregroundColor:
-                      WidgetStateProperty.resolveWith<Color?>((states) {
-                        if (states.contains(WidgetState.hovered)) {
-                          return AppColors.error;
-                        }
-                        return AppColors.white;
-                      }),
-                ),
-                onPressed: onDelete,
-                tooltip: 'common.delete'.tr(),
-              ),
-
-            ] else
-              Checkbox(
-                value: isEnabled,
-                activeColor: AppColors.primary,
-                checkColor: AppColors.black,
-                onChanged: canToggle ? onChanged : null,
-              ),
+            const Icon(Icons.public, size: 12, color: AppColors.primary),
           ],
-        ),
+        ],
       ),
+      subtitle: Text(
+        description,
+        style: const TextStyle(
+          fontSize: AppConstants.fontSizeSmall,
+          color: AppColors.textDim,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: isManagement
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Global Switch
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'settings.skills.global'.tr().toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDim,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    SizedBox(
+                      height: 24,
+                      child: Switch(
+                        value: isGlobal,
+                        onChanged: onGlobalChanged,
+                        activeThumbColor: AppColors.primary,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 4),
+                // Edit Button
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  style: IconButton.styleFrom(
+                    foregroundColor: AppColors.white,
+                  ).copyWith(
+                    foregroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                      if (states.contains(WidgetState.hovered)) {
+                        return AppColors.primary;
+                      }
+                      return AppColors.white;
+                    }),
+                  ),
+                  onPressed: onTap,
+                  tooltip: 'common.edit'.tr(),
+                ),
+                const SizedBox(width: 4),
+                // Delete Button
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  style: IconButton.styleFrom(
+                    foregroundColor: AppColors.white,
+                  ).copyWith(
+                    foregroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                      if (states.contains(WidgetState.hovered)) {
+                        return AppColors.error;
+                      }
+                      return AppColors.white;
+                    }),
+                  ),
+                  onPressed: onDelete,
+                  tooltip: 'common.delete'.tr(),
+                ),
+              ],
+            )
+          : Checkbox(
+              value: isEnabled,
+              activeColor: AppColors.primary,
+              checkColor: AppColors.black,
+              onChanged: canToggle ? onChanged : null,
+            ),
     );
   }
 }

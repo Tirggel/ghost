@@ -17,9 +17,11 @@ class SettingsSubNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppConstants.settingsPagePadding,
-        vertical: AppConstants.settingsTopPadding,
+      padding: const EdgeInsets.fromLTRB(
+        AppConstants.settingsPagePadding,
+        AppConstants.settingsTopPadding,
+        AppConstants.settingsPagePadding,
+        AppConstants.settingsTabBottomPadding,
       ),
       child: Row(
         children: items.asMap().entries.map((entry) {

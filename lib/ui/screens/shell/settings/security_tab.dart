@@ -106,12 +106,13 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
+      subTabLabels: const ['settings.security.tab'],
       children: [
         const AppSectionHeader('settings.security.section', large: true),
 
         // Level Dropdown
         Padding(
-          padding: const EdgeInsets.only(bottom: 24.0),
+          padding: const EdgeInsets.only(bottom: AppConstants.settingsSectionSpacing),
           child: Row(
             children: [
               Expanded(

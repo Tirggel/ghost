@@ -537,6 +537,7 @@ class ConfigRouter {
         maxTokens: (params['maxTokens'] as num?)?.toInt(),
         thinkingMode: params['thinkingMode'] as String?,
         skills: skills,
+        designSystem: params['designSystem'] as String?,
       );
 
       if (updated.provider.isEmpty || updated.model.isEmpty) {
@@ -814,6 +815,78 @@ class ConfigRouter {
       return {'status': 'ok', 'deletedId': agentId};
     });
 
+    // 8.5. Design Systems
+    gateway.rpcRegistry.register('design.list', (params, context) async {
+      final systems = await agentManager.designSystemManager.loadDesignSystems();
+      return {'status': 'ok', 'systems': systems.map((s) => s.toJson()).toList()};
+    });
+
+    gateway.rpcRegistry.register('design.get', (params, context) async {
+      final id = params?['id'] as String?;
+      if (id == null) throw ProtocolError('Missing id');
+      final ds = await agentManager.designSystemManager.getDesignSystem(id);
+      return {'status': 'ok', 'system': ds?.toJson()};
+    });
+
+    gateway.rpcRegistry.register('design.addFromUrl', (params, context) async {
+      final url = params?['url'] as String?;
+      if (url == null) throw ProtocolError('Missing url');
+      final ds = await agentManager.designSystemManager.downloadFromUrl(url);
+      await _syncAgentManagerConfig();
+      gateway.broadcast('design.changed');
+      return {'status': 'ok', 'system': ds.toJson()};
+    });
+
+    gateway.rpcRegistry.register('design.save', (params, context) async {
+      final id = params?['id'] as String?;
+      final name = params?['name'] as String?;
+      final content = params?['content'] as String?;
+      if (id == null || name == null || content == null) {
+        throw ProtocolError('Missing required params');
+      }
+      final ds = await agentManager.designSystemManager.saveDesignSystem(id, name, content);
+      await _syncAgentManagerConfig();
+      gateway.broadcast('design.changed');
+      return {'status': 'ok', 'system': ds.toJson()};
+    });
+
+    gateway.rpcRegistry.register('design.delete', (params, context) async {
+      final id = params?['id'] as String?;
+      if (id == null) throw ProtocolError('Missing id');
+      await agentManager.designSystemManager.deleteDesignSystem(id);
+      await _syncAgentManagerConfig();
+      gateway.broadcast('design.changed');
+      return {'status': 'ok', 'deletedId': id};
+    });
+
+    gateway.rpcRegistry.register('design.backup', (params, context) async {
+      final data = await agentManager.designSystemManager.backupDesignSystems();
+      return {'status': 'ok', 'data': data};
+    });
+
+    gateway.rpcRegistry.register('design.restore', (params, context) async {
+      if (params == null) throw ProtocolError('Missing params');
+      final data = params['data'] as String?;
+      if (data == null) throw ProtocolError('Missing backup data');
+
+      await agentManager.designSystemManager.restoreDesignSystems(data);
+      await _syncAgentManagerConfig();
+      gateway.broadcast('design.changed');
+      return {'status': 'ok'};
+    });
+
+    gateway.rpcRegistry.register('design.install', (params, context) async {
+      if (params == null) throw ProtocolError('Missing params');
+      final zipBase64 = params['zip'] as String?;
+      if (zipBase64 == null) throw ProtocolError('Missing zip base64 data');
+
+      final zipBytes = base64Decode(zipBase64);
+      await agentManager.designSystemManager.installDesignSystem(zipBytes);
+      await _syncAgentManagerConfig();
+      gateway.broadcast('design.changed');
+      return {'status': 'ok'};
+    });
+
     // 9. Skills Management
     gateway.rpcRegistry.register('skills.list', (params, context) async {
       final skills = await agentManager.skillManager.loadSkills();
@@ -856,6 +929,24 @@ class ConfigRouter {
 
       final skill = await agentManager.skillManager.installSkillFromDirectory(
         path,
+      );
+      await _syncAgentManagerConfig();
+      gateway.broadcast('skills.changed');
+      return {'status': 'ok', 'skill': skill.toJson()};
+    });
+
+    gateway.rpcRegistry.register('skills.create', (params, context) async {
+      final name = params?['name'] as String?;
+      final description = params?['description'] as String? ?? '';
+      final type = params?['type'] as String? ?? 'python';
+      final emoji = params?['emoji'] as String?;
+      if (name == null) throw ProtocolError('Missing name');
+
+      final skill = await agentManager.skillManager.createSkillTemplate(
+        name: name,
+        description: description,
+        type: type,
+        emoji: emoji,
       );
       await _syncAgentManagerConfig();
       gateway.broadcast('skills.changed');
@@ -1133,8 +1224,12 @@ class ConfigRouter {
         if (include('config')) {
           for (final entity in ghostDir.listSync()) {
             final name = p.basename(entity.path);
-            // Skip sessions directory (handled separately) and vault.json
-            if (name == 'sessions' || name == 'vault.json') continue;
+            // Skip specialized directories (handled separately) and vault.json
+            if (name == 'sessions' ||
+                name == 'vault.json' ||
+                name == 'skills' ||
+                name == 'design-systems')
+              continue;
             if (entity is File) {
               await encoder.addFile(entity, name);
             } else if (entity is Directory) {
@@ -1159,6 +1254,14 @@ class ConfigRouter {
           final skillsDir = Directory(p.join(ghostDir.path, 'skills'));
           if (await skillsDir.exists()) {
             await encoder.addDirectory(skillsDir, includeDirName: true);
+          }
+        }
+
+        // 3.5. Design Systems
+        if (include('design')) {
+          final dsDir = Directory(p.join(ghostDir.path, 'design-systems'));
+          if (await dsDir.exists()) {
+            await encoder.addDirectory(dsDir, includeDirName: true);
           }
         }
 

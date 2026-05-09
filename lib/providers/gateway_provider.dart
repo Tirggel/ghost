@@ -478,6 +478,7 @@ class ConfigNotifier extends Notifier<AppConfig> {
     // Listen for remote skill/config changes (e.g. from an agent import)
     final sub = ref.read(gatewayClientProvider).messages.listen((msg) {
       if (msg['method'] == 'skills.changed' ||
+          msg['method'] == 'design.changed' ||
           msg['method'] == 'config.changed') {
         refresh();
       }
@@ -805,6 +806,26 @@ class ConfigNotifier extends Notifier<AppConfig> {
     }
   }
 
+  Future<void> createSkill({
+    required String name,
+    required String description,
+    required String type,
+    String? emoji,
+  }) async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      await client.call('skills.create', {
+        'name': name,
+        'description': description,
+        'type': type,
+        'emoji': emoji,
+      });
+      await refresh();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> downloadSkillFromGithub(String url) async {
     final client = ref.read(gatewayClientProvider);
     try {
@@ -875,6 +896,92 @@ class ConfigNotifier extends Notifier<AppConfig> {
     final client = ref.read(gatewayClientProvider);
     try {
       await client.call('skills.restore', {'data': data});
+      await refresh();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // --- Design Systems ---
+
+  Future<List<dynamic>> listDesignSystems() async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      final result = await client.call('design.list');
+      return result['systems'] as List<dynamic>;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getDesignSystem(String id) async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      final result = await client.call('design.get', {'id': id});
+      return result['system'] as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> addDesignSystemFromUrl(String url) async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      await client.call('design.addFromUrl', {'url': url});
+      await refresh();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> saveDesignSystem(String id, String name, String content) async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      await client.call('design.save', {
+        'id': id,
+        'name': name,
+        'content': content,
+      });
+      await refresh();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> deleteDesignSystem(String id) async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      await client.call('design.delete', {'id': id});
+      await refresh();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> installDesignSystem(String zipBase64) async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      await client.call('design.install', {'zip': zipBase64});
+      await refresh();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<String?> backupDesignSystems() async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      final result = await client.call('design.backup');
+      return result['data'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> restoreDesignSystems(String data) async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      await client.call('design.restore', {'data': data});
       await refresh();
     } catch (e) {
       rethrow;
@@ -973,6 +1080,11 @@ final skillsProvider = FutureProvider<List<dynamic>>((ref) async {
   // Listen to configProvider to refresh skills when config changes (e.g. after install/delete)
   ref.watch(configProvider);
   return ref.read(configProvider.notifier).listSkills();
+});
+
+final designSystemsProvider = FutureProvider<List<dynamic>>((ref) async {
+  ref.watch(configProvider);
+  return ref.read(configProvider.notifier).listDesignSystems();
 });
 
 final currentModelCapabilitiesProvider = FutureProvider<ModelCapabilities>((

@@ -21,7 +21,8 @@
 Ghost bietet eine moderne, integrierte Architektur:
 - **Integrierte Engine**: Ein hochperformantes Backend, das KI-Agenten, Speicher und Werkzeuge verwaltet—direkt in die Anwendung integriert.
 - **Sleek UI**: Eine minimalistische, leistungsstarke Benutzeroberfläche für Desktop (Linux, macOS, Windows) und Web.
-- **Agenten & Skills**: Erweiterbare KI-Fähigkeiten, die über ein einfaches, Markdown-basiertes System hinzugefügt werden können.
+- **Agenten & Skills**: Erweiterbare KI-Fähigkeiten, die über ein modulares, Markdown-basiertes System hinzugefügt werden können.
+- **Design Systems**: Zentrale Theme-Verwaltung mit individuellem Branding, Markdown-basiertem Styling und einheitlicher Token-Verteilung.
 - **Memory Engine**: Dual-Modus-Speicher mit Hive (Standard) und ObjectBox (RAG) für sicheres, lokales Wissen.
 
 ---
@@ -68,8 +69,9 @@ Für neue Benutzer bietet Ghost einen interaktiven **Einrichtungsassistenten**, 
 ### 🛠️ Wartung & Backup
 Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, der dir volle Kontrolle über dein System gibt:
 - **Factory Reset**: Setzt die gesamte Anwendung auf den Werkszustand zurück (löscht alle lokalen Daten & Datenbanken).
-- **System-Backup**: Erstellt ein verschlüsseltes ZIP-Archiv deiner gesamten Konfiguration.
+- **System-Backup**: Erstellt ein verschlüsseltes ZIP-Archiv deiner gesamten Konfiguration (inklusive Agenten, Skills und Design Systemen).
 - **Wiederherstellung**: Importiert ein Backup-Archiv und stellt den Zustand deines Ghost-Assistenten nahtlos wieder her.
+- **Design Systems**: Verwalte, exportiere und stelle visuelle Themes unabhängig wieder her.
 
 ### 📚 Weiterführende Dokumentation
 - **[Google Workspace Setup](docs/GOOGLE_WORKSPACE_SETUP_DE.md)**: Anleitung zur Konfiguration von Gmail, Kalender und Drive.
@@ -100,8 +102,14 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
 - **Erweiterbare Skills**:
     - **Modulares System**: Laden und Verwalten von Skills zur Erweiterung der Fähigkeiten des Agenten.
     - **Globale & Agenten-spezifische Skills**: Aktiviere Funktionen für alle Agenten oder nur für bestimmte Profile.
+    - **UI-basierte Erstellung**: Erstelle neue Skills direkt in der App mithilfe von vordefinierten Vorlagen (Python/Node.js).
     - **Polyglot Runtimes**: Automatisches Management von **Python (venv)** und **Node.js (node_modules)** Umgebungen für Skills.
     - **MCP Server Support**: Direkte Integration von Model Context Protocol Servern als Ghost Skills.
+- **Design Systems**:
+    - **Zentrale Verwaltung**: Verwalte mehrere visuelle Themes in einem dedizierten Einstellungs-Hub.
+    - **Markdown-basiertes Styling**: Erstelle und bearbeite Design-Systeme mit einem einfachen, strukturierten Markdown-Format (`DESIGN.md`).
+    - **Backup & Restore**: Sichere deine Design-Systeme und stelle sie auf jeder Ghost-Instanz wieder her.
+    - **Einheitliches Branding**: Wende ein konsistentes Look-and-Feel auf alle Agenten mit standardisierten Design-Tokens an.
 - **Erweiterte Werkzeuge**:
     - **Interaktive Shell**: Ausführung von Shell-Skripten und Python-Code direkt durch den Agenten.
     - **Websuche**: Integrierte Websuche via DuckDuckGo.
@@ -132,9 +140,9 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
     - **Avatar-Management**: Bilder werden direkt in der Datenbank gespeichert, um maximale Privatsphäre zu gewährleisten.
     - **Selbstgehostet**: Volle Kontrolle über deine Daten und die Codebasis.
 - **Moderne Benutzeroberfläche**:
-    - **Klares Design**: Eine minimalistische und intuitive Oberfläche im "Monolith Black" Stil für ein ablenkungsfreies Erlebnis.
+    - **"The Monolith" Design**: Eine minimalistische, kontrastreiche Benutzeroberfläche im Stil von "Ghost Minimalist Noir" für ein ablenkungsfreies Erlebnis.
     - **Code-Darstellung**: Hebt Code-Blöcke hervor und formatiert sie für eine bessere Lesbarkeit.
-    - **Einstellungszentrale**: Verwalte alle deine Konfigurationen zentral, einschließlich dedizierter Tabs für Gateway, Sicherheit und **Wartung**.
+    - **Einstellungszentrale**: Verwalte alle deine Konfigurationen zentral, einschließlich dedizierter Tabs für Gateway, Sicherheit, **Skills**, **Design Systems** und **Wartung**.
 - **System-Stabilität & Wartung**:
     - **Gateway-Status & Live-Logs**: Echtzeit-Überwachung der Gateway-Leistung, verbundener Clients und Systemprotokolle direkt in der App.
     - **Sicherer Shutdown**: Robuster Hintergrund-Shutdown-Prozess, der sicherstellt, dass alle Datenbanken sauber geschlossen werden, bevor das System beendet oder zurückgesetzt wird.

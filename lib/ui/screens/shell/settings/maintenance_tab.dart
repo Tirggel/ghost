@@ -6,7 +6,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
-import '../../../../providers/shell_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_snackbar.dart';
 import '../../../widgets/app_dialogs.dart';
@@ -20,74 +19,53 @@ class MaintenanceTab extends ConsumerStatefulWidget {
 }
 
 class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSaveMixin {
-  final List<String> _subTabLabels = [
-    'settings.maintenance.tab',
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final currentIndex = ref.watch(shellProvider.select((s) => s.settingsSubTabIndices[10] ?? 0));
-
     return AppSettingsPage(
-      subTabLabels: _subTabLabels,
-      currentSubTabIndex: currentIndex,
-      onSubTabChanged: (index) => ref.read(shellProvider.notifier).setSettingsSubTabIndex(10, index),
       onBack: widget.onBack,
-      body: IndexedStack(
-        index: currentIndex,
-        children: [
-          _buildMaintenanceContent(),
-        ],
-      ),
+      subTabLabels: const ['settings.maintenance.tab'],
+      children: _buildMaintenanceContent(),
     );
   }
 
-  Widget _buildMaintenanceContent() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppConstants.settingsPagePadding,
-        0,
-        AppConstants.settingsPagePadding,
-        AppConstants.settingsPagePadding,
+  List<Widget> _buildMaintenanceContent() {
+    return [
+      // 1. Factory Reset
+      _buildSection(
+        title: 'settings.maintenance.factory_reset_section',
+        description: 'settings.maintenance.factory_reset_desc',
+        buttonLabel: 'settings.maintenance.factory_reset_button',
+        buttonColor: AppColors.error,
+        onPressed: _onFactoryReset,
+        isLoading: isSaveLoading,
+        icon: Icons.refresh_rounded,
       ),
-      children: [
-        // 1. Factory Reset
-        _buildSection(
-          title: 'settings.maintenance.factory_reset_section',
-          description: 'settings.maintenance.factory_reset_desc',
-          buttonLabel: 'settings.maintenance.factory_reset_button',
-          buttonColor: AppColors.error,
-          onPressed: _onFactoryReset,
-          isLoading: isSaveLoading,
-          icon: Icons.refresh_rounded,
-        ),
 
-        const SizedBox(height: 32),
-        const Divider(color: AppColors.border),
-        const SizedBox(height: 32),
+      const SizedBox(height: AppConstants.settingsSectionSpacing),
+      const Divider(color: AppColors.border),
+      const SizedBox(height: AppConstants.settingsSectionSpacing),
 
-        // 2. Backup
-        _buildSection(
-          title: 'settings.maintenance.backup_restore_section',
-          description: 'settings.maintenance.backup_desc',
-          buttonLabel: 'settings.maintenance.backup_button',
-          onPressed: _onBackup,
-          isLoading: isSaveLoading,
-          icon: Icons.save_alt_rounded,
-        ),
+      // 2. Backup
+      _buildSection(
+        title: 'settings.maintenance.backup_restore_section',
+        description: 'settings.maintenance.backup_desc',
+        buttonLabel: 'settings.maintenance.backup_button',
+        onPressed: _onBackup,
+        isLoading: isSaveLoading,
+        icon: Icons.save_alt_rounded,
+      ),
 
-        const SizedBox(height: 24),
+      const SizedBox(height: AppConstants.settingsSectionSpacing),
 
-        // 3. Restore
-        _buildSection(
-          description: 'settings.maintenance.restore_desc',
-          buttonLabel: 'settings.maintenance.restore_button',
-          onPressed: _onRestore,
-          isLoading: isSaveLoading,
-          icon: Icons.upload_file_rounded,
-        ),
-      ],
-    );
+      // 3. Restore
+      _buildSection(
+        description: 'settings.maintenance.restore_desc',
+        buttonLabel: 'settings.maintenance.restore_button',
+        onPressed: _onRestore,
+        isLoading: isSaveLoading,
+        icon: Icons.upload_file_rounded,
+      ),
+    ];
   }
 
   Widget _buildSection({
@@ -104,7 +82,6 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
       children: [
         if (title != null) ...[
           AppSectionHeader(title, large: true),
-          const SizedBox(height: 8),
         ],
         Text(
           description.tr(),
@@ -113,7 +90,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
             color: AppColors.textMain.withValues(alpha: 0.7),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
         AppSaveButton(
           label: buttonLabel,
           onPressed: isLoading ? null : onPressed,
@@ -206,6 +183,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
       'vault',
       'sessions',
       'skills',
+      'design',
       'memory',
     };
 
@@ -307,6 +285,7 @@ class _BackupSectionDialogState extends State<_BackupSectionDialog> {
     ('vault',    Icons.lock_rounded,               'settings.maintenance.backup_section_vault',    'settings.maintenance.backup_section_vault_desc'),
     ('sessions', Icons.chat_bubble_outline_rounded,'settings.maintenance.backup_section_sessions', 'settings.maintenance.backup_section_sessions_desc'),
     ('skills',   Icons.extension_rounded,          'settings.maintenance.backup_section_skills',   'settings.maintenance.backup_section_skills_desc'),
+    ('design',   Icons.palette_rounded,            'settings.maintenance.backup_section_design',   'settings.maintenance.backup_section_design_desc'),
     ('memory',   Icons.memory_rounded,             'settings.maintenance.backup_section_memory',   'settings.maintenance.backup_section_memory_desc'),
   ];
 

@@ -3,7 +3,6 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../core/constants.dart';
 
 class AppAlertDialog extends StatelessWidget {
-
   const AppAlertDialog({
     super.key,
     required this.title,
@@ -29,7 +28,11 @@ class AppAlertDialog extends StatelessWidget {
         title: Text(title),
         content: Text(
           content,
-          style: const TextStyle(height: 1.4, fontSize: 13, color: AppColors.textDim),
+          style: const TextStyle(
+            height: 1.4,
+            fontSize: 13,
+            color: AppColors.textDim,
+          ),
         ),
         actions: [
           TextButton(
@@ -73,7 +76,11 @@ class AppAlertDialog extends StatelessWidget {
         ),
         content: Text(
           message,
-          style: const TextStyle(height: 1.4, fontSize: 13, color: AppColors.textDim),
+          style: const TextStyle(
+            height: 1.4,
+            fontSize: 13,
+            color: AppColors.textDim,
+          ),
         ),
         actions: [
           TextButton(

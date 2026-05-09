@@ -174,6 +174,14 @@ Deletes a custom agent.
 ### `skills.list`
 Lists all installed skills.
 
+### `skills.create`
+Creates a new skill from a template.
+**Params:**
+- `name`: (String)
+- `description`: (String, optional)
+- `type`: (String, e.g., "python", "node", "markdown")
+- `emoji`: (String, optional)
+
 ### `skills.install` / `skills.import` / `skills.downloadFromGithub`
 Installs a new skill from a ZIP, local directory, or GitHub URL.
 
@@ -199,6 +207,43 @@ Deletes a skill.
 
 ---
 
+## 🎨 Design Systems Management
+
+### `design.list`
+Lists all installed design systems.
+
+### `design.get`
+Retrieves a specific design system.
+**Params:**
+- `id`: (String)
+
+### `design.save`
+Creates or updates a design system.
+**Params:**
+- `id`: (String)
+- `name`: (String)
+- `content`: (String, Markdown)
+
+### `design.delete`
+Deletes a design system.
+**Params:**
+- `id`: (String)
+
+### `design.addFromUrl`
+Imports a design system from a URL (e.g., a Markdown file).
+**Params:**
+- `url`: (String)
+
+### `design.backup` / `design.restore`
+Back up or restore the entire design systems library.
+
+### `design.install`
+Installs a design system from a ZIP archive.
+**Params:**
+- `zip`: (String, base64)
+
+---
+
 ## 🛠️ Maintenance & System
 
 ### `config.factoryReset`
@@ -207,7 +252,7 @@ Wipes the entire application state, including all databases and the vault. Reboo
 ### `config.backup`
 Creates an encrypted ZIP archive of the system state.
 **Params:**
-- `sections`: (Array of Strings, optional) e.g., `["config", "sessions", "skills", "memory", "vault"]`
+- `sections`: (Array of Strings, optional) e.g., `["config", "sessions", "skills", "design", "memory", "vault"]`
 
 **Response:**
 - `path`: (String) Path to the temporary ZIP file on the host.

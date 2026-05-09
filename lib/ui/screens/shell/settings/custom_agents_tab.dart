@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
+import 'package:cron/cron.dart' as cron_pkg;
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
@@ -11,6 +12,7 @@ import '../../../widgets/searchable_model_picker.dart';
 import '../../../widgets/business_card.dart';
 import '../../../widgets/skills_selector_widget.dart';
 import '../../../widgets/app_snackbar.dart';
+import '../../../widgets/design_system_picker.dart';
 
 class CustomAgentsTab extends ConsumerStatefulWidget {
   const CustomAgentsTab({super.key, this.onBack, this.onNext});
@@ -31,122 +33,107 @@ class _CustomAgentsTabState extends ConsumerState<CustomAgentsTab> {
     final config = ref.watch(configProvider);
     final customAgents = config.customAgents;
 
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppConstants.settingsPagePadding,
-              AppConstants.settingsTopPadding,
-              AppConstants.settingsPagePadding,
-              AppConstants.settingsPagePadding,
-            ),
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const AppSectionHeader('settings.agents.section', large: true),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _newAgents.insert(0, {
-                          'id': const Uuid().v4(),
-                          'name': '',
-                          'provider': null,
-                          'model': null,
-                          'avatar': '',
-                          'cronSchedule': '',
-                          'cronMessage': '',
-                          'skills': <String>[],
-                          'isNew': true,
-                          'enabled': true,
-                        });
-                      });
-                    },
-                    icon: const Icon(Icons.add, size: AppConstants.settingsIconSize),
-                    label: Text('settings.agents.add'.tr()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.black,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (customAgents.isEmpty && _newAgents.isEmpty)
-                Text('settings.agents.empty'.tr(),
-                    style: const TextStyle(color: AppColors.textDim))
-              else ...[
-                // New unsaved agents
-                ..._newAgents.map((agent) {
-                  final id = agent['id'] as String;
-                  return CustomAgentCard(
-                    key: ValueKey(id),
-                    agent: agent,
-                    isNew: true,
-                    isEditing: _editingIds.contains(id),
-                    saveTrigger: _saveTrigger,
-                    onEditToggle: () {
-                      setState(() {
-                        if (_editingIds.contains(id)) {
-                          _editingIds.remove(id);
-                        } else {
-                          _editingIds.add(id);
-                        }
-                      });
-                    },
-                    onCancel: () {
-                      setState(() {
-                        _newAgents.remove(agent);
-                        _editingIds.remove(id);
-                      });
-                    },
-                    onSaved: () {
-                      setState(() {
-                        _newAgents.remove(agent);
-                        _editingIds.remove(id);
-                      });
-                    },
-                  );
-                }),
-                // Existing agents
-                ...customAgents.map((agent) {
-                  return CustomAgentCard(
-                    key: ValueKey(agent.id),
-                    agent: agent,
-                    isEditing: _editingIds.contains(agent.id),
-                    saveTrigger: _saveTrigger,
-                    onEditToggle: () {
-                      setState(() {
-                        if (_editingIds.contains(agent.id)) {
-                          _editingIds.remove(agent.id);
-                        } else {
-                          _editingIds.add(agent.id);
-                        }
-                      });
-                    },
-                    onSaved: () {
-                      setState(() {
-                        _editingIds.remove(agent.id);
-                      });
-                    },
-                  );
-                }),
-              ],
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-        _buildNavButtons(context),
-      ],
-    );
-  }
-
-  Widget _buildNavButtons(BuildContext context) {
-    return AppSettingsNavBar(
+    return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
+      topPadding: 0,
       onSave: _editingIds.isNotEmpty ? () => setState(() => _saveTrigger++) : null,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const AppSectionHeader('settings.agents.section', large: true),
+            ElevatedButton.icon(
+              onPressed: () {
+                final id = const Uuid().v4();
+                setState(() {
+                  _newAgents.insert(0, {
+                    'id': id,
+                    'name': '',
+                    'provider': null,
+                    'model': null,
+                    'avatar': '',
+                    'cronSchedule': '',
+                    'cronMessage': '',
+                    'designSystem': '',
+                    'skills': <String>[],
+                    'isNew': true,
+                    'enabled': true,
+                  });
+                  _editingIds.add(id);
+                });
+              },
+              icon: const Icon(Icons.add, size: AppConstants.settingsIconSize),
+              label: Text('settings.agents.add'.tr()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.black,
+              ),
+            ),
+          ],
+        ),
+        if (customAgents.isEmpty && _newAgents.isEmpty)
+          Text('settings.agents.empty'.tr(),
+              style: const TextStyle(color: AppColors.textDim))
+        else ...[
+          // New unsaved agents
+          ..._newAgents.map((agent) {
+            final id = agent['id'] as String;
+            return CustomAgentCard(
+              key: ValueKey(id),
+              agent: agent,
+              isNew: true,
+              isEditing: _editingIds.contains(id),
+              saveTrigger: _saveTrigger,
+              onEditToggle: () {
+                setState(() {
+                  if (_editingIds.contains(id)) {
+                    _editingIds.remove(id);
+                  } else {
+                    _editingIds.add(id);
+                  }
+                });
+              },
+              onCancel: () {
+                setState(() {
+                  _newAgents.remove(agent);
+                  _editingIds.remove(id);
+                });
+              },
+              onSaved: () {
+                setState(() {
+                  _newAgents.remove(agent);
+                  _editingIds.remove(id);
+                });
+              },
+            );
+          }),
+          // Existing agents
+          ...customAgents.map((agent) {
+            return CustomAgentCard(
+              key: ValueKey(agent.id),
+              agent: agent,
+              isEditing: _editingIds.contains(agent.id),
+              saveTrigger: _saveTrigger,
+              onEditToggle: () {
+                setState(() {
+                  if (_editingIds.contains(agent.id)) {
+                    _editingIds.remove(agent.id);
+                  } else {
+                    _editingIds.add(agent.id);
+                  }
+                });
+              },
+              onSaved: () {
+                setState(() {
+                  _editingIds.remove(agent.id);
+                });
+              },
+            );
+          }),
+        ],
+        const SizedBox(height: 20),
+      ],
     );
   }
 }
@@ -182,10 +169,12 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
   final List<String> _selectedSkills = [];
   List<String> _availableModels = [];
   bool _isLoadingModels = false;
+  String _selectedDesignSystem = '';
   int _avatarNonce = 0;
   bool _enabled = true;
   bool _sendChatHistory = true;
   int? _lastSaveTrigger;
+  bool _customCronActive = false;
 
   final Map<String, String> _cronPresets = {
     '': 'settings.agents.cron_none',
@@ -200,7 +189,10 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
     '0 */12 * * *': 'settings.agents.cron_every_12h',
     '0 0 * * *': 'settings.agents.cron_daily_midnight',
     '0 9 * * *': 'settings.agents.cron_daily_9am',
+    '0 9 * * 1-5': 'settings.agents.cron_weekdays_9am',
+    '0 18 * * *': 'settings.agents.cron_daily_6pm',
     '0 0 * * 0': 'settings.agents.cron_weekly',
+    '0 0 1 * *': 'settings.agents.cron_monthly',
   };
 
   @override
@@ -218,6 +210,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
           TextEditingController(text: agent.cronSchedule ?? '');
       _controllers['cronMessage'] =
           TextEditingController(text: agent.cronMessage);
+      _selectedDesignSystem = agent.designSystem;
 
       _selectedProvider = agent.provider;
       _selectedModel = agent.model;
@@ -234,6 +227,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
           TextEditingController(text: (map['cronSchedule'] as String?) ?? '');
       _controllers['cronMessage'] =
           TextEditingController(text: (map['cronMessage'] as String?) ?? '');
+      _selectedDesignSystem = (map['designSystem'] as String?) ?? '';
 
       _selectedProvider = map['provider'] as String?;
       _selectedModel = map['model'] as String?;
@@ -291,6 +285,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
         'model': _selectedModel,
         'cronSchedule': _controllers['cronSchedule']!.text.trim(),
         'cronMessage': _controllers['cronMessage']!.text.trim(),
+        'designSystem': _controllers['designSystem']!.text.trim(),
         'skills': _selectedSkills,
         'enabled': _enabled,
         'shouldSendChatHistory': _sendChatHistory,
@@ -345,7 +340,6 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
     final availableProviderIds = availableProviders.map((p) => p['id']!).toList();
 
     return BusinessCard(
-      title: widget.isNew ? 'settings.agents.new_title' : 'settings.agents.edit_title',
       initialEdit: widget.isNew,
       isEnabled: _enabled,
       onToggleEnabled: (val) async {
@@ -453,6 +447,16 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
           maxLines: 2,
         ),
         BusinessCardField(
+          label: 'settings.agents.design_system_label',
+          hint: 'settings.agents.design_system_hint',
+          controller: TextEditingController(),
+          value: _selectedDesignSystem.isEmpty ? 'settings.agents.design_system_none'.tr() : _selectedDesignSystem,
+          customEditWidget: DesignSystemPicker(
+            selectedId: _selectedDesignSystem,
+            onChanged: (val) => setState(() => _selectedDesignSystem = val),
+          ),
+        ),
+        BusinessCardField(
           label: 'settings.agents.send_chat_history_label',
           hint: 'settings.agents.send_chat_history_hint',
           controller: TextEditingController(),
@@ -474,32 +478,70 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
     return 'settings.agents.cron_custom'.tr(namedArgs: {'schedule': cron});
   }
 
+  bool _isCronValid(String cron) {
+    if (cron.isEmpty) return true;
+    try {
+      cron_pkg.Schedule.parse(cron);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String _cronHint(String cron) {
+    if (cron.isEmpty) return 'min hour day month weekday';
+    if (!_isCronValid(cron)) return 'Ungültiges Format (z.B. */15 * * * *)';
+    return 'Gültiges Cron-Format ✓';
+  }
+
   Widget _buildCronDropdown() {
     final currentCron = _controllers['cronSchedule']!.text;
     final isPreset = _cronPresets.containsKey(currentCron);
+    final showCustomField = _customCronActive || !isPreset;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         AppDropdownField<String>(
-          value: isPreset ? currentCron : 'custom',
+          value: showCustomField ? 'custom' : currentCron,
           label: 'settings.agents.cron_label',
           items: [..._cronPresets.keys, 'custom'],
           displayValue: (v) => v == 'custom' 
               ? 'settings.agents.cron_custom'.tr(namedArgs: {'schedule': ''}).split(' (').first
               : _cronPresets[v]!.tr(),
           onChanged: (val) {
-            if (val != null && val != 'custom') {
-              setState(() => _controllers['cronSchedule']!.text = val);
-            }
+            setState(() {
+              if (val == 'custom') {
+                _customCronActive = true;
+              } else {
+                _customCronActive = false;
+                _controllers['cronSchedule']!.text = val!;
+              }
+            });
           },
         ),
-        if (!isPreset || currentCron == 'custom') ...[
+        if (showCustomField) ...[
           const SizedBox(height: 8),
           AppFormField.text(
             controller: _controllers['cronSchedule']!,
             label: '',
             hint: 'settings.agents.cron_hint',
+            onChanged: (val) {
+              // If the user types a preset, we could potentially snap back, 
+              // but it's better to stay in custom mode until they use the dropdown.
+              setState(() {}); 
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4),
+            child: Text(
+              _cronHint(currentCron),
+              style: TextStyle(
+                fontSize: AppConstants.fontSizeCaption,
+                color: _isCronValid(currentCron) ? AppColors.textDim : AppColors.error,
+                fontFamily: 'monospace',
+              ),
+            ),
           ),
         ],
       ],

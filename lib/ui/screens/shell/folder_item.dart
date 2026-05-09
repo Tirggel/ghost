@@ -3,7 +3,6 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../../core/constants.dart';
 
 class FolderItem extends StatefulWidget {
-
   const FolderItem({
     super.key,
     required this.agentName,
@@ -67,21 +66,22 @@ class _FolderItemState extends State<FolderItem> {
                   // Delete Folder Button
                   IconButton(
                     icon: const Icon(Icons.delete_outline_rounded, size: 14),
-                    style: IconButton.styleFrom(
-                      foregroundColor: AppColors.white,
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(24, 24),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      overlayColor: Colors.transparent,
-                    ).copyWith(
-                      foregroundColor:
-                          WidgetStateProperty.resolveWith<Color?>((states) {
-                        if (states.contains(WidgetState.hovered)) {
-                          return AppColors.error;
-                        }
-                        return AppColors.white;
-                      }),
-                    ),
+                    style:
+                        IconButton.styleFrom(
+                          foregroundColor: AppColors.white,
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(24, 24),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          overlayColor: Colors.transparent,
+                        ).copyWith(
+                          foregroundColor:
+                              WidgetStateProperty.resolveWith<Color?>((states) {
+                                if (states.contains(WidgetState.hovered)) {
+                                  return AppColors.error;
+                                }
+                                return AppColors.white;
+                              }),
+                        ),
                     constraints: const BoxConstraints(
                       minWidth: 24,
                       minHeight: 24,

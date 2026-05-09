@@ -13,9 +13,10 @@ import '../../../widgets/app_snackbar.dart';
 
 class MemoryTab extends ConsumerStatefulWidget {
 
-  const MemoryTab({super.key, this.onBack, this.onNext});
+  const MemoryTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
   ConsumerState<MemoryTab> createState() => _MemoryTabState();
@@ -349,6 +350,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
+      topPadding: widget.topPadding,
       onSave: () async {
         await handleSave(() async {
           await ref.read(configProvider.notifier).updateMemory({
@@ -363,7 +365,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
       children: [
         const AppSectionHeader('settings.memory.standard_section', large: true),
         Padding(
-          padding: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.only(bottom: AppConstants.settingsHeaderSpacing),
           child: Text(
             'settings.memory.standard_desc'.tr(),
             style: const TextStyle(color: AppColors.textDim),
@@ -394,7 +396,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
             );
           },
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
         Row(
           children: [
             ElevatedButton.icon(
@@ -461,11 +463,11 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
           ],
         ),
 
-        const SizedBox(height: 40),
+        const SizedBox(height: AppConstants.settingsSectionSpacing),
 
         const AppSectionHeader('settings.memory.rag_section', large: true),
         Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.only(bottom: AppConstants.settingsHeaderSpacing),
           child: Text(
             'settings.memory.rag_desc'.tr(),
             style: const TextStyle(color: AppColors.textDim),
@@ -475,7 +477,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
         // ── Embedding model selector ─────────────────────────────────
         _buildEmbeddingSelector(),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
 
         // RAG on/off switch (disabled until a model is configured)
         SwitchListTile(
@@ -515,7 +517,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
                 },
         ),
 
-        const SizedBox(height: 10),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
         Row(
           children: [
             ElevatedButton.icon(
@@ -632,7 +634,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
                 ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppConstants.settingsElementSpacing),
 
           // Provider dropdown
           Row(
@@ -690,7 +692,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
             ],
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: AppConstants.settingsElementSpacing),
 
           // Model dropdown
           Row(
@@ -741,7 +743,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
             ],
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: AppConstants.settingsElementSpacing),
 
           // Test & Enable button
           SizedBox(

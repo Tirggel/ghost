@@ -92,7 +92,7 @@ class _UserTabState extends ConsumerState<UserTab> with SettingsSaveMixin {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
               AppConstants.settingsPagePadding,
-              AppConstants.settingsTopPadding,
+              0,
               AppConstants.settingsPagePadding,
               AppConstants.settingsPagePadding,
             ),

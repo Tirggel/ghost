@@ -24,7 +24,7 @@ class BusinessCardField {
 class BusinessCard extends StatefulWidget {
   const BusinessCard({
     super.key,
-    required this.title,
+    this.title,
     this.avatar,
     this.avatarBuilder,
     required this.fields,
@@ -41,7 +41,7 @@ class BusinessCard extends StatefulWidget {
          avatar != null || avatarBuilder != null,
          'Either avatar or avatarBuilder must be provided',
        );
-  final String title;
+  final String? title;
   final Widget? avatar;
   final Widget Function(BuildContext context, bool isEditing)? avatarBuilder;
   final List<BusinessCardField> fields;
@@ -147,19 +147,24 @@ class _BusinessCardState extends State<BusinessCard> with SettingsSaveMixin {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       color: _isEditing ? AppColors.surface : AppColors.background,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            widget.title.tr().toUpperCase(),
-            style: const TextStyle(
-              fontSize: AppConstants.fontSizeTitle,
-              fontWeight: FontWeight.w900,
-              color: AppColors.primary,
-            ),
-          ),
+          if (widget.title != null && widget.title!.isNotEmpty)
+            Text(
+              widget.title!.tr().toUpperCase(),
+              style: const TextStyle(
+                fontSize: AppConstants.fontSizeTitle,
+                fontWeight: FontWeight.w900,
+                color: AppColors.primary,
+                letterSpacing: 2.0,
+                fontFamily: 'FiraCode',
+              ),
+            )
+          else
+            const SizedBox.shrink(),
           Row(
             children: [
               if (widget.isEnabled != null && widget.onToggleEnabled != null)

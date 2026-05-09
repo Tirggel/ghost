@@ -79,3 +79,14 @@ test/
 app/test/
 app.sh
 gateway.sh
+
+# Temporary scratch files and test outputs
+scratch/
+test_*.dart
+test_*.txt
+test_*.log
+temp_*/
+
+# Ghost local state and builds
+.ghost/
+ghost-releases/
