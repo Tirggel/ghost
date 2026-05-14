@@ -230,7 +230,7 @@ class _GatewayTabState extends ConsumerState<GatewayTab> {
                       ],
                     ),
                   ),
-                  Switch(
+                  AppSwitch(
                     value: gatewayManager.isRunning,
                     onChanged: (val) async {
                       await gatewayManager.setEnabled(val);
@@ -238,7 +238,6 @@ class _GatewayTabState extends ConsumerState<GatewayTab> {
                       // Trigger a refresh of the gateway URL and connection
                       ref.invalidate(gatewayUrlProvider);
                     },
-                    activeThumbColor: AppColors.primary,
                   ),
                 ],
               ),

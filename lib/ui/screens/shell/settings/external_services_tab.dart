@@ -9,9 +9,10 @@ import '../../../widgets/app_dialogs.dart';
 import '../../../widgets/app_snackbar.dart';
 
 class ExternalServicesTab extends ConsumerStatefulWidget {
-  const ExternalServicesTab({super.key, this.onBack, this.onNext});
+  const ExternalServicesTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
   ConsumerState<ExternalServicesTab> createState() => _ExternalServicesTabState();
@@ -112,7 +113,7 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
-      topPadding: 0,
+      topPadding: widget.topPadding,
       children: [
         const AppSectionHeader('settings.external_services.section', large: true),
         Text(

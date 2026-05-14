@@ -363,7 +363,7 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
       },
     );
 
-    final policyDropdown = AppDropdownField<String>(
+    final policyDropdown = AppUnifiedPicker<String>(
       label: 'settings.channels.dm_policy',
       hint: 'settings.channels.dm_policy_hint',
       value: policy,

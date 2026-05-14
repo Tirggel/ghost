@@ -12,7 +12,6 @@ class SkillsTools {
   static void registerAll(ToolRegistry registry, SkillManager skillManager) {
     registry.register(ImportSkillTool(skillManager));
     registry.register(ListSkillsTool(skillManager));
-    registry.register(SetSkillGlobalTool(skillManager));
     registry.register(CreateSkillTemplateTool(skillManager));
     registry.register(DebugSkillTool(skillManager));
     registry.register(DownloadGithubSkillTool(skillManager));
@@ -95,52 +94,6 @@ class ListSkillsTool extends Tool {
       return ToolResult(output: jsonEncode(result));
     } catch (e) {
       return ToolResult.error('Failed to list skills: $e');
-    }
-  }
-}
-
-/// A tool that activates or deactivates a skill globally for all agents.
-class SetSkillGlobalTool extends Tool {
-  SetSkillGlobalTool(this.skillManager);
-
-  final SkillManager skillManager;
-
-  @override
-  String get name => 'set_skill_global';
-
-  @override
-  String get description => 'Activate or deactivate a skill globally for all agents.';
-
-  @override
-  Map<String, dynamic> get inputSchema => {
-        'type': 'object',
-        'properties': {
-          'slug': {
-            'type': 'string',
-            'description': 'The slug of the skill (e.g. "context7-skill").',
-          },
-          'isGlobal': {
-            'type': 'boolean',
-            'description': 'Whether the skill should be active for all agents.',
-          },
-        },
-        'required': ['slug', 'isGlobal'],
-      };
-
-  @override
-  Future<ToolResult> execute(
-      Map<String, dynamic> input, ToolContext context) async {
-    final slug = input['slug'] as String;
-    final isGlobal = input['isGlobal'] as bool;
-
-    try {
-      await skillManager.setGlobal(slug, isGlobal);
-      return ToolResult(
-        output: 'Successfully set skill "$slug" global status to $isGlobal. '
-            'The skill context is now being rebuilt for all agents.',
-      );
-    } catch (e) {
-      return ToolResult.error('Failed to set skill global status: $e');
     }
   }
 }

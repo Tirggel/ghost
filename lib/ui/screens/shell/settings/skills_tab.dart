@@ -15,33 +15,17 @@ import '../../../widgets/skills_selector_widget.dart';
 import '../../../widgets/app_dialogs.dart';
 import '../../../widgets/app_snackbar.dart';
 
-class SkillsTab extends StatelessWidget {
+class SkillsTab extends ConsumerStatefulWidget {
   const SkillsTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
   final double? topPadding;
 
   @override
-  Widget build(BuildContext context) {
-    return _SkillsTabContent(onBack: onBack, onNext: onNext, topPadding: topPadding);
-  }
+  ConsumerState<SkillsTab> createState() => _SkillsTabState();
 }
 
-class _SkillsTabContent extends ConsumerStatefulWidget {
-  const _SkillsTabContent({this.onBack, this.onNext, this.topPadding});
-  final VoidCallback? onBack;
-  final VoidCallback? onNext;
-  final double? topPadding;
-
-  @override
-  ConsumerState<_SkillsTabContent> createState() => _SkillsTabContentState();
-}
-
-class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
-  bool _isInstalling = false;
-  bool _isDownloading = false;
-  bool _isBackingUp = false;
-  bool _isRestoring = false;
+class _SkillsTabState extends ConsumerState<SkillsTab> with SettingsSaveMixin {
 
   Future<void> _downloadFromGithub() async {
     final urlController = TextEditingController();
@@ -82,40 +66,33 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
     );
 
     if (confirmed == true && urlController.text.isNotEmpty) {
-      try {
-        setState(() => _isDownloading = true);
+      await handleSave(() async {
         await ref
             .read(configProvider.notifier)
             .downloadSkillFromGithub(urlController.text);
-        if (mounted) {
-          AppSnackBar.showSuccess(context, 'settings.skills.download_success'.tr());
-        }
-      } catch (e) {
-        if (mounted) {
-          showAppErrorDialog(
-            context,
-            'settings.skills.install_failed'.tr(
-              namedArgs: {'error': e.toString()},
-            ),
-          );
-        }
-      } finally {
-        if (mounted) setState(() => _isDownloading = false);
-      }
+      }, successMessage: 'settings.skills.download_success'.tr());
     }
   }
 
   Future<void> _installSkill() async {
+    FilePickerResult? result;
     try {
-      final result = await FilePicker.platform.pickFiles(
+      result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['zip'],
         withData: true,
       );
+    } catch (e) {
+      if (mounted) {
+        showAppErrorDialog(context, 'file_picker.pick_error'.tr(namedArgs: {'error': e.toString()}));
+      }
+      return;
+    }
 
-      if (result == null) return;
+    if (result == null) return;
 
-      final file = result.files.single;
+    await handleSave(() async {
+      final file = result!.files.single;
       List<int>? bytes = file.bytes;
 
       if (bytes == null && file.path != null) {
@@ -124,30 +101,13 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
 
       if (bytes == null) return;
 
-      setState(() => _isInstalling = true);
       final base64Zip = base64Encode(bytes);
-
       await ref.read(configProvider.notifier).installSkill(base64Zip);
-      if (mounted) {
-        AppSnackBar.showSuccess(context, 'settings.skills.install_success'.tr());
-      }
-    } catch (e) {
-      if (mounted) {
-          AppSnackBar.showError(
-            context,
-            'settings.skills.install_failed'.tr(
-              namedArgs: {'error': e.toString()},
-            ),
-          );
-      }
-    } finally {
-      if (mounted) setState(() => _isInstalling = false);
-    }
+    }, successMessage: 'settings.skills.install_success'.tr());
   }
 
   Future<void> _backupSkills() async {
-    try {
-      setState(() => _isBackingUp = true);
+    await handleSave(() async {
       final data = await ref.read(configProvider.notifier).backupSkills();
       if (data == null) return;
 
@@ -161,23 +121,11 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
           AppSnackBar.showSuccess(context, 'settings.skills.backup_success'.tr());
         }
       }
-    } catch (e) {
-      if (mounted) {
-        showAppErrorDialog(
-          context,
-          'settings.skills.backup_failed'.tr(
-            namedArgs: {'error': e.toString()},
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isBackingUp = false);
-    }
+    });
   }
 
   Future<void> _restoreSkills() async {
-    try {
-      setState(() => _isRestoring = true);
+    await handleSave(() async {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
@@ -189,18 +137,7 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
           AppSnackBar.showSuccess(context, 'settings.skills.restore_success'.tr());
         }
       }
-    } catch (e) {
-      if (mounted) {
-        showAppErrorDialog(
-          context,
-          'settings.skills.restore_failed'.tr(
-            namedArgs: {'error': e.toString()},
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isRestoring = false);
-    }
+    });
   }
 
   void _createNew() {
@@ -232,100 +169,36 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
         ),
         const SizedBox(height: AppConstants.settingsContentSpacing),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: 12,
+          runSpacing: 12,
           children: [
-            ElevatedButton.icon(
+            AppActionButton(
+              label: 'settings.skills.create_new',
+              icon: Icons.add,
               onPressed: _createNew,
-              icon: const Icon(
-                Icons.add,
-                size: AppConstants.settingsIconSize,
-              ),
-              label: Text('settings.skills.create_new'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.black,
-              ),
+              isPrimary: true,
             ),
-            ElevatedButton.icon(
-              onPressed: _isInstalling || _isDownloading
-                  ? null
-                  : _installSkill,
-              icon: _isInstalling
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(
-                      Icons.upload_file,
-                      size: AppConstants.settingsIconSize,
-                    ),
-              label: Text('settings.skills.install'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.black,
-              ),
+            AppActionButton(
+              label: 'settings.skills.install',
+              icon: Icons.upload_file,
+              onPressed: isSaveLoading ? null : _installSkill,
+              isLoading: isSaveLoading,
+              isPrimary: true,
             ),
-            ElevatedButton.icon(
-              onPressed: _isInstalling || _isDownloading
-                  ? null
-                  : _downloadFromGithub,
-              icon: _isDownloading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(
-                      Icons.cloud_download,
-                      size: AppConstants.settingsIconSize,
-                    ),
-              label: Text('settings.skills.download_url'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.white,
-              ),
+            AppActionButton(
+              label: 'settings.skills.download_url',
+              icon: Icons.cloud_download,
+              onPressed: isSaveLoading ? null : _downloadFromGithub,
             ),
-            ElevatedButton.icon(
-              onPressed: _isInstalling || _isDownloading || _isBackingUp
-                  ? null
-                  : _backupSkills,
-              icon: _isBackingUp
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(
-                      Icons.backup,
-                      size: AppConstants.settingsIconSize,
-                    ),
-              label: Text('settings.skills.backup'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.white,
-              ),
+            AppActionButton(
+              label: 'settings.skills.backup',
+              icon: Icons.backup,
+              onPressed: isSaveLoading ? null : _backupSkills,
             ),
-            ElevatedButton.icon(
-              onPressed: _isInstalling || _isDownloading || _isRestoring
-                  ? null
-                  : _restoreSkills,
-              icon: _isRestoring
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(
-                      Icons.restore,
-                      size: AppConstants.settingsIconSize,
-                    ),
-              label: Text('settings.skills.restore'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.white,
-              ),
+            AppActionButton(
+              label: 'settings.skills.restore',
+              icon: Icons.restore,
+              onPressed: isSaveLoading ? null : _restoreSkills,
             ),
           ],
         ),
@@ -333,9 +206,7 @@ class _SkillsTabContentState extends ConsumerState<_SkillsTabContent> {
         SkillsSelector(
           isManagement: true,
           title: '', // No internal header
-          onGlobalChanged: (slug, val) => ref
-              .read(configProvider.notifier)
-              .updateSkillGlobal(slug, val),
+
           onTap: (slug) {
             final skills = skillsAsync.value ?? [];
             final skill = skills.firstWhere((s) => s['slug'] == slug);

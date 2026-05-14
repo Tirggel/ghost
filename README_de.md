@@ -22,7 +22,8 @@ Ghost bietet eine moderne, integrierte Architektur:
 - **Integrierte Engine**: Ein hochperformantes Backend, das KI-Agenten, Speicher und Werkzeuge verwaltet—direkt in die Anwendung integriert.
 - **Sleek UI**: Eine minimalistische, leistungsstarke Benutzeroberfläche für Desktop (Linux, macOS, Windows) und Web.
 - **Agenten & Skills**: Erweiterbare KI-Fähigkeiten, die über ein modulares, Markdown-basiertes System hinzugefügt werden können.
-- **Design Systems**: Zentrale Theme-Verwaltung mit individuellem Branding, Markdown-basiertem Styling und einheitlicher Token-Verteilung.
+- **Kanban & Task-Orchestrierung**: Integriertes Multi-Agenten-Kanban-System für automatisiertes Aufgabenmanagement, Abhängigkeitsverfolgung (`dependsOnIds`) und autonome Workflow-Übergänge.
+- **Design Systems**: Zentrale Theme-Verwaltung mit individuellem Branding, Markdown-basiertem Styling ("The Monolith") und einheitlicher Token-Verteilung.
 - **Memory Engine**: Dual-Modus-Speicher mit Hive (Standard) und ObjectBox (RAG) für sicheres, lokales Wissen.
 
 ---
@@ -68,9 +69,9 @@ Für neue Benutzer bietet Ghost einen interaktiven **Einrichtungsassistenten**, 
 
 ### 🛠️ Wartung & Backup
 Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, der dir volle Kontrolle über dein System gibt:
-- **Factory Reset**: Setzt die gesamte Anwendung auf den Werkszustand zurück (löscht alle lokalen Daten & Datenbanken).
+- **Factory Reset**: Vollständiges Zurücksetzen der Anwendung und Datenbanken mit einem geräuschlosen, hochperformanten Reset und automatischem Neustart.
 - **System-Backup**: Erstellt ein verschlüsseltes ZIP-Archiv deiner gesamten Konfiguration (inklusive Agenten, Skills und Design Systemen).
-- **Wiederherstellung**: Importiert ein Backup-Archiv und stellt den Zustand deines Ghost-Assistenten nahtlos wieder her.
+- **Wiederherstellung**: Importiert ein Backup-Archiv und stellt den Zustand deines Ghost-Assistenten nahtlos und ohne UI-Unterbrechungen wieder her.
 - **Design Systems**: Verwalte, exportiere und stelle visuelle Themes unabhängig wieder her.
 
 ### 📚 Weiterführende Dokumentation
@@ -80,12 +81,18 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
 - **[STT & TTS Setup](docs/STT_TTS_SETUP_DE.md)**: Konfiguriere lokale Spracherkennung und -synthese.
 - **[Multi-Channel Setup](docs/CHANNELS_DE.md)**: Detaillierte Anleitung für Telegram, Discord, WhatsApp & Co.
 - **[RPC API Referenz](docs/RPC_API_REFERENCE_DE.md)**: Dokumentation der JSON-RPC 2.0 Schnittstelle.
+- **[Kanban & Task-Orchestrierung](docs/KANBAN_ORCHESTRATION_de.md)**: Funktionsweise des Multi-Agenten-Kanban und automatisierter Workflows.
+
 
 ---
 
 ## 🌟 Funktionen
 
 - **Multi-Modell-Unterstützung**: Nutze Anthropic (Claude), OpenAI (GPT), Google (Gemini), DeepSeek, Mistral, Groq, Together AI, Perplexity, X.AI (Grok) oder lokale Modelle via **LM Studio**, Ollama und OpenRouter.
+- **Multi-Agenten-Kanban-System**:
+    - **Task-Orchestrierung**: Phase 3 der Aufgaben-Orchestrierung mit automatisierten Statusübergängen.
+    - **Abhängigkeiten**: Aufgaben können von anderen Aufgaben abhängen (`dependsOnIds`), was komplexe Projekt-Workflows ermöglicht.
+    - **Automatisierte Ausführung**: Der Hintergrund-`TaskOrchestrator` verschiebt Aufgaben automatisch vom "Backlog" nach "To Do", sobald die Voraussetzungen erfüllt sind.
 - **Memory Engine (RAG & Standard)**: Erweitere das Wissen deines Agenten durch lokale Vektor- und Stichwortspeicher.
     - **Standard Memory**: Stichwortbasiertes, verschlüsseltes lokales Gedächtnis (Hive). Informationen werden sicher gespeichert und über exakte Treffer abgerufen.
     - **RAG Memory (ObjectBox)**: Retrieval-Augmented Generation mit semantischer Vektorsuche, betrieben durch eine hochleistungsfähige lokale ObjectBox-Datenbank.
@@ -101,7 +108,7 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
     - **OneDrive**: Dateien in deinem Cloud-Speicher suchen und auflisten.
 - **Erweiterbare Skills**:
     - **Modulares System**: Laden und Verwalten von Skills zur Erweiterung der Fähigkeiten des Agenten.
-    - **Globale & Agenten-spezifische Skills**: Aktiviere Funktionen für alle Agenten oder nur für bestimmte Profile.
+    - **Agenten-spezifische Skills**: Aktiviere oder deaktiviere Funktionen für spezifische Agenten-Profile.
     - **UI-basierte Erstellung**: Erstelle neue Skills direkt in der App mithilfe von vordefinierten Vorlagen (Python/Node.js).
     - **Polyglot Runtimes**: Automatisches Management von **Python (venv)** und **Node.js (node_modules)** Umgebungen für Skills.
     - **MCP Server Support**: Direkte Integration von Model Context Protocol Servern als Ghost Skills.
@@ -109,7 +116,7 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
     - **Zentrale Verwaltung**: Verwalte mehrere visuelle Themes in einem dedizierten Einstellungs-Hub.
     - **Markdown-basiertes Styling**: Erstelle und bearbeite Design-Systeme mit einem einfachen, strukturierten Markdown-Format (`DESIGN.md`).
     - **Backup & Restore**: Sichere deine Design-Systeme und stelle sie auf jeder Ghost-Instanz wieder her.
-    - **Einheitliches Branding**: Wende ein konsistentes Look-and-Feel auf alle Agenten mit standardisierten Design-Tokens an.
+    - **Einheitliches Branding**: Wende ein konsistentes Look-and-Feel auf alle Agenten mit standardisierten Design-Tokens basierend auf der "The Monolith"-Ästhetik an.
 - **Erweiterte Werkzeuge**:
     - **Interaktive Shell**: Ausführung von Shell-Skripten und Python-Code direkt durch den Agenten.
     - **Websuche**: Integrierte Websuche via DuckDuckGo.
@@ -141,6 +148,7 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
     - **Selbstgehostet**: Volle Kontrolle über deine Daten und die Codebasis.
 - **Moderne Benutzeroberfläche**:
     - **"The Monolith" Design**: Eine minimalistische, kontrastreiche Benutzeroberfläche im Stil von "Ghost Minimalist Noir" für ein ablenkungsfreies Erlebnis.
+    - **Chat- & Kanban-Integration**: Schneller Zugriff auf Konversationen und Projekt-Aufgaben über die Seitenleiste.
     - **Code-Darstellung**: Hebt Code-Blöcke hervor und formatiert sie für eine bessere Lesbarkeit.
     - **Einstellungszentrale**: Verwalte alle deine Konfigurationen zentral, einschließlich dedizierter Tabs für Gateway, Sicherheit, **Skills**, **Design Systems** und **Wartung**.
 - **System-Stabilität & Wartung**:

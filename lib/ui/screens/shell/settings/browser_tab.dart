@@ -60,13 +60,12 @@ class _BrowserTabState extends ConsumerState<BrowserTab> with SettingsSaveMixin 
             color: AppConstants.iconColorPrimary,
             size: AppConstants.iconSizeLarge,
           ),
-          trailing: Switch(
+          trailing: AppSwitch(
             value: _browserHeadless,
             onChanged: (val) async {
               setState(() => _browserHeadless = val);
               await _save();
             },
-            activeThumbColor: AppColors.primary,
           ),
           onTap: () async {
             setState(() => _browserHeadless = !_browserHeadless);

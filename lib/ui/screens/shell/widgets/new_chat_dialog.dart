@@ -4,7 +4,6 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
-import '../../../widgets/searchable_model_picker.dart';
 import '../../../widgets/app_dialogs.dart';
 
 class NewChatDialog extends ConsumerStatefulWidget {
@@ -111,27 +110,19 @@ class _NewChatDialogState extends ConsumerState<NewChatDialog> {
                 ),
               )
             else ...[
-              AppDropdownField<String>(
+              AppUnifiedPicker<String>(
                 value: _selectedProvider,
+                label: 'settings.new_chat.choose_provider',
                 hint: 'settings.new_chat.choose_provider',
                 items: activeProviders.map((p) => p['id']!).toList(),
                 displayValue: (v) => AppConstants.getProviderLabel(v),
-                itemBuilder: (id) {
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset(
-                        AppConstants.getProviderIcon(id),
-                        width: 18,
-                        height: 18,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.psychology, size: AppConstants.iconSizeSmall, color: AppColors.primary),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(AppConstants.getProviderLabel(id), style: const TextStyle(fontSize: 13)),
-                    ],
-                  );
-                },
+                itemPrefixIcon: (id) => Image.asset(
+                  AppConstants.getProviderIcon(id),
+                  width: 18,
+                  height: 18,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.psychology, size: AppConstants.iconSizeSmall, color: AppColors.primary),
+                ),
                 onChanged: (val) {
                   setState(() => _selectedProvider = val);
                   _fetchModels();
@@ -139,13 +130,14 @@ class _NewChatDialogState extends ConsumerState<NewChatDialog> {
               ),
               const SizedBox(height: 16),
               if (_selectedProvider != null)
-                SearchableModelPicker(
-                  selectedModel: _selectedModel,
-                  models: _availableModels,
-                  loading: _isLoadingModels,
+                AppUnifiedPicker<String>(
+                  value: _selectedModel,
+                  items: _availableModels,
                   label: 'settings.new_chat.choose_model',
                   hint: 'settings.new_chat.choose_model',
-                  onSelected: (val) => setState(() => _selectedModel = val),
+                  displayValue: (v) => v,
+                  onChanged: (val) => setState(() => _selectedModel = val),
+                  loading: _isLoadingModels,
                 ),
             ],
           ],

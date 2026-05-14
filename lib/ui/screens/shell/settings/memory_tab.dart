@@ -7,7 +7,6 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
-import '../../../widgets/searchable_model_picker.dart';
 import '../../../widgets/app_dialogs.dart';
 import '../../../widgets/app_snackbar.dart';
 
@@ -364,17 +363,12 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
       isSaveLoading: isSaveLoading,
       children: [
         const AppSectionHeader('settings.memory.standard_section', large: true),
-        Padding(
-          padding: const EdgeInsets.only(bottom: AppConstants.settingsHeaderSpacing),
-          child: Text(
-            'settings.memory.standard_desc'.tr(),
-            style: const TextStyle(color: AppColors.textDim),
-          ),
+        Text(
+          'settings.memory.standard_desc'.tr(),
+          style: const TextStyle(color: AppColors.textDim),
         ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
-          activeThumbColor: AppColors.primary,
+        const SizedBox(height: AppConstants.settingsContentSpacing),
+        AppSwitchListTile(
           title: Text(
             'settings.memory.standard_enable'.tr().toUpperCase(),
             style: const TextStyle(
@@ -462,17 +456,13 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
             ),
           ],
         ),
-
         const SizedBox(height: AppConstants.settingsSectionSpacing),
-
         const AppSectionHeader('settings.memory.rag_section', large: true),
-        Padding(
-          padding: const EdgeInsets.only(bottom: AppConstants.settingsHeaderSpacing),
-          child: Text(
-            'settings.memory.rag_desc'.tr(),
-            style: const TextStyle(color: AppColors.textDim),
-          ),
+        Text(
+          'settings.memory.rag_desc'.tr(),
+          style: const TextStyle(color: AppColors.textDim),
         ),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
 
         // ── Embedding model selector ─────────────────────────────────
         _buildEmbeddingSelector(),
@@ -480,10 +470,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
         const SizedBox(height: AppConstants.settingsContentSpacing),
 
         // RAG on/off switch (disabled until a model is configured)
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
-          activeThumbColor: AppColors.primary,
+        AppSwitchListTile(
           title: Text('settings.memory.rag_enable'.tr()),
           subtitle:
               (_embeddingProvider.isEmpty || _embeddingModel.isEmpty)
@@ -640,7 +627,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
           Row(
             children: [
               Expanded(
-                child: AppDropdownField<String>(
+                child: AppUnifiedPicker<String>(
                   value:
                       _activeProviders.any((p) => p['id'] == _selectedProvider)
                       ? _selectedProvider
@@ -651,37 +638,14 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
                       : 'settings.memory.embedding_choose_provider',
                   items: _activeProviders.map((e) => e['id']!).toList(),
                   displayValue: (id) => id,
-                  selectedItemBuilder: (context) {
-                    return _activeProviders.map((p) {
-                      return Row(
-                        children: [
-                          Image.asset(
-                            AppConstants.getProviderIcon(p['id']!),
-                            width: 16,
-                            height: 16,
-                            errorBuilder: (_, _, _) =>
-                                const Icon(Icons.psychology, size: 16),
-                          ),
-                          const SizedBox(width: 8),
-                          Text('providers.${p['id']}'.tr()),
-                        ],
-                      );
-                    }).toList();
-                  },
-                  itemBuilder: (id) {
+                  itemPrefixIcon: (id) {
                     final p = _activeProviders.firstWhere((e) => e['id'] == id);
-                    return Row(
-                      children: [
-                        Image.asset(
-                          AppConstants.getProviderIcon(p['id']!),
-                          width: 16,
-                          height: 16,
-                          errorBuilder: (_, _, _) =>
-                              const Icon(Icons.psychology, size: 16),
-                        ),
-                        const SizedBox(width: 8),
-                        Text('providers.${p['id']}'.tr()),
-                      ],
+                    return Image.asset(
+                      AppConstants.getProviderIcon(p['id']!),
+                      width: 16,
+                      height: 16,
+                      errorBuilder: (_, _, _) =>
+                          const Icon(Icons.psychology, size: 16),
                     );
                   },
                   onChanged: _activeProviders.isEmpty
@@ -698,47 +662,38 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
           Row(
             children: [
               Expanded(
-                child: _loadingModels
-                    ? const SizedBox(
-                        height: 40,
-                        child: Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                      )
-                    : SearchableModelPicker(
-                        selectedModel: _selectedModel,
-                        models: _availableModels,
-                        onSelected: (val) async {
-                          if (_embeddingModel != val) {
-                            setState(() {
-                              _selectedModel = val;
-                              _embeddingProvider = _selectedProvider ?? '';
-                              _embeddingModel = val;
-                              _ragEnabled =
-                                  false; // Disable RAG on model change
-                            });
-                            // Update backend to disable RAG
-                            await ref
-                                .read(configProvider.notifier)
-                                .updateMemory({
-                                  'enabled': _standardEnabled,
-                                  'ragEnabled': false,
-                                  'embeddingProvider': _embeddingProvider,
-                                  'embeddingModel': val,
-                                });
-                          }
-                        },
-                        label: 'settings.memory.embedding_model_label',
-                        hint: _selectedProvider == null
-                            ? 'settings.memory.embedding_choose_provider_first'
-                            : _availableModels.isEmpty
-                            ? 'settings.memory.embedding_no_models'
-                            : 'settings.memory.embedding_model_label',
-                      ),
+                child: AppUnifiedPicker<String>(
+                  value: _selectedModel,
+                  items: _availableModels,
+                  displayValue: (v) => v,
+                  onChanged: (val) async {
+                    if (val != null && _embeddingModel != val) {
+                      setState(() {
+                        _selectedModel = val;
+                        _embeddingProvider = _selectedProvider ?? '';
+                        _embeddingModel = val;
+                        _ragEnabled =
+                            false; // Disable RAG on model change
+                      });
+                      // Update backend to disable RAG
+                      await ref
+                          .read(configProvider.notifier)
+                          .updateMemory({
+                            'enabled': _standardEnabled,
+                            'ragEnabled': false,
+                            'embeddingProvider': _embeddingProvider,
+                            'embeddingModel': val,
+                          });
+                    }
+                  },
+                  label: 'settings.memory.embedding_model_label',
+                  hint: _selectedProvider == null
+                      ? 'settings.memory.embedding_choose_provider_first'
+                      : _availableModels.isEmpty
+                      ? 'settings.memory.embedding_no_models'
+                      : 'settings.memory.embedding_model_label',
+                  loading: _loadingModels,
+                ),
               ),
             ],
           ),

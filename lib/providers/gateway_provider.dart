@@ -846,19 +846,6 @@ class ConfigNotifier extends Notifier<AppConfig> {
     }
   }
 
-  Future<void> updateSkillGlobal(String slug, bool isGlobal) async {
-    final client = ref.read(gatewayClientProvider);
-    try {
-      await client.call('skills.updateGlobal', {
-        'slug': slug,
-        'isGlobal': isGlobal,
-      });
-      await refresh();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   Future<String> getSkillMarkdown(String slug) async {
     final client = ref.read(gatewayClientProvider);
     try {

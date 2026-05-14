@@ -7,15 +7,16 @@ import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_snackbar.dart';
 
 class SecurityTab extends ConsumerStatefulWidget {
-  const SecurityTab({super.key, this.onBack, this.onNext});
+  const SecurityTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
   ConsumerState<SecurityTab> createState() => _SecurityTabState();
 }
 
-class _SecurityTabState extends ConsumerState<SecurityTab> {
+class _SecurityTabState extends ConsumerState<SecurityTab> with SettingsSaveMixin {
   late SecurityConfig _security;
   bool _isInit = false;
 
@@ -31,21 +32,11 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
 
   Future<void> _updateConfig(SecurityConfig newConfig) async {
     setState(() => _security = newConfig);
-    try {
+    await handleSave(() async {
       await ref
           .read(configProvider.notifier)
           .updateSecurity(newConfig.toJson());
-      if (mounted) {
-        AppSnackBar.showSuccess(context, 'common.saved'.tr());
-      }
-    } catch (e) {
-      // Revert if failed (optimistic UI update)
-      if (mounted) {
-        final currentConfig = ref.read(configProvider).security;
-        setState(() => _security = currentConfig);
-        AppSnackBar.showError(context, 'common.error'.tr());
-      }
-    }
+    });
   }
 
   void _onLevelChanged(String? val) {
@@ -106,6 +97,7 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
+      topPadding: widget.topPadding,
       subTabLabels: const ['settings.security.tab'],
       children: [
         const AppSectionHeader('settings.security.section', large: true),
@@ -116,10 +108,10 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
           child: Row(
             children: [
               Expanded(
-                child: AppDropdownField<String>(
+                child: AppUnifiedPicker<String>(
                   value: _security.level.name,
                   label: 'settings.security.level',
-                  items: ['none', 'low', 'medium', 'high'],
+                  items: const ['none', 'low', 'medium', 'high'],
                   displayValue: (String val) =>
                       'settings.security.level_$val'.tr(),
                   onChanged: _onLevelChanged,
@@ -130,10 +122,7 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
         ),
 
         // HITL Switch
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
-          activeThumbColor: AppColors.primary,
+        AppSwitchListTile(
           title: Text(
             'settings.security.hitl'.tr(),
             style: const TextStyle(fontWeight: FontWeight.w600),
@@ -148,10 +137,7 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
         ),
 
         // Prompt Hardening Switch
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
-          activeThumbColor: AppColors.primary,
+        AppSwitchListTile(
           title: Text(
             'settings.security.prompt_hardening'.tr(),
             style: const TextStyle(fontWeight: FontWeight.w600),
@@ -166,10 +152,7 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
         ),
 
         // Network Isolation
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
-          activeThumbColor: AppColors.primary,
+        AppSwitchListTile(
           title: Text(
             'settings.security.restrict_network'.tr(),
             style: const TextStyle(fontWeight: FontWeight.w600),
@@ -184,10 +167,7 @@ class _SecurityTabState extends ConsumerState<SecurityTab> {
         ),
 
         // Prompt Analyzers
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
-          activeThumbColor: AppColors.primary,
+        AppSwitchListTile(
           title: Text(
             'settings.security.prompt_analyzers'.tr(),
             style: const TextStyle(fontWeight: FontWeight.w600),

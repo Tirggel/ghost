@@ -9,6 +9,7 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 
 import '../models/skill.dart';
+import '../tools/exec.dart';
 
 final _log = Logger('Ghost.SkillManager');
 
@@ -25,10 +26,6 @@ class SkillManager {
   final dynamic storage;
 
   String get skillsDir => p.join(stateDir, 'skills');
-  String get globalsFile => p.join(stateDir, 'skills_global.json');
-
-  /// List of globally enabled skill slugs
-  Set<String> _globalSlugs = {};
 
   final _skillsChangedController = StreamController<void>.broadcast();
   Stream<void> get onSkillsChanged => _skillsChangedController.stream;
@@ -39,7 +36,7 @@ class SkillManager {
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
-    await _loadGlobals();
+
     _startWatching();
   }
 
@@ -65,25 +62,6 @@ class SkillManager {
   void dispose() {
     _watchSubscription?.cancel();
     _skillsChangedController.close();
-  }
-
-  Future<void> _loadGlobals() async {
-    final file = File(globalsFile);
-    if (await file.exists()) {
-      try {
-        final String content = await file.readAsString();
-        final jsonList = jsonDecode(content) as List<dynamic>;
-        _globalSlugs = jsonList.map((e) => e.toString()).toSet();
-      } catch (e) {
-        _log.warning('Failed to load global skills list: $e');
-        _globalSlugs = {};
-      }
-    }
-  }
-
-  Future<void> _saveGlobals() async {
-    final file = File(globalsFile);
-    await file.writeAsString(jsonEncode(_globalSlugs.toList()));
   }
 
   /// Discover all installed skills.
@@ -152,7 +130,7 @@ class SkillManager {
             name: metaData?['name'] as String? ?? slug,
             description: metaData?['description'] as String? ?? '',
             emoji: metaData?['emoji'] as String?,
-            isGlobal: _globalSlugs.contains(slug),
+
             hasPython: hasPython,
             hasNode: hasNode,
             hasMcp: mcpCommand != null,
@@ -334,7 +312,6 @@ class SkillManager {
       name: metaJson['name'] as String? ?? foundSlug,
       description: metaJson['description'] as String? ?? '',
       emoji: metaJson['emoji'] as String?,
-      isGlobal: _globalSlugs.contains(foundSlug),
     );
   }
 
@@ -444,7 +421,6 @@ class SkillManager {
       name: metaData?['name'] as String? ?? foundSlug,
       description: metaData?['description'] as String? ?? '',
       emoji: metaData?['emoji'] as String?,
-      isGlobal: _globalSlugs.contains(foundSlug),
       hasPython: await File(p.join(targetPath, 'scripts', 'requirements.txt')).exists() ||
                  await File(p.join(targetPath, 'requirements.txt')).exists(),
       hasNode: await File(p.join(targetPath, 'package.json')).exists() ||
@@ -575,20 +551,6 @@ class SkillManager {
     if (await skillDir.exists()) {
       await skillDir.delete(recursive: true);
     }
-
-    if (_globalSlugs.contains(slug)) {
-      _globalSlugs.remove(slug);
-      await _saveGlobals();
-    }
-  }
-
-  Future<void> setGlobal(String slug, bool isGlobal) async {
-    if (isGlobal) {
-      _globalSlugs.add(slug);
-    } else {
-      _globalSlugs.remove(slug);
-    }
-    await _saveGlobals();
   }
 
   Future<String> readSkillContent(String slug) async {
@@ -797,10 +759,13 @@ await server.connect(transport);
     final actualExecutable = await execFile.exists() ? execFile.path : executable;
 
     try {
+      final vaultEnv = await ExecTools.buildVaultEnvironment(storage);
+
       final process = await Process.start(
         actualExecutable,
         args,
         workingDirectory: skillPath,
+        environment: vaultEnv,
       );
 
       final stdoutBuffer = StringBuffer();
@@ -841,9 +806,9 @@ await server.connect(transport);
     }
   }
 
-  /// Builds context from the given skill slugs AND globally enabled skills.
+  /// Builds context from the given skill slugs.
   Future<String> buildSkillContext(List<String> agentSlugs) async {
-    final Set<String> slugsToLoad = {..._globalSlugs, ...agentSlugs};
+    final Set<String> slugsToLoad = agentSlugs.toSet();
     final buffer = StringBuffer();
 
     for (final slug in slugsToLoad) {
@@ -896,7 +861,7 @@ await server.connect(transport);
         'name': skill.name,
         'description': skill.description,
         'emoji': skill.emoji,
-        'isGlobal': skill.isGlobal,
+
         'files': files,
         'fileContents': fileContents,
       });
@@ -924,7 +889,6 @@ await server.connect(transport);
       final files = (skill['files'] as List<dynamic>).cast<String>();
       final fileContents = (skill['fileContents'] as Map<String, dynamic>)
           .cast<String, String>();
-      final isGlobal = skill['isGlobal'] as bool? ?? false;
 
       final skillDir = Directory(p.join(skillsDir, slug));
 
@@ -943,13 +907,7 @@ await server.connect(transport);
       }
 
       await initializeRuntimes(slug, skillDir.path);
-
-      if (isGlobal) {
-        _globalSlugs.add(slug);
-      }
     }
-
-    await _saveGlobals();
   }
 
   /// Detects runtimes and initializes environments (venv, npm install).

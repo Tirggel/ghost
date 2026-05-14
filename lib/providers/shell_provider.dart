@@ -9,6 +9,7 @@ class ShellState {
     this.settingsTabIndex = 0,
     this.settingsSubTabIndices = const {},
     this.pendingSettingsOpen = false,
+    this.showKanban = false,
   });
   final String? activeSessionId;
   final String searchQuery;
@@ -16,6 +17,7 @@ class ShellState {
   final int settingsTabIndex;
   final Map<int, int> settingsSubTabIndices;
   final bool pendingSettingsOpen;
+  final bool showKanban;
 
   ShellState copyWith({
     String? activeSessionId,
@@ -25,6 +27,7 @@ class ShellState {
     Map<int, int>? settingsSubTabIndices,
     bool clearActiveSession = false,
     bool? pendingSettingsOpen,
+    bool? showKanban,
   }) {
     return ShellState(
       activeSessionId: clearActiveSession
@@ -35,6 +38,7 @@ class ShellState {
       settingsTabIndex: settingsTabIndex ?? this.settingsTabIndex,
       settingsSubTabIndices: settingsSubTabIndices ?? this.settingsSubTabIndices,
       pendingSettingsOpen: pendingSettingsOpen ?? this.pendingSettingsOpen,
+      showKanban: showKanban ?? this.showKanban,
     );
   }
 }
@@ -82,5 +86,13 @@ class ShellNotifier extends Notifier<ShellState> {
     final updatedSubTabs = Map<int, int>.from(state.settingsSubTabIndices);
     updatedSubTabs[mainTabIndex] = subTabIndex;
     state = state.copyWith(settingsSubTabIndices: updatedSubTabs);
+  }
+
+  void toggleKanban() {
+    state = state.copyWith(showKanban: !state.showKanban);
+  }
+
+  void setShowKanban(bool value) {
+    state = state.copyWith(showKanban: value);
   }
 }

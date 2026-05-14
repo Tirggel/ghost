@@ -14,7 +14,6 @@ class SkillsSelector extends ConsumerWidget {
     this.onChanged,
     this.isEditing = true,
     this.isManagement = false,
-    this.onGlobalChanged,
     this.onDelete,
     this.onTap,
   });
@@ -24,7 +23,6 @@ class SkillsSelector extends ConsumerWidget {
   final Function(List<String>)? onChanged;
   final bool isEditing;
   final bool isManagement;
-  final Function(String slug, bool value)? onGlobalChanged;
   final Function(String slug)? onDelete;
   final Function(String slug)? onTap;
 
@@ -55,15 +53,13 @@ class SkillsSelector extends ConsumerWidget {
               children: skills.map((skill) {
                 final slug = skill['slug'] as String;
                 final isEnabled = selectedSkills.contains(slug);
-                final isGlobal = skill['isGlobal'] as bool? ?? false;
 
                 return _SkillItem(
                   slug: slug,
                   name: (skill['name'] as String?) ?? slug,
                   description: (skill['description'] as String?) ?? '',
                   emoji: skill['emoji'] as String?,
-                  isEnabled: isGlobal || isEnabled,
-                  isGlobal: isGlobal,
+                  isEnabled: isEnabled,
                   isEditing: isEditing,
                   isManagement: isManagement,
                   onChanged: (val) {
@@ -76,9 +72,6 @@ class SkillsSelector extends ConsumerWidget {
                     }
                     onChanged!(next);
                   },
-                  onGlobalChanged: onGlobalChanged != null
-                      ? (val) => onGlobalChanged!(slug, val)
-                      : null,
                   onDelete: onDelete != null ? () => onDelete!(slug) : null,
                   onTap: onTap != null ? () => onTap!(slug) : null,
                 );
@@ -109,11 +102,10 @@ class _SkillItem extends StatelessWidget {
     required this.description,
     this.emoji,
     required this.isEnabled,
-    required this.isGlobal,
+
     required this.isEditing,
     this.isManagement = false,
     required this.onChanged,
-    this.onGlobalChanged,
     this.onDelete,
     this.onTap,
   });
@@ -123,17 +115,16 @@ class _SkillItem extends StatelessWidget {
   final String description;
   final String? emoji;
   final bool isEnabled;
-  final bool isGlobal;
+
   final bool isEditing;
   final bool isManagement;
   final ValueChanged<bool?> onChanged;
-  final ValueChanged<bool>? onGlobalChanged;
   final VoidCallback? onDelete;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final bool canToggle = isEditing && !isGlobal;
+    final bool canToggle = isEditing;
 
     return AppSelectableCard(
       isSelected: isEnabled,
@@ -167,10 +158,7 @@ class _SkillItem extends StatelessWidget {
               fontSize: AppConstants.fontSizeBody,
             ),
           ),
-          if (isGlobal) ...[
-            const SizedBox(width: 8),
-            const Icon(Icons.public, size: 12, color: AppColors.primary),
-          ],
+
         ],
       ),
       subtitle: Text(
@@ -186,31 +174,6 @@ class _SkillItem extends StatelessWidget {
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Global Switch
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'settings.skills.global'.tr().toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDim,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    SizedBox(
-                      height: 24,
-                      child: Switch(
-                        value: isGlobal,
-                        onChanged: onGlobalChanged,
-                        activeThumbColor: AppColors.primary,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 4),
                 // Edit Button
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),

@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants.dart';
 import '../../../providers/setup_wizard_provider.dart';
 import '../app_styles.dart';
-import '../searchable_model_picker.dart';
 import 'wizard_step_base.dart';
 import 'wizard_utils.dart';
 
@@ -30,27 +29,19 @@ class WizardStepProvider extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppDropdownField<String>(
+          AppUnifiedPicker<String>(
             value: state.selectedProvider,
+            label: 'wizard.step_provider',
             hint: 'settings.identity.choose_provider',
             items: providers.map((p) => p['id']!).toList(),
             displayValue: (id) => AppConstants.getProviderLabel(id),
-            itemBuilder: (id) {
-              return WizardDropdownItem(
-                label: AppConstants.getProviderLabel(id),
-                iconPath: AppConstants.getProviderIcon(id),
-              );
-            },
-            selectedItemBuilder: (BuildContext context) {
-              return providers.map((p) {
-                final id = p['id']!;
-                return WizardDropdownItem(
-                  label: AppConstants.getProviderLabel(id),
-                  iconPath: AppConstants.getProviderIcon(id),
-                  isSelected: true,
-                );
-              }).toList();
-            },
+            itemPrefixIcon: (id) => Image.asset(
+              AppConstants.getProviderIcon(id),
+              width: 18,
+              height: 18,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.psychology, size: AppConstants.iconSizeSmall, color: AppColors.primary),
+            ),
             onChanged: (val) {
               notifier.updateProvider(val);
             },
@@ -110,20 +101,15 @@ class WizardStepProvider extends ConsumerWidget {
           ],
           if (state.keyVerified) ...[
             const SizedBox(height: 16),
-            const AppFormLabel('wizard.model_label'),
-            const SizedBox(height: 6),
-            if (state.loadingModels)
-              const Center(child: CircularProgressIndicator())
-            else
-              SearchableModelPicker(
-                selectedModel: state.selectedModel,
-                models: state.models,
-                label: 'wizard.model_label',
-                hint: 'settings.identity.choose_model',
-                onSelected: notifier.updateSelectedModel,
-                providerId: state.selectedProvider,
-                loading: state.verifyingKey || state.loadingModels,
-              ),
+            AppUnifiedPicker<String>(
+              value: state.selectedModel,
+              items: state.models,
+              label: 'wizard.model_label',
+              hint: 'settings.identity.choose_model',
+              displayValue: (v) => v,
+              onChanged: notifier.updateSelectedModel,
+              loading: state.loadingModels,
+            ),
           ],
         ],
       ),

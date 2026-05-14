@@ -57,7 +57,15 @@ export 'engine/tools/memory.dart';
 export 'engine/tools/skills.dart';
 export 'engine/tools/agents.dart';
 export 'engine/tools/vault.dart';
+export 'engine/tools/kanban.dart';
+
+// Tasks (Kanban)
+export 'engine/tasks/task.dart';
+export 'engine/tasks/task_store.dart';
+export 'engine/tasks/task_manager.dart';
+export 'engine/tasks/task_orchestrator.dart';
 
 // Routers
 export 'engine/gateway/agent_router.dart';
 export 'engine/gateway/config_router.dart';
+export 'engine/gateway/kanban_router.dart';

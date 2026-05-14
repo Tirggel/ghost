@@ -95,12 +95,6 @@ Du kannst deine gesamte Skill-Bibliothek als einzelnes Archiv sichern.
 
 ---
 
-## 🌍 Globale vs. Lokale Skills
-- **Globale Skills**: Standardmäßig für alle Agenten-Profile aktiviert.
-- **Lokale Skills**: Können für spezifische Agenten in deren Profileinstellungen aktiviert oder deaktiviert werden.
-
----
-
 ## 💡 Best Practices
 - **Sei beschreibend**: Eine klare Beschreibung hilft dem Agenten zu verstehen, wann er den Skill nutzen sollte.
 - **Präzise Anweisungen**: Halte den Markdown-Inhalt fokussiert. Zu viele irrelevante Informationen können das Kontextfenster überladen.

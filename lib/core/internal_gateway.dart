@@ -18,10 +18,12 @@ final _log = Logger('Ghost.InternalGateway');
 class InternalGatewayManager {
   factory InternalGatewayManager() => _instance;
   InternalGatewayManager._internal();
-  static final InternalGatewayManager _instance = InternalGatewayManager._internal();
+  static final InternalGatewayManager _instance =
+      InternalGatewayManager._internal();
 
   AgentManager? _agentManager;
   GatewayServer? _server;
+  TaskOrchestrator? _orchestrator;
   bool _isRunning = false;
 
   bool get isRunning => _isRunning;
@@ -43,7 +45,7 @@ class InternalGatewayManager {
   Future<void> setEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_enabledKey, enabled);
-    
+
     if (enabled && !_isRunning) {
       await start();
     } else if (!enabled && _isRunning) {
@@ -57,7 +59,7 @@ class InternalGatewayManager {
     try {
       final stateDir = await PlatformStorage.getGhostDir();
       final configPath = await PlatformStorage.getConfigPath();
-      
+
       _log.info('Starting internal gateway...');
       _log.info('State Dir: $stateDir');
       _log.info('Config Path: $configPath');
@@ -70,50 +72,79 @@ class InternalGatewayManager {
       final configFile = File(configPath);
       final isFreshStart = !await configFile.exists();
       var config = await loadConfig(configPath);
-      
+
       // Load overrides from Vault
       final userJson = await storage.get('user_config');
       if (userJson != null) {
-        config = config.copyWith(user: UserConfig.fromJson(jsonDecode(userJson) as Map<String, dynamic>));
-      }
-      
-      final identityJson = await storage.get('identity_config');
-      if (identityJson != null) {
-        config = config.copyWith(identity: IdentityConfig.fromJson(jsonDecode(identityJson) as Map<String, dynamic>));
-      }
-      
-      final agentJson = await storage.get('agent_config');
-      if (agentJson != null) {
-        config = config.copyWith(agent: AgentConfig.fromJson(jsonDecode(agentJson) as Map<String, dynamic>));
-      }
-      
-      final channelsJson = await storage.get('channels_config');
-      if (channelsJson != null) {
-        config = config.copyWith(channels: ChannelsConfig.fromJson(jsonDecode(channelsJson) as Map<String, dynamic>));
-      }
-      
-      final customAgentsJson = await storage.get('custom_agents_config');
-      if (customAgentsJson != null) {
-        final List<dynamic> list = jsonDecode(customAgentsJson) as List<dynamic>;
         config = config.copyWith(
-          customAgents: list.map((e) => CustomAgentConfig.fromJson(e as Map<String, dynamic>)).toList(),
+          user: UserConfig.fromJson(
+            jsonDecode(userJson) as Map<String, dynamic>,
+          ),
         );
       }
-      
+
+      final identityJson = await storage.get('identity_config');
+      if (identityJson != null) {
+        config = config.copyWith(
+          identity: IdentityConfig.fromJson(
+            jsonDecode(identityJson) as Map<String, dynamic>,
+          ),
+        );
+      }
+
+      final agentJson = await storage.get('agent_config');
+      if (agentJson != null) {
+        config = config.copyWith(
+          agent: AgentConfig.fromJson(
+            jsonDecode(agentJson) as Map<String, dynamic>,
+          ),
+        );
+      }
+
+      final channelsJson = await storage.get('channels_config');
+      if (channelsJson != null) {
+        config = config.copyWith(
+          channels: ChannelsConfig.fromJson(
+            jsonDecode(channelsJson) as Map<String, dynamic>,
+          ),
+        );
+      }
+
+      final customAgentsJson = await storage.get('custom_agents_config');
+      if (customAgentsJson != null) {
+        final List<dynamic> list =
+            jsonDecode(customAgentsJson) as List<dynamic>;
+        config = config.copyWith(
+          customAgents: list
+              .map((e) => CustomAgentConfig.fromJson(e as Map<String, dynamic>))
+              .toList(),
+        );
+      }
+
       final toolsJson = await storage.get('tools_config');
       if (toolsJson != null) {
-        config = config.copyWith(tools: ToolsConfig.fromJson(jsonDecode(toolsJson) as Map<String, dynamic>));
+        config = config.copyWith(
+          tools: ToolsConfig.fromJson(
+            jsonDecode(toolsJson) as Map<String, dynamic>,
+          ),
+        );
       }
 
       final integrationsJson = await storage.get('integrations_config');
       if (integrationsJson != null) {
-        config = config.copyWith(integrations: IntegrationsConfig.fromJson(jsonDecode(integrationsJson) as Map<String, dynamic>));
+        config = config.copyWith(
+          integrations: IntegrationsConfig.fromJson(
+            jsonDecode(integrationsJson) as Map<String, dynamic>,
+          ),
+        );
       }
 
       // 3. Auto-provision token and handle fresh start (Monolith UX)
       if (isFreshStart || config.gateway.auth.tokenHash == null) {
-        _log.info('Detected fresh start or missing auth — ensuring clean slate...');
-        
+        _log.info(
+          'Detected fresh start or missing auth — ensuring clean slate...',
+        );
+
         if (isFreshStart) {
           // If the file was deleted, wipe essential config from the vault
           // to ensure a true "Factory Reset" experience.
@@ -126,7 +157,7 @@ class InternalGatewayManager {
         }
 
         final tokenData = GatewayAuth.generateAuthToken();
-        
+
         config = config.copyWith(
           gateway: config.gateway.copyWith(
             auth: config.gateway.auth.copyWith(
@@ -135,10 +166,10 @@ class InternalGatewayManager {
             ),
           ),
         );
-        
+
         // Save back to file
         await saveConfig(config, configPath);
-        
+
         // Sync raw token to secure storage so UI can find it
         await storage.set('auth_token', tokenData.raw);
         // Also sync as client_token so /client-token endpoint returns it
@@ -158,8 +189,11 @@ class InternalGatewayManager {
       // 4. Setup Session Key
       final tokenHash = config.gateway.auth.tokenHash;
       final passwordHash = config.gateway.auth.passwordHash;
-      final seedString = tokenHash ?? passwordHash ?? 'ghost-default-session-key';
-      final sessionKey = Uint8List.fromList(sha256.convert(utf8.encode(seedString)).bytes);
+      final seedString =
+          tokenHash ?? passwordHash ?? 'ghost-default-session-key';
+      final sessionKey = Uint8List.fromList(
+        sha256.convert(utf8.encode(seedString)).bytes,
+      );
 
       // 4. Initialize Core Components
       final sessionStore = SessionStore(encryptionKey: sessionKey);
@@ -171,7 +205,7 @@ class InternalGatewayManager {
         allow: config.tools.allow,
         deny: config.tools.deny,
       );
-      
+
       // Register tools (Replicating bin/ghost.dart registration)
       SearchTools.registerAll(toolRegistry);
       SessionTools.registerAll(toolRegistry, sessionStore);
@@ -181,10 +215,10 @@ class InternalGatewayManager {
       GoogleWorkspaceTools.registerAll(toolRegistry, storage);
       MicrosoftGraphTools.registerAll(toolRegistry, storage);
       VaultTools.registerAll(toolRegistry, storage);
-      
+
       // Browser tools might be disabled on some platforms (e.g. mobile)
       if (!kIsWeb && (p.extension(Platform.resolvedExecutable) != '.js')) {
-         BrowserTools.registerAll(toolRegistry);
+        BrowserTools.registerAll(toolRegistry);
       }
 
       // 5. Initialize Server & Manager
@@ -209,10 +243,24 @@ class InternalGatewayManager {
         stateDir: stateDir,
         configPath: configPath,
       );
-      
+
       MemoryTools.registerAll(toolRegistry, _agentManager!.memorySystem);
       SkillsTools.registerAll(toolRegistry, _agentManager!.skillManager);
       AgentsTools.registerAll(toolRegistry, _agentManager!);
+
+      // Kanban Task Manager
+      final taskStore = TaskStore(stateDir: stateDir);
+      final taskManager = TaskManager(store: taskStore);
+      await taskManager.initialize();
+
+      // Orchestrator (Phase 3)
+      _orchestrator = TaskOrchestrator(
+        taskManager: taskManager,
+        agentManager: _agentManager!,
+      );
+      _orchestrator!.initialize();
+
+      KanbanTools.registerAll(toolRegistry, taskManager, orchestrator: _orchestrator);
 
       // 6. Wire up events
       _agentManager!.onSessionUpdated = (sessionId, message) {
@@ -259,6 +307,8 @@ class InternalGatewayManager {
         channelManager: channelManager,
       ).register();
 
+      KanbanRouter(gateway: _server!, taskManager: taskManager).register();
+
       // 8. Start
       await _server!.start();
       unawaited(_agentManager!.initialize());
@@ -266,7 +316,6 @@ class InternalGatewayManager {
 
       _isRunning = true;
       _log.info('Internal gateway started on ws://localhost:${_server!.port}');
-
     } catch (e, stack) {
       _log.severe('Failed to start internal gateway: $e', e, stack);
       _isRunning = false;

@@ -963,22 +963,6 @@ class ConfigRouter {
       return {'status': 'ok', 'deletedSlug': slug};
     });
 
-    gateway.rpcRegistry.register('skills.updateGlobal', (
-      params,
-      context,
-    ) async {
-      final slug = params?['slug'] as String?;
-      final isGlobal = params?['isGlobal'] as bool?;
-      if (slug == null || isGlobal == null) {
-        throw ProtocolError('Missing slug or isGlobal');
-      }
-
-      await agentManager.skillManager.setGlobal(slug, isGlobal);
-      await _syncAgentManagerConfig();
-      gateway.broadcast('skills.changed');
-      return {'status': 'ok', 'slug': slug, 'isGlobal': isGlobal};
-    });
-
     gateway.rpcRegistry.register('skills.getMarkdown', (params, context) async {
       final slug = params?['slug'] as String?;
       if (slug == null) throw ProtocolError('Missing slug');

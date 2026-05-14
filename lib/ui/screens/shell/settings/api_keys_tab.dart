@@ -10,9 +10,10 @@ import '../../../widgets/app_snackbar.dart';
 import '../../../../core/error_formatter.dart';
 
 class ApiKeysTab extends ConsumerStatefulWidget {
-  const ApiKeysTab({super.key, this.onBack, this.onNext});
+  const ApiKeysTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
   ConsumerState<ApiKeysTab> createState() => _ApiKeysTabState();
@@ -161,7 +162,7 @@ class _ApiKeysTabState extends ConsumerState<ApiKeysTab> {
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
-      topPadding: 0,
+      topPadding: widget.topPadding,
       children: [
         const AppSectionHeader('settings.api_keys.section', large: true),
         Text(

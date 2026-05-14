@@ -95,12 +95,6 @@ You can back up your entire skills library as a single archive.
 
 ---
 
-## 🌍 Global vs. Local Skills
-- **Global Skills**: Enabled for all agent profiles by default.
-- **Local Skills**: Can be enabled or disabled for specific agents in their profile settings.
-
----
-
 ## 💡 Best Practices
 - **Be Descriptive**: A clear description helps the agent understand when to use the skill.
 - **Concise Instructions**: Keep the markdown content focused. Too much irrelevant info can clutter the context window.

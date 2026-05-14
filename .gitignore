@@ -1,30 +1,6 @@
-# Default Flutter + Dart .gitignore
-# https://dart.dev/guides/libraries/private-files
-
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.buildlog/
-.history
-.svn/
-.vscode/
-
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# The .vscode folder contains configureation files for the VS Code editor.
-.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# ----------------------------------------------------------------------------
+# Flutter / Dart
+# ----------------------------------------------------------------------------
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
@@ -42,51 +18,87 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
-# Android Studio will automatically add this to its gitignore, but we
-# should also ignore it to be safe.
+# ----------------------------------------------------------------------------
+# IDEs and Tools
+# ----------------------------------------------------------------------------
+# VS Code
+.vscode/
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# IntelliJ
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+
+# ----------------------------------------------------------------------------
+# Platform Specific
+# ----------------------------------------------------------------------------
+# Android
 *.jks
 *.keystore
+**/android/local.properties
+**/android/**/generated/
+**/android/app/src/main/res/drawable-*/
+**/android/app/src/main/res/mipmap-*/
 
-# Exceptions to above rules.
-!/packages/*/lib/
+# iOS/macOS
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/appframeworkdir
+**/ios/Flutter/ephemeral
+**/macos/Flutter/ephemeral/
+**/ios/Runner/GeneratedPluginRegistrant.h
+**/ios/Runner/GeneratedPluginRegistrant.m
 
-# Local configuration
-*.env
+# ----------------------------------------------------------------------------
+# Project Specific (Ghost)
+# ----------------------------------------------------------------------------
+# Secrets and Local Config
 .env
+*.env
+.ghost/
+!.ghost/config.example.json
 
 # Local tool configurations
 .claude/
 .local-chrome/
 
-# Temporary data and scratch files
-*.json
+# Build and tool artifacts
+dist/
+download/
+ghost-releases/
 
 # Large assets and models
 scripts/models/
 
-# Build and tool artifacts
-dist/
-download/
+# Temporary data and scratch files
+scratch/
+temp_*/
+test_*.txt
+test_*.log
 
-# Database files
+# Database files (Local only)
 **/objectbox/
+!lib/objectbox-model.json
 
-# Python cache
-**/__pycache__/
-
-# Local tests and scripts
-test/
-app/test/
+# Local scripts
 app.sh
 gateway.sh
 
-# Temporary scratch files and test outputs
-scratch/
-test_*.dart
-test_*.txt
-test_*.log
-temp_*/
-
-# Ghost local state and builds
-.ghost/
-ghost-releases/
+# Python cache
+**/__pycache__/

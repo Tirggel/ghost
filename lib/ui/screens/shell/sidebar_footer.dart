@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../core/constants.dart';
 import '../../../providers/gateway_provider.dart';
+import '../../../providers/shell_provider.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../widgets/settings_side_nav_tile.dart';
-import '../../widgets/app_dialogs.dart';
 
 class SidebarFooter extends ConsumerWidget {
   const SidebarFooter({super.key, required this.onShowSettings});
@@ -18,6 +18,7 @@ class SidebarFooter extends ConsumerWidget {
     final name = identity.name;
     final avatarPath = identity.avatar;
     final emoji = identity.emoji ?? '🫥';
+    final showKanban = ref.watch(shellProvider.select((s) => s.showKanban));
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 24),
@@ -26,16 +27,25 @@ class SidebarFooter extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.sidebarPaddingHorizontal,
-            ),
-            child: SettingsSideNavTile(
-              label: 'settings.title'.tr(),
-              icon: Icons.settings,
-              isActive: false,
-              onTap: onShowSettings,
-            ),
+          SettingsSideNavTile(
+            label: 'common.chat'.tr(),
+            icon: Icons.chat_bubble_outline,
+            isActive: !showKanban,
+            onTap: () => ref.read(shellProvider.notifier).setShowKanban(false),
+          ),
+          const SizedBox(height: 4),
+          SettingsSideNavTile(
+            label: 'kanban.title_board'.tr(),
+            icon: Icons.dashboard,
+            isActive: showKanban,
+            onTap: () => ref.read(shellProvider.notifier).setShowKanban(true),
+          ),
+          const SizedBox(height: 4),
+          SettingsSideNavTile(
+            label: 'settings.title'.tr(),
+            icon: Icons.settings,
+            isActive: false,
+            onTap: onShowSettings,
           ),
           const SizedBox(height: 24),
           // IDENTITY SECTION
@@ -86,20 +96,6 @@ class SidebarFooter extends ConsumerWidget {
                     ],
                   ),
                 ),
-                _HoverLogoutButton(
-                  onTap: () async {
-                    final confirmed = await AppAlertDialog.showConfirmation(
-                      context: context,
-                      title: 'sidebar.logout_title'.tr(),
-                      content: 'sidebar.logout_content'.tr(),
-                      confirmLabel: 'common.logout'.tr(),
-                      isDestructive: true,
-                    );
-                    if (confirmed == true) {
-                      await ref.read(authTokenProvider.notifier).logout();
-                    }
-                  },
-                ),
               ],
             ),
           ),
@@ -109,36 +105,4 @@ class SidebarFooter extends ConsumerWidget {
   }
 }
 
-class _HoverLogoutButton extends StatefulWidget {
-  const _HoverLogoutButton({required this.onTap});
-  final VoidCallback onTap;
 
-  @override
-  State<_HoverLogoutButton> createState() => _HoverLogoutButtonState();
-}
-
-class _HoverLogoutButtonState extends State<_HoverLogoutButton> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: IconButton(
-        icon: Icon(
-          Icons.logout_rounded,
-          size: 18,
-          color: _isHovered ? AppColors.error : AppColors.white,
-        ),
-        onPressed: widget.onTap,
-        tooltip: 'sidebar.logout_title'.tr(),
-        hoverColor: Colors.transparent,
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(),
-      ),
-    );
-  }
-}

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants.dart';
 import '../../../../providers/shell_provider.dart';
 import '../../../widgets/app_styles.dart';
-import 'profile_tab.dart';
+import 'user_tab.dart';
 import 'agents_tab.dart';
 import 'api_management_tab.dart';
 import 'integrations_tab.dart';
@@ -60,7 +60,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                     child: IndexedStack(
                       index: selectedIndex,
                       children: [
-                        ProfileTab(onNext: () => ref.read(shellProvider.notifier).setSettingsTabIndex(1)),
+                        UserTab(onNext: () => ref.read(shellProvider.notifier).setSettingsTabIndex(1)),
                         AgentsTab(
                           onBack: () => ref.read(shellProvider.notifier).setSettingsTabIndex(0),
                           onNext: () => ref.read(shellProvider.notifier).setSettingsTabIndex(2),

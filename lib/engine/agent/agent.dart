@@ -21,11 +21,13 @@ enum AgentState { idle, thinking, executingTools, finishing }
 class Agent {
   Agent({
     required this.id,
+    this.name = 'Agent',
     required this.provider,
     required this.sessionManager,
     required this.toolRegistry,
     required this.storage,
     required this.memory,
+    this.skills = const [],
     this.systemPrompt = 'You are a helpful AI assistant.',
     int? maxToolIterations,
     this.workspaceDir = '.',
@@ -36,11 +38,13 @@ class Agent {
   }) : _maxToolIterationsOverride = maxToolIterations;
 
   final String id;
+  final String name;
   AIModelProvider provider;
   final SessionManager sessionManager;
   final ToolRegistry toolRegistry;
   final SecureStorage storage;
   final MemorySystem memory;
+  final List<String> skills;
   String systemPrompt;
   final int? _maxToolIterationsOverride;
   String workspaceDir;

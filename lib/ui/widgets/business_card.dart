@@ -189,12 +189,9 @@ class _BusinessCardState extends State<BusinessCard> with SettingsSaveMixin {
                       const SizedBox(width: 4),
                       SizedBox(
                         height: 24,
-                        child: Switch(
+                        child: AppSwitch(
                           value: widget.isEnabled!,
                           onChanged: widget.onToggleEnabled,
-                          activeThumbColor: AppColors.primary,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
                         ),
                       ),
                       const SizedBox(width: 8),

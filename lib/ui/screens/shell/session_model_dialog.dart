@@ -5,7 +5,6 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../../core/constants.dart';
 import '../../../providers/gateway_provider.dart';
 import '../../widgets/app_styles.dart';
-import '../../widgets/searchable_model_picker.dart';
 import '../../widgets/app_dialogs.dart';
 
 class SessionModelDialog extends ConsumerStatefulWidget {
@@ -109,25 +108,19 @@ class _SessionModelDialogState extends ConsumerState<SessionModelDialog> {
           children: [
             _sectionTitle('chat.provider_label'.tr()),
             const SizedBox(height: 8),
-            AppDropdownField<Map<String, String>>(
+            AppUnifiedPicker<Map<String, String>>(
               value: activeProviders.firstWhere(
                 (p) => p['id'] == _selectedProvider,
                 orElse: () => activeProviders.first,
               ),
               items: activeProviders.toList(),
               displayValue: (p) => p['label'] ?? '',
-              itemBuilder: (p) => Row(
-                children: [
-                  Image.asset(
-                    AppConstants.getProviderIcon(p['id']!),
-                    width: 16,
-                    height: 16,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.psychology, size: 16),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(p['label']!, style: const TextStyle(fontSize: 13)),
-                ],
+              itemPrefixIcon: (p) => Image.asset(
+                AppConstants.getProviderIcon(p['id']!),
+                width: 16,
+                height: 16,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.psychology, size: 16),
               ),
               onChanged: (val) {
                 if (val != null) {
@@ -143,13 +136,13 @@ class _SessionModelDialogState extends ConsumerState<SessionModelDialog> {
             if (_selectedProvider != null) ...[
               _sectionTitle('chat.model_label'.tr()),
               const SizedBox(height: 8),
-              SearchableModelPicker(
-                selectedModel: _selectedModel,
-                models: _availableModels,
-                loading: _isLoadingModels,
+              AppUnifiedPicker<String>(
+                value: _selectedModel,
+                items: _availableModels,
                 label: 'chat.model_label',
                 hint: 'chat.model_label',
-                onSelected: (val) => setState(() => _selectedModel = val),
+                displayValue: (v) => v,
+                onChanged: (val) => setState(() => _selectedModel = val),
               ),
             ],
           ],

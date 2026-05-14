@@ -11,7 +11,6 @@ class Skill {
     required this.name,
     this.description = '',
     this.emoji,
-    this.isGlobal = false,
     this.hasPython = false,
     this.hasNode = false,
     this.hasMcp = false,
@@ -24,7 +23,7 @@ class Skill {
   final String name;
   final String description;
   final String? emoji;
-  final bool isGlobal;
+
   final bool hasPython;
   final bool hasNode;
   final bool hasMcp;
@@ -37,7 +36,7 @@ class Skill {
     String? name,
     String? description,
     String? emoji,
-    bool? isGlobal,
+
     bool? hasPython,
     bool? hasNode,
     bool? hasMcp,
@@ -48,7 +47,7 @@ class Skill {
       name: name ?? this.name,
       description: description ?? this.description,
       emoji: emoji ?? this.emoji,
-      isGlobal: isGlobal ?? this.isGlobal,
+
       hasPython: hasPython ?? this.hasPython,
       hasNode: hasNode ?? this.hasNode,
       hasMcp: hasMcp ?? this.hasMcp,

@@ -4,13 +4,16 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
+import '../../../../providers/locale_provider.dart';
+import '../../../../providers/shell_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_avatar_picker.dart';
 import '../../../widgets/business_card.dart';
 import '../../../widgets/app_snackbar.dart';
 
 class UserTab extends ConsumerStatefulWidget {
-  const UserTab({super.key, this.onNext});
+  const UserTab({super.key, this.onBack, this.onNext});
+  final VoidCallback? onBack;
   final VoidCallback? onNext;
 
   @override
@@ -20,6 +23,7 @@ class UserTab extends ConsumerStatefulWidget {
 class _UserTabState extends ConsumerState<UserTab> with SettingsSaveMixin {
   final _controllers = <String, TextEditingController>{};
   int _avatarNonce = 0;
+  bool _isEditing = false;
 
   @override
   void initState() {
@@ -50,7 +54,7 @@ class _UserTabState extends ConsumerState<UserTab> with SettingsSaveMixin {
     super.dispose();
   }
 
-  Future<void> _save() async {
+  Future<void> _save({bool silent = false}) async {
     await handleSave(() async {
       final avatar = _controllers['avatar']!.text;
       final config = {
@@ -61,7 +65,13 @@ class _UserTabState extends ConsumerState<UserTab> with SettingsSaveMixin {
         'avatar': avatar.startsWith('blob:') ? '' : avatar,
       };
       await ref.read(configProvider.notifier).updateUser(config);
-    }, successMessage: 'settings.user.saved'.tr());
+      if (mounted) {
+        setState(() => _isEditing = false);
+      }
+    }, 
+    successMessage: 'settings.user.saved'.tr(),
+    silent: silent,
+    );
   }
 
   @override
@@ -85,92 +95,134 @@ class _UserTabState extends ConsumerState<UserTab> with SettingsSaveMixin {
       }
     });
 
+    // Auto-save on main tab change
+    ref.listen(shellProvider.select((s) => s.settingsTabIndex), (prev, next) {
+      if (prev == 0 && next != 0 && _isEditing && !isSaveLoading) {
+        _save(silent: true);
+      }
+    });
 
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppConstants.settingsPagePadding,
-              0,
-              AppConstants.settingsPagePadding,
-              AppConstants.settingsPagePadding,
-            ),
-            children: [
-              BusinessCard(
-                title: 'settings.user.section',
-                avatarBuilder: (context, isEditing) => ListenableBuilder(
-                  listenable: _controllers['avatar']!,
-                  builder: (context, _) => GestureDetector(
-                    onTap: isEditing ? _onPickAvatar : null,
-                    child: Stack(
-                      children: [
-                        AppUserAvatar(
-                          path: _controllers['avatar']!.text,
-                          radius: 46,
-                          iconSize: 32,
-                          extraVersion: _avatarNonce,
-                        ),
-                        if (isEditing)
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.surface,
-                                  width: 2,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.camera_alt_outlined,
-                                size: 14,
-                                color: AppColors.black,
-                              ),
-                            ),
+
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop && _isEditing && !isSaveLoading) {
+          _save(silent: true);
+        }
+      },
+      child: AppSettingsPage(
+        onBack: widget.onBack,
+        onSave: _isEditing ? _save : null,
+        onNext: widget.onNext,
+        isSaveLoading: isSaveLoading,
+        children: [
+        BusinessCard(
+          title: 'settings.user.section',
+          avatarBuilder: (context, isEditing) => ListenableBuilder(
+            listenable: _controllers['avatar']!,
+            builder: (context, _) => GestureDetector(
+              onTap: isEditing ? _onPickAvatar : null,
+              child: Stack(
+                children: [
+                  AppUserAvatar(
+                    path: _controllers['avatar']!.text,
+                    radius: 46,
+                    iconSize: 32,
+                    extraVersion: _avatarNonce,
+                  ),
+                  if (isEditing)
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.surface,
+                            width: 2,
                           ),
-                      ],
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_outlined,
+                          size: 14,
+                          color: AppColors.black,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                fields: [
-                  BusinessCardField(
-                    label: 'settings.user.name_label',
-                    hint: 'settings.user.name_hint',
-                    controller: _controllers['name']!,
-                  ),
-                  BusinessCardField(
-                    label: 'settings.user.call_sign_label',
-                    hint: 'settings.user.call_sign_hint',
-                    controller: _controllers['callSign']!,
-                  ),
-                  BusinessCardField(
-                    label: 'settings.user.pronouns_label',
-                    hint: 'settings.user.pronouns_hint',
-                    controller: _controllers['pronouns']!,
-                    value: _getPronounsDisplay(_controllers['pronouns']!.text),
-                    customEditWidget: _buildPronounsDropdown(),
-                  ),
-                  BusinessCardField(
-                    label: 'settings.user.notes_label',
-                    hint: 'settings.user.notes_hint',
-                    controller: _controllers['notes']!,
-                    maxLines: 3,
-                  ),
                 ],
-                onSave: _save,
               ),
-              const SizedBox(height: 20),
-            ],
+            ),
           ),
+          fields: [
+            BusinessCardField(
+              label: 'settings.language.section',
+              hint: 'settings.language.section',
+              controller: TextEditingController(),
+              value: (() {
+                final langCode = context.locale.languageCode;
+                final label = 'settings.language.$langCode'.tr();
+                final flag = ref.watch(localeFlagsProvider)[langCode] ?? AppConstants.defaultFlags[langCode] ?? '🌐';
+                return '$flag $label';
+              })(),
+              customEditWidget: AppUnifiedPicker<Locale>(
+                value: context.locale,
+                items: context.supportedLocales,
+                label: 'settings.language.section',
+                hint: 'settings.language.section',
+                onChanged: (val) async {
+                  if (val != null && val != context.locale) {
+                    await context.setLocale(val);
+                    if (context.mounted) {
+                      await ref.read(configProvider.notifier).updateUser({'language': val.languageCode});
+                      if (context.mounted) {
+                        AppSnackBar.showSuccess(context, 'common.saved'.tr());
+                      }
+                    }
+                  }
+                },
+                displayValue: (l) {
+                  final langCode = l.languageCode;
+                  final label = 'settings.language.$langCode'.tr();
+                  final flag = ref.watch(localeFlagsProvider)[langCode] ?? AppConstants.defaultFlags[langCode] ?? '🌐';
+                  return '$flag $label';
+                },
+              ),
+            ),
+            BusinessCardField(
+              label: 'settings.user.name_label',
+              hint: 'settings.user.name_hint',
+              controller: _controllers['name']!,
+            ),
+            BusinessCardField(
+              label: 'settings.user.call_sign_label',
+              hint: 'settings.user.call_sign_hint',
+              controller: _controllers['callSign']!,
+            ),
+            BusinessCardField(
+              label: 'settings.user.pronouns_label',
+              hint: 'settings.user.pronouns_hint',
+              controller: _controllers['pronouns']!,
+              value: _getPronounsDisplay(_controllers['pronouns']!.text),
+              customEditWidget: _buildPronounsDropdown(),
+            ),
+            BusinessCardField(
+              label: 'settings.user.notes_label',
+              hint: 'settings.user.notes_hint',
+              controller: _controllers['notes']!,
+              maxLines: 3,
+            ),
+          ],
+          isEditing: _isEditing,
+          onEditToggle: () => setState(() => _isEditing = !_isEditing),
+          onSave: _save,
         ),
-        _buildNavButtons(),
+        const SizedBox(height: 20),
       ],
-    );
-  }
+    ),
+  );
+}
 
   String _getPronounsDisplay(String p) {
     switch (p) {
@@ -192,7 +244,7 @@ class _UserTabState extends ConsumerState<UserTab> with SettingsSaveMixin {
   }
 
   Widget _buildPronounsDropdown() {
-    return AppDropdownField<String>(
+    return AppUnifiedPicker<String>(
       value:
           _controllers['pronouns']!.text.isNotEmpty &&
               [
@@ -244,12 +296,5 @@ class _UserTabState extends ConsumerState<UserTab> with SettingsSaveMixin {
       }
     }
   }
-
-  Widget _buildNavButtons() {
-    return AppSettingsNavBar(
-      onSave: _save,
-      onNext: widget.onNext,
-      isSaveLoading: isSaveLoading,
-    );
-  }
 }
+

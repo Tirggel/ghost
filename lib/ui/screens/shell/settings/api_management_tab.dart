@@ -38,14 +38,17 @@ class _ApiManagementTabState extends ConsumerState<ApiManagementTab> {
           ApiKeysTab(
             onBack: widget.onBack,
             onNext: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 1),
+            topPadding: 0,
           ),
           ExternalServicesTab(
             onBack: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 0),
             onNext: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 2),
+            topPadding: 0,
           ),
           OAuthsTab(
             onBack: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 1),
             onNext: widget.onNext,
+            topPadding: 0,
           ),
         ],
       ),

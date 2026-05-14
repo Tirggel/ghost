@@ -119,11 +119,13 @@ class AgentManager {
 
     defaultAgent = Agent(
       id: 'default-agent',
+      name: 'Ghost',
       provider: defaultProvider,
       sessionManager: sessionManager,
       toolRegistry: toolRegistry,
       storage: storage,
       memory: memorySystem,
+      skills: config.agent.skills,
       systemPrompt: config.buildSystemPrompt(
         workspaceDir: workspaceDir,
         skillsContext:
@@ -178,11 +180,13 @@ class AgentManager {
 
         final agent = Agent(
           id: agentConfig.id,
+          name: agentConfig.name,
           provider: provider,
           sessionManager: sessionManager,
           toolRegistry: toolRegistry,
           storage: storage,
           memory: memorySystem,
+          skills: agentConfig.skills,
           systemPrompt: agentConfig.systemPrompt.isNotEmpty
               ? '${agentConfig.systemPrompt}\n\n$finalPrompt'
               : finalPrompt,
@@ -403,6 +407,9 @@ class AgentManager {
     
     notifyConfigChanged();
   }
+
+  /// Get all managed agents (default + custom)
+  List<Agent> get agents => [defaultAgent, ..._customAgents.values];
 
   /// Get a specific agent, or the default one
   Agent getAgent(String? agentId) {

@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import 'package:easy_localization/easy_localization.dart';
+export 'app_unified_picker.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 
@@ -194,284 +195,9 @@ class AppFormField extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// AppDropdownField
+// AppUnifiedPicker — Canonical picker for Settings
 // ---------------------------------------------------------------------------
-
-/// A labelled dropdown consistent with the rest of the form system.
-class AppDropdownField<T> extends StatefulWidget {
-  const AppDropdownField({
-    required this.value,
-    this.label,
-    required this.items,
-    required this.onChanged,
-    required this.displayValue,
-    this.itemBuilder,
-    this.selectedItemBuilder,
-    this.hint,
-    this.prefixIcon,
-    super.key,
-  });
-
-  final T? value;
-  final String? label;
-  final String? hint;
-  final Widget? prefixIcon;
-  final List<T> items;
-  final ValueChanged<T?> onChanged;
-  final String Function(T) displayValue;
-  final Widget Function(T)? itemBuilder;
-  final List<Widget> Function(BuildContext)? selectedItemBuilder;
-
-  @override
-  State<AppDropdownField<T>> createState() => _AppDropdownFieldState<T>();
-}
-
-class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
-  bool _hasFocus = false;
-
-  void _openDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => _AppDropdownDialog<T>(
-        items: widget.items,
-        selectedValue: widget.value,
-        onSelected: widget.onChanged,
-        title: widget.label ?? widget.hint ?? '',
-        displayValue: widget.displayValue,
-        itemBuilder: widget.itemBuilder,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Watch context.locale to ensure rebuild on language change
-    context.locale;
-
-    String displayStr = (widget.hint != null && widget.hint!.isNotEmpty) ? widget.hint!.tr() : '';
-    if (widget.value != null) {
-      displayStr = widget.displayValue(widget.value as T);
-    }
-    
-    Widget? activeChild;
-    if (widget.selectedItemBuilder != null && widget.value != null) {
-      final widgets = widget.selectedItemBuilder!(context);
-      final index = widget.items.indexOf(widget.value as T);
-      if (index >= 0 && index < widgets.length) {
-        activeChild = widgets[index];
-      }
-    }
-    if (activeChild == null && widget.itemBuilder != null && widget.value != null) {
-      activeChild = widget.itemBuilder!(widget.value as T);
-    }
-    activeChild ??= Text(
-      displayStr,
-      style: TextStyle(
-        color: widget.value != null ? AppColors.white : AppColors.textDim,
-        fontSize: AppConstants.fontSizeBody,
-      ),
-      overflow: TextOverflow.ellipsis,
-    );
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppConstants.settingsElementSpacing),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (widget.label != null && widget.label!.isNotEmpty) ...[
-            AppFormLabel(widget.label!),
-            const SizedBox(height: 6),
-          ],
-          Focus(
-            onFocusChange: (hasFocus) => setState(() => _hasFocus = hasFocus),
-            child: GestureDetector(
-              onTap: widget.items.isEmpty ? null : () => _openDialog(context),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: _hasFocus ? AppColors.primary : AppColors.border,
-                    width: _hasFocus ? 1.0 : 1.0,
-                  ),
-                  borderRadius: BorderRadius.circular(AppConstants.buttonBorderRadius),
-                  color: AppColors.background,
-                ),
-                child: Row(
-                  children: [
-                    if (widget.prefixIcon != null) ...[
-                      widget.prefixIcon!,
-                      const SizedBox(width: 12),
-                    ],
-                    Expanded(child: activeChild),
-                    const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.textDim,
-                      size: AppConstants.settingsIconSize,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AppDropdownDialog<T> extends StatefulWidget {
-
-  const _AppDropdownDialog({
-    required this.items,
-    required this.selectedValue,
-    required this.onSelected,
-    required this.title,
-    required this.displayValue,
-    this.itemBuilder,
-  });
-  final List<T> items;
-  final T? selectedValue;
-  final void Function(T?) onSelected;
-  final String title;
-  final String Function(T) displayValue;
-  final Widget Function(T)? itemBuilder;
-
-  @override
-  State<_AppDropdownDialog<T>> createState() => _AppDropdownDialogState<T>();
-}
-
-class _AppDropdownDialogState<T> extends State<_AppDropdownDialog<T>> {
-  final _searchController = TextEditingController();
-  List<T> _filteredItems = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _filteredItems = widget.items;
-    _searchController.addListener(_sortAndFilter);
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _sortAndFilter() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      if (query.isEmpty) {
-        _filteredItems = widget.items;
-      } else {
-        _filteredItems = widget.items.where((i) {
-          final label = widget.displayValue(i).toLowerCase();
-          return label.contains(query);
-        }).toList();
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: AppColors.background,
-      shape: const RoundedRectangleBorder(
-        side: BorderSide(color: AppColors.border, width: 0.5),
-      ),
-      child: Container(
-        width: 400,
-        height: 500,
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.title.isEmpty ? '' : widget.title.tr(),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-                AppCloseButton(
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            if (widget.items.length > 5) ...[
-              const SizedBox(height: 16),
-              TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: const TextStyle(color: AppColors.white, fontSize: 13),
-                decoration: AppInputDecoration.compact(
-                  hint: 'sidebar.search_placeholder'.tr(),
-                ).copyWith(
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: AppColors.textDim,
-                    size: 18,
-                  ),
-                  fillColor: AppColors.background,
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Expanded(
-              child: _filteredItems.isEmpty
-                  ? Center(
-                      child: Text(
-                        'common.no_results'.tr(),
-                        style: const TextStyle(color: AppColors.textDim),
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _filteredItems.length,
-                      itemBuilder: (context, index) {
-                        final item = _filteredItems[index];
-                        final isSelected = item == widget.selectedValue;
-
-                        Widget content;
-                        if (widget.itemBuilder != null) {
-                          content = widget.itemBuilder!(item);
-                        } else {
-                          content = Text(
-                            widget.displayValue(item),
-                            style: TextStyle(
-                              color: isSelected ? AppColors.primary : AppColors.white,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              fontSize: 13,
-                            ),
-                          );
-                        }
-
-                        return ListTile(
-                          title: content,
-                          trailing: isSelected
-                              ? const Icon(
-                                  Icons.check,
-                                  color: AppColors.primary,
-                                  size: 16,
-                                )
-                              : null,
-                          onTap: () {
-                            widget.onSelected(item);
-                            Navigator.pop(context);
-                          },
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
+// Replaces the legacy AppDropdownField. Exported from app_unified_picker.dart
 // ---------------------------------------------------------------------------
 // AppSectionHeader
 // ---------------------------------------------------------------------------
@@ -610,6 +336,7 @@ class AppSaveButton extends StatelessWidget {
     this.icon = Icons.save,
     this.isLoading = false,
     this.expand = false,
+    this.showLoadingAnimation = true,
     super.key,
   });
 
@@ -618,6 +345,7 @@ class AppSaveButton extends StatelessWidget {
   final IconData icon;
   final bool isLoading;
   final bool expand;
+  final bool showLoadingAnimation;
 
   @override
   Widget build(BuildContext context) {
@@ -627,14 +355,16 @@ class AppSaveButton extends StatelessWidget {
     final button = ElevatedButton.icon(
       onPressed: isLoading ? null : onPressed,
       icon: isLoading
-          ? const SizedBox(
-              height: 18,
-              width: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppColors.black,
-              ),
-            )
+          ? (showLoadingAnimation
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.black,
+                  ),
+                )
+              : Icon(icon, size: AppConstants.settingsIconSize))
           : Icon(icon, size: AppConstants.settingsIconSize),
       label: Text(label.tr().toUpperCase(),
         style: const TextStyle(fontWeight: FontWeight.w900)),
@@ -652,6 +382,78 @@ class AppSaveButton extends StatelessWidget {
       return SizedBox(width: double.infinity, child: button);
     }
     return button;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// AppActionButton — canonical general action button
+// ---------------------------------------------------------------------------
+
+class AppActionButton extends StatelessWidget {
+  const AppActionButton({
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.isPrimary = false,
+    this.isLoading = false,
+    this.expand = false,
+    super.key,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+  final bool isPrimary;
+  final bool isLoading;
+  final bool expand;
+
+  @override
+  Widget build(BuildContext context) {
+    // Watch context.locale to ensure rebuild on language change
+    context.locale;
+
+    final child = isLoading
+        ? const SizedBox(
+            height: 18,
+            width: 18,
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.black),
+          )
+        : (icon != null ? Icon(icon, size: 18) : const SizedBox());
+
+    final labelWidget = Text(label.tr().toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900));
+
+    if (isPrimary) {
+      final style = ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.black,
+        minimumSize: const Size(120, 48),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      );
+
+      final btn = ElevatedButton.icon(
+        onPressed: isLoading ? null : onPressed,
+        icon: child,
+        label: labelWidget,
+        style: style,
+      );
+      return expand ? SizedBox(width: double.infinity, child: btn) : btn;
+    } else {
+      final style = OutlinedButton.styleFrom(
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.primary,
+        side: const BorderSide(color: AppColors.primary, width: 1.2),
+        minimumSize: const Size(120, 48),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      );
+
+      final btn = OutlinedButton.icon(
+        onPressed: isLoading ? null : onPressed,
+        icon: child,
+        label: labelWidget,
+        style: style,
+      );
+      return expand ? SizedBox(width: double.infinity, child: btn) : btn;
+    }
   }
 }
 
@@ -716,6 +518,70 @@ class AppNavButton extends StatelessWidget {
         style: style,
       );
     }
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// AppSwitch & AppSwitchListTile
+// ---------------------------------------------------------------------------
+
+/// Standardized switch component matching the RAG on/off design.
+class AppSwitch extends StatelessWidget {
+  const AppSwitch({
+    required this.value,
+    required this.onChanged,
+    super.key,
+  });
+
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Switch(
+      value: value,
+      onChanged: onChanged,
+      activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
+      activeThumbColor: AppColors.primary,
+      inactiveTrackColor: AppColors.surfaceLight,
+      inactiveThumbColor: AppColors.textDim,
+      trackOutlineColor: WidgetStateProperty.all(AppColors.transparent),
+    );
+  }
+}
+
+/// Standardized switch list tile component matching the RAG on/off design.
+class AppSwitchListTile extends StatelessWidget {
+  const AppSwitchListTile({
+    required this.value,
+    required this.onChanged,
+    required this.title,
+    this.subtitle,
+    this.contentPadding = EdgeInsets.zero,
+    super.key,
+  });
+
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final Widget title;
+  final Widget? subtitle;
+  final EdgeInsetsGeometry contentPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      value: value,
+      onChanged: onChanged,
+      title: title,
+      subtitle: subtitle,
+      contentPadding: contentPadding,
+      activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
+      activeThumbColor: AppColors.primary,
+      inactiveTrackColor: AppColors.surfaceLight,
+      inactiveThumbColor: AppColors.textDim,
+      trackOutlineColor: WidgetStateProperty.all(AppColors.transparent),
+    );
   }
 }
 
@@ -818,13 +684,6 @@ class AppLanguageTile extends StatelessWidget {
               flag,
               style: const TextStyle(
                 fontSize: 24,
-                fontFamilyFallback: [
-                  'Apple Color Emoji',
-                  'Segoe UI Emoji',
-                  'Noto Color Emoji',
-                  'Android Emoji',
-                  'EmojiSymbols',
-                ],
               ),
             ),
           ),
@@ -1156,13 +1015,14 @@ mixin SettingsSaveMixin<T extends StatefulWidget> on State<T> {
   Future<void> handleSave(
     Future<void> Function() saveAction, {
     String? successMessage,
+    bool silent = false,
   }) async {
     if (_isSaving) return;
     
     setState(() => _isSaving = true);
     try {
       await saveAction();
-      if (mounted) {
+      if (mounted && !silent) {
         AppSnackBar.showSuccess(
           context, 
           successMessage ?? 'common.saved'.tr(),

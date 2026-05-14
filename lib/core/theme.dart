@@ -39,6 +39,8 @@ class AppTheme {
           fontWeight: FontWeight.w600,
         ),
       ),
+    ).apply(
+      fontFamilyFallback: [GoogleFonts.notoColorEmoji().fontFamily!],
     ),
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.transparent,

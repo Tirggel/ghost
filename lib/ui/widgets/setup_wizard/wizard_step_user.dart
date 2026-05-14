@@ -51,7 +51,7 @@ class WizardStepUser extends ConsumerWidget {
             onChanged: notifier.updateUserCallSign,
             onSubmitted: notifier.updateUserCallSign,
           ),
-          AppDropdownField<String>(
+          AppUnifiedPicker<String>(
             label: 'settings.user.pronouns_label',
             value: ['he/him', 'she/her', 'Ask me'].contains(state.userPronouns)
                 ? state.userPronouns

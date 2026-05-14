@@ -98,6 +98,15 @@ class ToolGroups {
     'group:ui': ['browser', 'canvas'],
     'group:github': ['github'],
     'group:vault': ['store_api_key'],
+    'group:kanban': [
+      'kanban_list',
+      'kanban_create',
+      'kanban_update',
+      'kanban_detail',
+      'kanban_assign',
+      'kanban_subtask',
+      'kanban_comment',
+    ],
   };
 
   /// Expand group references in a tool list.
@@ -129,6 +138,7 @@ class ToolProfiles {
       'group:web',
       'group:ui',
       'group:vault',
+      'group:kanban',
     ],
     'messaging': ['message', 'group:sessions'],
     'full': [], // Empty = no restrictions

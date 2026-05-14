@@ -4,18 +4,17 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
+import '../../../../providers/shell_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_avatar_picker.dart';
-import '../../../widgets/searchable_model_picker.dart';
 import '../../../widgets/business_card.dart';
-import '../../../widgets/skills_selector_widget.dart';
 import '../../../widgets/app_snackbar.dart';
-import '../../../widgets/design_system_picker.dart';
 
 class IdentityTab extends ConsumerStatefulWidget {
-  const IdentityTab({super.key, this.onBack, this.onNext});
+  const IdentityTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
   ConsumerState<IdentityTab> createState() => _IdentityTabState();
@@ -96,7 +95,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
     }
     super.dispose();
   }
-  Future<void> _save() async {
+  Future<void> _save({bool silent = false}) async {
     await handleSave(() async {
       final avatar = _controllers['avatar']!.text;
       final identityConfig = {
@@ -120,7 +119,10 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
       if (mounted) {
         setState(() => _isEditing = false);
       }
-    }, successMessage: 'settings.identity.saved'.tr());
+    }, 
+    successMessage: 'settings.identity.saved'.tr(),
+    silent: silent,
+    );
   }
 
   @override
@@ -133,19 +135,54 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
       }
     });
 
+    // Auto-save on main tab change
+    ref.listen(shellProvider.select((s) => s.settingsTabIndex), (prev, next) {
+      if (prev == 1 && next != 1 && _isEditing && !isSaveLoading) {
+        _save(silent: true);
+      }
+    });
+
+    // Auto-save on sub-tab change
+    ref.listen(shellProvider.select((s) => s.settingsSubTabIndices[1] ?? 0), (prev, next) {
+      if (prev == 0 && next != 0 && _isEditing && !isSaveLoading) {
+        _save(silent: true);
+      }
+    });
+
     final config = ref.watch(configProvider);
     final availableProviders = config.getAvailableProviders(AppConstants.aiProviders);
     final availableProviderIds = availableProviders.map((p) => p['id']!).toList();
+    
+    final systemsAsync = ref.watch(designSystemsProvider);
+    final systems = systemsAsync.value ?? [];
+    
+    final skillsAsync = ref.watch(skillsProvider);
+    final skills = skillsAsync.value ?? [];
 
 
-    return AppSettingsPage(
-      onBack: widget.onBack,
-      onNext: widget.onNext,
-      onSave: _isEditing ? _save : null,
-      isSaveLoading: isSaveLoading,
-      topPadding: 0,
-      children: [
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop && _isEditing && !isSaveLoading) {
+          _save(silent: true);
+        }
+      },
+      child: AppSettingsPage(
+        onBack: widget.onBack,
+        onNext: widget.onNext,
+        onSave: _isEditing ? _save : null,
+        isSaveLoading: isSaveLoading,
+        topPadding: widget.topPadding,
+        children: [
         const AppSectionHeader('settings.identity.section', large: true),
+        Text(
+          'settings.identity.desc'.tr(),
+          style: const TextStyle(
+            fontSize: AppConstants.fontSizeBody,
+            color: AppColors.textDim,
+          ),
+        ),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
         BusinessCard(
           avatarBuilder: (context, isEditing) => ListenableBuilder(
             listenable: _controllers['avatar']!,
@@ -219,38 +256,58 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
             BusinessCardField(
               label: 'settings.identity.provider_label',
               hint: 'settings.identity.choose_provider',
-              controller: TextEditingController(
-                text: _selectedProvider ?? '',
-              ),
+              controller: TextEditingController(text: _selectedProvider ?? ''),
               value: _selectedProvider != null
                   ? availableProviders.firstWhere(
                       (p) => p['id'] == _selectedProvider,
-                      orElse: () => <String, String>{
-                        'id': _selectedProvider!,
-                        'label': _selectedProvider!,
-                      },
+                      orElse: () => <String, String>{'id': _selectedProvider!, 'label': _selectedProvider!},
                     )['label']
                   : null,
-              customEditWidget: _buildProviderDropdown(
-                availableProviders,
-                availableProviderIds,
+              customEditWidget: AppUnifiedPicker<String>(
+                value: _selectedProvider,
+                label: 'settings.identity.provider_label',
+                items: availableProviderIds,
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() {
+                      _selectedProvider = val;
+                      _selectedModel = null;
+                      _availableModels = [];
+                    });
+                    _updateModels(val);
+                  }
+                },
+                displayValue: (v) {
+                  final provider = availableProviders.firstWhere((p) => p['id'] == v, orElse: () => <String, String>{'id': v, 'label': v});
+                  return provider['label']!;
+                },
+                itemPrefixIcon: (v) {
+                  final provider = availableProviders.firstWhere((p) => p['id'] == v, orElse: () => <String, String>{'id': v, 'label': v});
+                  final icon = provider['icon'];
+                  if (icon != null) {
+                    return Image.asset(
+                      'assets/icons/llm/$icon',
+                      width: 20,
+                      height: 20,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.smart_toy, size: AppConstants.iconSizeSmall, color: AppColors.white),
+                    );
+                  }
+                  return const Icon(Icons.smart_toy, size: AppConstants.iconSizeSmall, color: AppColors.white);
+                },
               ),
             ),
             BusinessCardField(
               label: 'settings.identity.model_label',
               hint: 'settings.identity.choose_model',
-              controller: TextEditingController(
-                text: _selectedModel ?? '',
-              ),
+              controller: TextEditingController(text: _selectedModel ?? ''),
               value: _selectedModel,
-              customEditWidget: SearchableModelPicker(
-                selectedModel: _selectedModel,
-                models: _availableModels,
+              customEditWidget: AppUnifiedPicker<String>(
+                value: _selectedModel,
+                items: _availableModels,
                 label: 'settings.identity.model_label',
                 hint: 'settings.identity.choose_model',
-                onSelected: (val) {
-                  setState(() => _selectedModel = val);
-                },
+                displayValue: (v) => v,
+                onChanged: (val) => setState(() => _selectedModel = val),
               ),
             ),
             BusinessCardField(
@@ -258,9 +315,42 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
               hint: 'settings.agents.design_system_hint',
               controller: TextEditingController(),
               value: _selectedDesignSystem.isEmpty ? 'settings.agents.design_system_none'.tr() : _selectedDesignSystem,
-              customEditWidget: DesignSystemPicker(
-                selectedId: _selectedDesignSystem,
-                onChanged: (val) => setState(() => _selectedDesignSystem = val),
+              customEditWidget: AppUnifiedPicker<String>(
+                value: _selectedDesignSystem.isEmpty ? null : _selectedDesignSystem,
+                items: ['', ...systems.map((s) => s['id'] as String)],
+                label: 'settings.agents.design_system_label',
+                hint: 'settings.agents.design_system_hint',
+                onChanged: (val) => setState(() => _selectedDesignSystem = val ?? ''),
+                displayValue: (v) {
+                  if (v.isEmpty) return 'settings.agents.design_system_none'.tr();
+                  final sys = systems.firstWhere((s) => s['id'] == v, orElse: () => {'name': v});
+                  return sys['name'] as String;
+                },
+              ),
+            ),
+            BusinessCardField(
+              label: 'settings.identity.skills_section',
+              hint: 'settings.identity.skills_section',
+              controller: TextEditingController(),
+              value: _mainAgentSkills.isEmpty ? 'settings.common.none'.tr() : _mainAgentSkills.map((sId) {
+                final skill = skills.firstWhere((s) => s['slug'] == sId, orElse: () => {'name': sId});
+                return skill['name'];
+              }).join(', '),
+              customEditWidget: AppUnifiedPicker<String>(
+                values: _mainAgentSkills.toSet(),
+                multiSelect: true,
+                items: skills.map((s) => s['slug'] as String).toList(),
+                label: 'settings.identity.skills_section',
+                hint: 'settings.identity.skills_section',
+                onMultiChanged: (vals) => setState(() {
+                  _mainAgentSkills.clear();
+                  _mainAgentSkills.addAll(vals);
+                }),
+                displayValue: (v) {
+                  final skill = skills.firstWhere((s) => s['slug'] == v, orElse: () => {'name': v});
+                  final emoji = skill['emoji'] != null ? '${skill['emoji']} ' : '';
+                  return '$emoji${skill['name']}';
+                },
               ),
             ),
           ],
@@ -268,26 +358,13 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
           isEditing: _isEditing,
           onEditToggle: () => setState(() => _isEditing = !_isEditing),
           onSave: _save,
-          bottom: (context, isEditing) => _buildSkillsSection(isEditing),
         ),
         const SizedBox(height: AppConstants.settingsSectionSpacing),
       ],
-    );
-  }
+    ),
+  );
+}
 
-  Widget _buildSkillsSection(bool isEditing) {
-    return SkillsSelector(
-      title: 'settings.identity.skills_section',
-      selectedSkills: _mainAgentSkills,
-      isEditing: isEditing,
-      onChanged: (next) {
-        setState(() {
-          _mainAgentSkills.clear();
-          _mainAgentSkills.addAll(next);
-        });
-      },
-    );
-  }
 
   Future<void> _onPickAvatar() async {
     try {
@@ -378,62 +455,6 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
     );
   }
 
-  Widget _buildProviderDropdown(
-    List<Map<String, String>> availableProviders,
-    List<String> availableProviderIds,
-  ) {
-    return AppDropdownField<String>(
-      value: _selectedProvider,
-      label: 'settings.identity.provider_label',
-      items: availableProviderIds,
-      onChanged: (val) {
-        if (val != null) {
-          setState(() {
-            _selectedProvider = val;
-            _selectedModel = null;
-            _availableModels = [];
-          });
-          _updateModels(val);
-        }
-      },
-      displayValue: (v) {
-        final provider = availableProviders.firstWhere(
-          (p) => p['id'] == v,
-          orElse: () => <String, String>{'id': v, 'label': v},
-        );
-        return provider['label']!;
-      },
-      itemBuilder: (v) {
-        final provider = availableProviders.firstWhere(
-          (p) => p['id'] == v,
-          orElse: () => <String, String>{'id': v, 'label': v},
-        );
-        final icon = provider['icon'];
-        return Row(
-          children: [
-            if (icon != null)
-              Image.asset(
-                'assets/icons/llm/$icon',
-                width: 20,
-                height: 20,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.smart_toy,
-                  size: AppConstants.iconSizeSmall,
-                  color: AppColors.white,
-                ),
-              )
-            else
-              const Icon(
-                Icons.smart_toy,
-                size: AppConstants.iconSizeSmall,
-                color: AppColors.white,
-              ),
-            const SizedBox(width: 10),
-            Text(provider['label']!),
-          ],
-        );
-      },
-    );
-  }
+
 
 }

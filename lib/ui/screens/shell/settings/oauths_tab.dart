@@ -9,9 +9,10 @@ import '../../../widgets/app_dialogs.dart';
 import '../../../widgets/app_snackbar.dart';
 
 class OAuthsTab extends ConsumerStatefulWidget {
-  const OAuthsTab({super.key, this.onBack, this.onNext});
+  const OAuthsTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
   ConsumerState<OAuthsTab> createState() => _OAuthsTabState();
@@ -155,7 +156,7 @@ class _OAuthsTabState extends ConsumerState<OAuthsTab> {
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
-      topPadding: 0,
+      topPadding: widget.topPadding,
       children: [
         const AppSectionHeader('settings.oauths.section', large: true),
         Text(
@@ -166,6 +167,8 @@ class _OAuthsTabState extends ConsumerState<OAuthsTab> {
           ),
         ),
         const SizedBox(height: AppConstants.settingsContentSpacing),
+        AppSectionLabel('settings.oauths.add_button'),
+        const SizedBox(height: AppConstants.settingsElementSpacing),
         _buildAddCustomKeyButton(),
         const SizedBox(height: AppConstants.settingsSectionSpacing),
         ..._buildCustomVaultSection(vaultKeys, config),

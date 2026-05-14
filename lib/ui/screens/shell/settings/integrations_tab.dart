@@ -17,9 +17,10 @@ import '../../../widgets/app_dialogs.dart';
 import '../../../widgets/app_snackbar.dart';
 
 class IntegrationsTab extends ConsumerStatefulWidget {
-  const IntegrationsTab({super.key, this.onBack, this.onNext});
+  const IntegrationsTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
   ConsumerState<IntegrationsTab> createState() => _IntegrationsTabState();
@@ -215,20 +216,18 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
-      subTabLabels: const ['settings.integrations.tab'],
+      topPadding: widget.topPadding,
       children: [
         const AppSectionHeader('settings.integrations.google_section', large: true),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Text(
-            authState != null
-                ? 'settings.integrations.google_connected'.tr()
-                : kIsWeb
-                    ? 'settings.integrations.google_desc_web'.tr()
-                    : 'settings.integrations.google_desc_desktop'.tr(),
-            style: const TextStyle(color: AppColors.textDim, fontSize: AppConstants.fontSizeBody),
-          ),
+        Text(
+          authState != null
+              ? 'settings.integrations.google_connected'.tr()
+              : kIsWeb
+                  ? 'settings.integrations.google_desc_web'.tr()
+                  : 'settings.integrations.google_desc_desktop'.tr(),
+          style: const TextStyle(color: AppColors.textDim, fontSize: AppConstants.fontSizeBody),
         ),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
         if (authState != null) ...[
           AppSettingsTile(
             title: authState.displayName ?? authState.email,
@@ -391,17 +390,15 @@ class _IntegrationsTabState extends ConsumerState<IntegrationsTab> {
           
         const SizedBox(height: AppConstants.settingsSectionSpacing),
         const AppSectionHeader('settings.integrations.ms_graph_section', large: true),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Text(
-            msAuthState != null
-                ? 'settings.integrations.ms_connected'.tr()
-                : kIsWeb
-                    ? 'settings.integrations.ms_desc_web'.tr()
-                    : 'settings.integrations.ms_desc_desktop'.tr(),
-            style: const TextStyle(color: AppColors.textDim, fontSize: AppConstants.fontSizeBody),
-          ),
+        Text(
+          msAuthState != null
+              ? 'settings.integrations.ms_connected'.tr()
+              : kIsWeb
+                  ? 'settings.integrations.ms_desc_web'.tr()
+                  : 'settings.integrations.ms_desc_desktop'.tr(),
+          style: const TextStyle(color: AppColors.textDim, fontSize: AppConstants.fontSizeBody),
         ),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
         if (msAuthState != null) ...[
           AppSettingsTile(
             title: msAuthState.displayName ?? msAuthState.email,

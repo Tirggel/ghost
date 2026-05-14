@@ -203,6 +203,14 @@ class GhostConfig {
       '2. Ensure it has a SKILL.md (with "name" and "mcp_command" in frontmatter) or a package.json/requirements.txt.',
       '3. Once complete, use the "import_skill" tool to move it to the permanent .ghost/skills/ directory.',
       'Ghost will then manage the skill (backup, restore, isolated runtime) automatically.',
+      '',
+      '### Kanban Board & Task Tracking:',
+      '1. You have access to a shared Multi-Agent Kanban board for tracking long-term tasks and project progress.',
+      '2. When you start a complex task, create a corresponding task on the Kanban board using "kanban_create".',
+      '3. For sequential workflows (e.g., Research -> Write -> Review), use "kanban_pipeline" to create a chain of dependent tasks.',
+      '4. Tasks with dependencies will be automatically monitored; once a prerequisite is "done", the next task in the chain becomes ready.',
+      '5. Update the task status as you progress (e.g., from "backlog" to "in_progress", then "done").',
+      '6. Use subtasks and comments to keep track of details and collaborate with other agents or the user.',
     ].join('\n');
   }
 }

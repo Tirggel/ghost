@@ -185,12 +185,6 @@ Creates a new skill from a template.
 ### `skills.install` / `skills.import` / `skills.downloadFromGithub`
 Installs a new skill from a ZIP, local directory, or GitHub URL.
 
-### `skills.updateGlobal`
-Enables or disables a skill globally for all agents.
-**Params:**
-- `slug`: (String)
-- `isGlobal`: (Boolean)
-
 ### `skills.getMarkdown` / `skills.updateMarkdown`
 Read or modify the Markdown-based logic of a skill.
 **Params:**
@@ -241,6 +235,75 @@ Back up or restore the entire design systems library.
 Installs a design system from a ZIP archive.
 **Params:**
 - `zip`: (String, base64)
+
+---
+
+## 📋 Kanban & Task Management
+
+### `kanban.list`
+Lists tasks with optional filtering.
+**Params:**
+- `status`: (String, optional) e.g., "backlog", "todo", "inProgress", "done".
+- `agentId`: (String, optional) Filter by assigned agent.
+
+### `kanban.get`
+Retrieves a specific task.
+**Params:**
+- `id`: (String)
+
+### `kanban.create`
+Creates a new task.
+**Params:**
+- `title`: (String)
+- `description`: (String, optional)
+- `priority`: (String, "urgent"|"high"|"normal"|"low")
+- `status`: (String, "backlog"|"todo"|"inProgress"|"done")
+- `labels`: (Array of Strings, optional)
+- `assignedAgentId`: (String, optional)
+- `dependsOnIds`: (Array of Strings, optional) List of task IDs this task depends on.
+
+### `kanban.update`
+Updates an existing task.
+**Params:**
+- `id`: (String)
+- `title`, `description`, `priority`, `labels`, `assignedAgentId`, `dependsOnIds`: (Optional)
+- `dueDate`: (ISO String, optional)
+- `clearAssignedAgent`: (Boolean, optional)
+- `clearDueDate`: (Boolean, optional)
+
+### `kanban.move`
+Changes a task's status or position.
+**Params:**
+- `id`: (String)
+- `status`: (String)
+- `insertAt`: (Int, optional) Index in the target column.
+
+### `kanban.assign`
+Assigns a task to an agent.
+**Params:**
+- `id`: (String)
+- `agentId`: (String, optional)
+- `agentName`: (String, optional)
+
+### `kanban.delete`
+Deletes a task.
+**Params:**
+- `id`: (String)
+
+### `kanban.addSubtask` / `kanban.toggleSubtask` / `kanban.removeSubtask`
+Manage subtasks within a task.
+**Params:**
+- `taskId`: (String)
+- `title`: (String, for add)
+- `subtaskId`: (String, for toggle/remove)
+
+### `kanban.addComment`
+Adds a comment to a task.
+**Params:**
+- `taskId`: (String)
+- `content`: (String)
+- `authorId`: (String, optional)
+- `authorName`: (String, optional)
 
 ---
 
@@ -303,6 +366,9 @@ Broadcasted when the global or agent configuration has been updated. Clients sho
 
 ### `skills.changed`
 Broadcasted when a new skill is installed or deleted.
+
+### `kanban.changed`
+Broadcasted when a task is created, updated, moved, or deleted.
 
 ### `gateway.error`
 Broadcasted when a background error occurs (e.g., channel connection failure).

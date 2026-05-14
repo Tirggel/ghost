@@ -17,33 +17,17 @@ import '../../../widgets/app_dialogs.dart';
 import '../../../widgets/app_selectable_card.dart';
 import '../../../widgets/app_snackbar.dart';
 
-class DesignSystemsTab extends StatelessWidget {
+class DesignSystemsTab extends ConsumerStatefulWidget {
   const DesignSystemsTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
   final double? topPadding;
 
   @override
-  Widget build(BuildContext context) {
-    return _DesignSystemsTabContent(onBack: onBack, onNext: onNext, topPadding: topPadding);
-  }
+  ConsumerState<DesignSystemsTab> createState() => _DesignSystemsTabState();
 }
 
-class _DesignSystemsTabContent extends ConsumerStatefulWidget {
-  const _DesignSystemsTabContent({this.onBack, this.onNext, this.topPadding});
-  final VoidCallback? onBack;
-  final VoidCallback? onNext;
-  final double? topPadding;
-
-  @override
-  ConsumerState<_DesignSystemsTabContent> createState() => _DesignSystemsTabContentState();
-}
-
-class _DesignSystemsTabContentState extends ConsumerState<_DesignSystemsTabContent> {
-  bool _isDownloading = false;
-  bool _isInstalling = false;
-  bool _isBackingUp = false;
-  bool _isRestoring = false;
+class _DesignSystemsTabState extends ConsumerState<DesignSystemsTab> with SettingsSaveMixin {
 
   Future<void> _downloadFromUrl() async {
     final urlController = TextEditingController();
@@ -84,40 +68,33 @@ class _DesignSystemsTabContentState extends ConsumerState<_DesignSystemsTabConte
     );
 
     if (confirmed == true && urlController.text.isNotEmpty) {
-      try {
-        setState(() => _isDownloading = true);
+      await handleSave(() async {
         await ref
             .read(configProvider.notifier)
             .addDesignSystemFromUrl(urlController.text);
-        if (mounted) {
-          AppSnackBar.showSuccess(context, 'settings.design_systems.download_success'.tr());
-        }
-      } catch (e) {
-        if (mounted) {
-          showAppErrorDialog(
-            context,
-            'settings.design_systems.download_failed'.tr(
-              namedArgs: {'error': e.toString()},
-            ),
-          );
-        }
-      } finally {
-        if (mounted) setState(() => _isDownloading = false);
-      }
+      }, successMessage: 'settings.design_systems.download_success'.tr());
     }
   }
 
   Future<void> _installDesignSystem() async {
+    FilePickerResult? result;
     try {
-      final result = await FilePicker.platform.pickFiles(
+      result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['zip', 'md'],
         withData: true,
       );
+    } catch (e) {
+      if (mounted) {
+        showAppErrorDialog(context, 'file_picker.pick_error'.tr(namedArgs: {'error': e.toString()}));
+      }
+      return;
+    }
 
-      if (result == null) return;
+    if (result == null) return;
 
-      final file = result.files.single;
+    await handleSave(() async {
+      final file = result!.files.single;
       final extension = file.extension?.toLowerCase();
 
       if (extension == 'md') {
@@ -129,12 +106,8 @@ class _DesignSystemsTabContentState extends ConsumerState<_DesignSystemsTabConte
         }
 
         if (content != null) {
-          setState(() => _isInstalling = true);
           final name = p.basenameWithoutExtension(file.name);
           await ref.read(configProvider.notifier).saveDesignSystem(name, name, content);
-          if (mounted) {
-            AppSnackBar.showSuccess(context, 'settings.design_systems.install_success'.tr());
-          }
         }
         return;
       }
@@ -147,30 +120,13 @@ class _DesignSystemsTabContentState extends ConsumerState<_DesignSystemsTabConte
 
       if (bytes == null) return;
 
-      setState(() => _isInstalling = true);
       final base64Zip = base64Encode(bytes);
-
       await ref.read(configProvider.notifier).installDesignSystem(base64Zip);
-      if (mounted) {
-        AppSnackBar.showSuccess(context, 'settings.design_systems.install_success'.tr());
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackBar.showError(
-          context,
-          'settings.design_systems.install_failed'.tr(
-            namedArgs: {'error': e.toString()},
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isInstalling = false);
-    }
+    }, successMessage: 'settings.design_systems.install_success'.tr());
   }
 
   Future<void> _backupDesignSystems() async {
-    try {
-      setState(() => _isBackingUp = true);
+    await handleSave(() async {
       final data = await ref.read(configProvider.notifier).backupDesignSystems();
       if (data == null) return;
 
@@ -184,23 +140,11 @@ class _DesignSystemsTabContentState extends ConsumerState<_DesignSystemsTabConte
           AppSnackBar.showSuccess(context, 'settings.design_systems.backup_success'.tr());
         }
       }
-    } catch (e) {
-      if (mounted) {
-        showAppErrorDialog(
-          context,
-          'settings.design_systems.backup_failed'.tr(
-            namedArgs: {'error': e.toString()},
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isBackingUp = false);
-    }
+    });
   }
 
   Future<void> _restoreDesignSystems() async {
-    try {
-      setState(() => _isRestoring = true);
+    await handleSave(() async {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
@@ -212,18 +156,7 @@ class _DesignSystemsTabContentState extends ConsumerState<_DesignSystemsTabConte
           AppSnackBar.showSuccess(context, 'settings.design_systems.restore_success'.tr());
         }
       }
-    } catch (e) {
-      if (mounted) {
-        showAppErrorDialog(
-          context,
-          'settings.design_systems.restore_failed'.tr(
-            namedArgs: {'error': e.toString()},
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isRestoring = false);
-    }
+    });
   }
 
   void _createNew() {
@@ -259,98 +192,36 @@ class _DesignSystemsTabContentState extends ConsumerState<_DesignSystemsTabConte
         ),
         const SizedBox(height: AppConstants.settingsContentSpacing),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: 12,
+          runSpacing: 12,
           children: [
-            ElevatedButton.icon(
-              onPressed: _isDownloading || _isInstalling ? null : _createNew,
-              icon: const Icon(
-                Icons.add,
-                size: AppConstants.settingsIconSize,
-              ),
-              label: Text('settings.design_systems.create_new'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.black,
-              ),
+            AppActionButton(
+              label: 'settings.design_systems.create_new',
+              icon: Icons.add,
+              onPressed: _createNew,
+              isPrimary: true,
             ),
-            ElevatedButton.icon(
-              onPressed: _isInstalling || _isDownloading
-                  ? null
-                  : _installDesignSystem,
-              icon: _isInstalling
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(
-                      Icons.upload_file,
-                      size: AppConstants.settingsIconSize,
-                    ),
-              label: Text('settings.design_systems.install'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.black,
-              ),
+            AppActionButton(
+              label: 'settings.design_systems.install',
+              icon: Icons.upload_file,
+              onPressed: isSaveLoading ? null : _installDesignSystem,
+              isLoading: isSaveLoading,
+              isPrimary: true,
             ),
-            ElevatedButton.icon(
-              onPressed: _isDownloading || _isInstalling ? null : _downloadFromUrl,
-              icon: _isDownloading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(
-                      Icons.cloud_download,
-                      size: AppConstants.settingsIconSize,
-                    ),
-              label: Text('settings.design_systems.download_url'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.white,
-              ),
+            AppActionButton(
+              label: 'settings.design_systems.download_url',
+              icon: Icons.cloud_download,
+              onPressed: isSaveLoading ? null : _downloadFromUrl,
             ),
-            ElevatedButton.icon(
-              onPressed: _isInstalling || _isDownloading || _isBackingUp
-                  ? null
-                  : _backupDesignSystems,
-              icon: _isBackingUp
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(
-                      Icons.backup,
-                      size: AppConstants.settingsIconSize,
-                    ),
-              label: Text('settings.design_systems.backup'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.white,
-              ),
+            AppActionButton(
+              label: 'settings.design_systems.backup',
+              icon: Icons.backup,
+              onPressed: isSaveLoading ? null : _backupDesignSystems,
             ),
-            ElevatedButton.icon(
-              onPressed: _isInstalling || _isDownloading || _isRestoring
-                  ? null
-                  : _restoreDesignSystems,
-              icon: _isRestoring
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(
-                      Icons.restore,
-                      size: AppConstants.settingsIconSize,
-                    ),
-              label: Text('settings.design_systems.restore'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.white,
-              ),
+            AppActionButton(
+              label: 'settings.design_systems.restore',
+              icon: Icons.restore,
+              onPressed: isSaveLoading ? null : _restoreDesignSystems,
             ),
           ],
         ),
@@ -463,6 +334,14 @@ class _DesignSystemItem extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (isActive) ...[
+            const Icon(
+              Icons.check_circle,
+              color: AppConstants.iconColorPrimary,
+              size: AppConstants.settingsIconSize,
+            ),
+            const SizedBox(width: 12),
+          ],
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 20),
             style: IconButton.styleFrom(

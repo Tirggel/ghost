@@ -66,46 +66,49 @@ class MainSidebar extends ConsumerWidget {
       header: SidebarHeader(
         onNewChat: onNewChat,
         searchController: searchController,
+        showChatFunctions: !shellState.showKanban,
       ),
-      body: ListView(
-        children: groupedSessions.entries.map((entry) {
-          final agentName = entry.key;
-          final folderSessions = entry.value;
-          final isCollapsed = collapsedFolders.contains(agentName);
+      body: shellState.showKanban
+          ? const SizedBox.shrink()
+          : ListView(
+              children: groupedSessions.entries.map((entry) {
+                final agentName = entry.key;
+                final folderSessions = entry.value;
+                final isCollapsed = collapsedFolders.contains(agentName);
 
-          return FolderItem(
-            agentName: agentName,
-            isCollapsed: isCollapsed,
-            onToggle: () => ref.read(shellProvider.notifier).toggleFolder(agentName),
-            onDelete: () => onConfirmDeleteFolder(agentName, folderSessions),
-            children: folderSessions.asMap().entries.map<Widget>((itemEntry) {
-              final s = itemEntry.value;
-              final id = s.id;
-              final isPending = showPendingNew && id == activeSessionId;
-              final isActive = activeSessionId == id;
+                return FolderItem(
+                  agentName: agentName,
+                  isCollapsed: isCollapsed,
+                  onToggle: () => ref.read(shellProvider.notifier).toggleFolder(agentName),
+                  onDelete: () => onConfirmDeleteFolder(agentName, folderSessions),
+                  children: folderSessions.asMap().entries.map<Widget>((itemEntry) {
+                    final s = itemEntry.value;
+                    final id = s.id;
+                    final isPending = showPendingNew && id == activeSessionId;
+                    final isActive = activeSessionId == id;
 
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SessionItem(
-                    id: id,
-                    data: s.toJson(),
-                    isPending: isPending,
-                    isActive: isActive,
-                    onTap: () => ref.read(shellProvider.notifier).setActiveSession(id),
-                    onDeleted: () {
-                      if (activeSessionId == id) {
-                        ref.read(shellProvider.notifier).setActiveSession(null);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 2),
-                ],
-              );
-            }).toList(),
-          );
-        }).toList(),
-      ),
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SessionItem(
+                          id: id,
+                          data: s.toJson(),
+                          isPending: isPending,
+                          isActive: isActive,
+                          onTap: () => ref.read(shellProvider.notifier).setActiveSession(id),
+                          onDeleted: () {
+                            if (activeSessionId == id) {
+                              ref.read(shellProvider.notifier).setActiveSession(null);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 2),
+                      ],
+                    );
+                  }).toList(),
+                );
+              }).toList(),
+            ),
       footer: SidebarFooter(onShowSettings: onShowSettings),
     );
   }

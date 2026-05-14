@@ -160,12 +160,6 @@ Erstellt einen neuen Skill aus einer Vorlage.
 ### `skills.install` / `skills.import` / `skills.downloadFromGithub`
 Installiert einen neuen Skill aus einem ZIP, einem lokalen Verzeichnis oder einer GitHub-URL.
 
-### `skills.updateGlobal`
-Aktiviert oder deaktiviert einen Skill global für alle Agenten.
-**Parameter:**
-- `slug`: (String)
-- `isGlobal`: (Boolean)
-
 ### `skills.getMarkdown` / `skills.updateMarkdown`
 Liest oder ändert die Markdown-basierte Logik eines Skills.
 **Parameter:**
@@ -216,6 +210,75 @@ Sichert oder stellt die gesamte Design-System-Bibliothek wieder her.
 Installiert ein Design-System aus einem ZIP-Archiv.
 **Parameter:**
 - `zip`: (String, Base64)
+
+---
+
+## 📋 Kanban & Aufgaben-Management
+
+### `kanban.list`
+Listet Aufgaben mit optionaler Filterung auf.
+**Parameter:**
+- `status`: (String, optional) z.B. "backlog", "todo", "inProgress", "done".
+- `agentId`: (String, optional) Filtert nach zugewiesenem Agenten.
+
+### `kanban.get`
+Ruft eine spezifische Aufgabe ab.
+**Parameter:**
+- `id`: (String)
+
+### `kanban.create`
+Erstellt eine neue Aufgabe.
+**Parameter:**
+- `title`: (String)
+- `description`: (String, optional)
+- `priority`: (String, "urgent"|"high"|"normal"|"low")
+- `status`: (String, "backlog"|"todo"|"inProgress"|"done")
+- `labels`: (Array von Strings, optional)
+- `assignedAgentId`: (String, optional)
+- `dependsOnIds`: (Array von Strings, optional) Liste von Aufgaben-IDs, von denen diese Aufgabe abhängt.
+
+### `kanban.update`
+Aktualisiert eine bestehende Aufgabe.
+**Parameter:**
+- `id`: (String)
+- `title`, `description`, `priority`, `labels`, `assignedAgentId`, `dependsOnIds`: (Optional)
+- `dueDate`: (ISO String, optional)
+- `clearAssignedAgent`: (Boolean, optional)
+- `clearDueDate`: (Boolean, optional)
+
+### `kanban.move`
+Ändert den Status oder die Position einer Aufgabe.
+**Parameter:**
+- `id`: (String)
+- `status`: (String)
+- `insertAt`: (Int, optional) Index in der Zielspalte.
+
+### `kanban.assign`
+Weist einer Aufgabe einen Agenten zu.
+**Parameter:**
+- `id`: (String)
+- `agentId`: (String, optional)
+- `agentName`: (String, optional)
+
+### `kanban.delete`
+Löscht eine Aufgabe.
+**Parameter:**
+- `id`: (String)
+
+### `kanban.addSubtask` / `kanban.toggleSubtask` / `kanban.removeSubtask`
+Verwaltet Unteraufgaben (Subtasks).
+**Parameter:**
+- `taskId`: (String)
+- `title`: (String, für add)
+- `subtaskId`: (String, für toggle/remove)
+
+### `kanban.addComment`
+Fügt einer Aufgabe einen Kommentar hinzu.
+**Parameter:**
+- `taskId`: (String)
+- `content`: (String)
+- `authorId`: (String, optional)
+- `authorName`: (String, optional)
 
 ---
 
@@ -277,3 +340,9 @@ Wird gesendet (Broadcast), wenn sich die globale oder eine Agenten-Konfiguration
 
 ### `skills.changed`
 Wird gesendet, wenn ein neuer Skill installiert oder gelöscht wurde.
+
+### `kanban.changed`
+Wird gesendet, wenn eine Aufgabe erstellt, aktualisiert, verschoben oder gelöscht wurde.
+
+### `gateway.error`
+Wird gesendet, wenn ein Hintergrundfehler auftritt (z. B. Verbindungsfehler eines Kanals).

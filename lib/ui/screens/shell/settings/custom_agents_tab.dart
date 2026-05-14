@@ -6,18 +6,17 @@ import 'package:uuid/uuid.dart';
 import 'package:cron/cron.dart' as cron_pkg;
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
+import '../../../../providers/shell_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_avatar_picker.dart';
-import '../../../widgets/searchable_model_picker.dart';
 import '../../../widgets/business_card.dart';
-import '../../../widgets/skills_selector_widget.dart';
 import '../../../widgets/app_snackbar.dart';
-import '../../../widgets/design_system_picker.dart';
 
 class CustomAgentsTab extends ConsumerStatefulWidget {
-  const CustomAgentsTab({super.key, this.onBack, this.onNext});
+  const CustomAgentsTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
   ConsumerState<CustomAgentsTab> createState() => _CustomAgentsTabState();
@@ -33,17 +32,41 @@ class _CustomAgentsTabState extends ConsumerState<CustomAgentsTab> {
     final config = ref.watch(configProvider);
     final customAgents = config.customAgents;
 
-    return AppSettingsPage(
-      onBack: widget.onBack,
-      onNext: widget.onNext,
-      topPadding: 0,
-      onSave: _editingIds.isNotEmpty ? () => setState(() => _saveTrigger++) : null,
-      children: [
+    // Auto-save on main tab change
+    ref.listen(shellProvider.select((s) => s.settingsTabIndex), (prev, next) {
+      if (prev == 1 && next != 1 && _editingIds.isNotEmpty) {
+        setState(() => _saveTrigger = _saveTrigger > 0 ? -(_saveTrigger + 1) : _saveTrigger - 1);
+      }
+    });
+
+    // Auto-save on sub-tab change
+    ref.listen(shellProvider.select((s) => s.settingsSubTabIndices[1] ?? 0), (prev, next) {
+      if (prev == 1 && next != 1 && _editingIds.isNotEmpty) {
+        setState(() => _saveTrigger = _saveTrigger > 0 ? -(_saveTrigger + 1) : _saveTrigger - 1);
+      }
+    });
+
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop && _editingIds.isNotEmpty) {
+          setState(() => _saveTrigger = _saveTrigger > 0 ? -(_saveTrigger + 1) : _saveTrigger - 1);
+        }
+      },
+      child: AppSettingsPage(
+        onBack: widget.onBack,
+        onNext: widget.onNext,
+        topPadding: widget.topPadding,
+        onSave: _editingIds.isNotEmpty ? () => setState(() => _saveTrigger = _saveTrigger < 0 ? -(_saveTrigger - 1) : _saveTrigger + 1) : null,
+        children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const AppSectionHeader('settings.agents.section', large: true),
-            ElevatedButton.icon(
+            AppActionButton(
+              label: 'settings.agents.add',
+              icon: Icons.add,
+              isPrimary: true,
               onPressed: () {
                 final id = const Uuid().v4();
                 setState(() {
@@ -63,15 +86,17 @@ class _CustomAgentsTabState extends ConsumerState<CustomAgentsTab> {
                   _editingIds.add(id);
                 });
               },
-              icon: const Icon(Icons.add, size: AppConstants.settingsIconSize),
-              label: Text('settings.agents.add'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.black,
-              ),
             ),
           ],
         ),
+        Text(
+          'settings.agents.desc'.tr(),
+          style: const TextStyle(
+            color: AppColors.textDim,
+            fontSize: AppConstants.fontSizeBody,
+          ),
+        ),
+        const SizedBox(height: AppConstants.settingsContentSpacing),
         if (customAgents.isEmpty && _newAgents.isEmpty)
           Text('settings.agents.empty'.tr(),
               style: const TextStyle(color: AppColors.textDim))
@@ -134,8 +159,9 @@ class _CustomAgentsTabState extends ConsumerState<CustomAgentsTab> {
         ],
         const SizedBox(height: 20),
       ],
-    );
-  }
+    ),
+  );
+}
 }
 
 class CustomAgentCard extends ConsumerStatefulWidget {
@@ -270,7 +296,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
     super.dispose();
   }
 
-  Future<void> _save() async {
+  Future<void> _save({bool silent = false}) async {
     await handleSave(() async {
       final agent = widget.agent;
       final id = (agent is CustomAgentConfig)
@@ -285,7 +311,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
         'model': _selectedModel,
         'cronSchedule': _controllers['cronSchedule']!.text.trim(),
         'cronMessage': _controllers['cronMessage']!.text.trim(),
-        'designSystem': _controllers['designSystem']!.text.trim(),
+        'designSystem': _selectedDesignSystem,
         'skills': _selectedSkills,
         'enabled': _enabled,
         'shouldSendChatHistory': _sendChatHistory,
@@ -302,17 +328,21 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
           widget.onSaved?.call();
         }
       }
-    }, successMessage: 'settings.agents.saved'.tr());
+    }, 
+    successMessage: 'settings.agents.saved'.tr(),
+    silent: silent,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.saveTrigger > 0 && widget.saveTrigger != _lastSaveTrigger) {
+    if (widget.saveTrigger != 0 && widget.saveTrigger != _lastSaveTrigger) {
+      bool silent = widget.saveTrigger < 0;
       _lastSaveTrigger = widget.saveTrigger;
       if (widget.isEditing) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && !isSaveLoading) {
-            _save();
+            _save(silent: silent);
           }
         });
       }
@@ -338,6 +368,12 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
     }).toList();
 
     final availableProviderIds = availableProviders.map((p) => p['id']!).toList();
+    
+    final systemsAsync = ref.watch(designSystemsProvider);
+    final systems = systemsAsync.value ?? [];
+    
+    final skillsAsync = ref.watch(skillsProvider);
+    final skills = skillsAsync.value ?? [];
 
     return BusinessCard(
       initialEdit: widget.isNew,
@@ -415,22 +451,39 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
                 orElse: () => {'label': _selectedProvider!},
               )['label']
             : null,
-          customEditWidget: _buildProviderDropdown(availableProviders, availableProviderIds),
+          customEditWidget: AppUnifiedPicker<String>(
+            value: _selectedProvider,
+            label: 'settings.agents.provider_label',
+            items: availableProviderIds,
+            onChanged: (val) {
+              if (val != null) {
+                setState(() {
+                  _selectedProvider = val;
+                  _selectedModel = null;
+                  _availableModels = [];
+                });
+                _fetchModels(val);
+              }
+            },
+            displayValue: (v) => availableProviders.firstWhere(
+              (p) => p['id'] == v,
+              orElse: () => {'label': v},
+            )['label']!,
+            itemPrefixIcon: (id) => Image.asset(AppConstants.getProviderIcon(id), width: 18, height: 18),
+          ),
         ),
         BusinessCardField(
           label: 'settings.agents.model_label',
           hint: 'settings.agents.model_hint',
           controller: TextEditingController(text: _selectedModel ?? ''),
           value: _selectedModel,
-          customEditWidget: SearchableModelPicker(
-            selectedModel: _selectedModel,
-            models: _availableModels,
-            loading: _isLoadingModels,
+          customEditWidget: AppUnifiedPicker<String>(
+            value: _selectedModel,
+            items: _availableModels,
             label: 'settings.agents.model_label',
             hint: 'settings.agents.model_hint',
-            onSelected: (val) {
-              setState(() => _selectedModel = val);
-            },
+            displayValue: (v) => v,
+            onChanged: (val) => setState(() => _selectedModel = val),
           ),
         ),
         BusinessCardField(
@@ -450,10 +503,48 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
           label: 'settings.agents.design_system_label',
           hint: 'settings.agents.design_system_hint',
           controller: TextEditingController(),
-          value: _selectedDesignSystem.isEmpty ? 'settings.agents.design_system_none'.tr() : _selectedDesignSystem,
-          customEditWidget: DesignSystemPicker(
-            selectedId: _selectedDesignSystem,
-            onChanged: (val) => setState(() => _selectedDesignSystem = val),
+          value: _selectedDesignSystem.isEmpty 
+              ? 'settings.agents.design_system_none'.tr() 
+              : (() {
+                  final sys = systems.firstWhere((s) => s['id'] == _selectedDesignSystem, orElse: () => {'name': _selectedDesignSystem});
+                  return sys['name'] as String;
+                })(),
+          customEditWidget: AppUnifiedPicker<String>(
+            value: _selectedDesignSystem.isEmpty ? null : _selectedDesignSystem,
+            items: ['', ...systems.map((s) => s['id'] as String)],
+            label: 'settings.agents.design_system_label',
+            hint: 'settings.agents.design_system_hint',
+            onChanged: (val) => setState(() => _selectedDesignSystem = val ?? ''),
+            displayValue: (v) {
+              if (v.isEmpty) return 'settings.agents.design_system_none'.tr();
+              final sys = systems.firstWhere((s) => s['id'] == v, orElse: () => {'name': v});
+              return sys['name'] as String;
+            },
+          ),
+        ),
+        BusinessCardField(
+          label: 'settings.identity.skills_section',
+          hint: 'settings.identity.skills_section',
+          controller: TextEditingController(),
+          value: _selectedSkills.isEmpty ? 'settings.common.none'.tr() : _selectedSkills.map((sId) {
+            final skill = skills.firstWhere((s) => s['slug'] == sId, orElse: () => {'name': sId});
+            return skill['name'];
+          }).join(', '),
+          customEditWidget: AppUnifiedPicker<String>(
+            values: _selectedSkills.toSet(),
+            multiSelect: true,
+            items: skills.map((s) => s['slug'] as String).toList(),
+            label: 'settings.identity.skills_section',
+            hint: 'settings.identity.skills_section',
+            onMultiChanged: (vals) => setState(() {
+              _selectedSkills.clear();
+              _selectedSkills.addAll(vals);
+            }),
+            displayValue: (v) {
+              final skill = skills.firstWhere((s) => s['slug'] == v, orElse: () => {'name': v});
+              final emoji = skill['emoji'] != null ? '${skill['emoji']} ' : '';
+              return '$emoji${skill['name']}';
+            },
           ),
         ),
         BusinessCardField(
@@ -465,7 +556,6 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
         ),
       ],
       maxViewFields: 3,
-      bottom: (context, isEditing) => _buildSkillsSection(isEditing),
       onSave: _save,
     );
   }
@@ -502,7 +592,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppDropdownField<String>(
+        AppUnifiedPicker<String>(
           value: showCustomField ? 'custom' : currentCron,
           label: 'settings.agents.cron_label',
           items: [..._cronPresets.keys, 'custom'],
@@ -548,18 +638,6 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
     );
   }
 
-  Widget _buildSkillsSection(bool isEditing) {
-    return SkillsSelector(
-      selectedSkills: _selectedSkills,
-      isEditing: isEditing,
-      onChanged: (next) {
-        setState(() {
-          _selectedSkills.clear();
-          _selectedSkills.addAll(next);
-        });
-      },
-    );
-  }
 
   Widget _buildChatHistoryToggle() {
     return Padding(
@@ -580,10 +658,9 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
                   ),
                 ),
               ),
-              Switch(
+              AppSwitch(
                 value: _sendChatHistory,
                 onChanged: (val) => setState(() => _sendChatHistory = val),
-                activeThumbColor: AppColors.primary,
               ),
             ],
           ),
@@ -592,40 +669,6 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
     );
   }
 
-  Widget _buildProviderDropdown(List<Map<String, String>> providers, List<String> ids) {
-    return AppDropdownField<String>(
-      value: _selectedProvider,
-      label: 'settings.agents.provider_label',
-      items: ids,
-      onChanged: (val) {
-        if (val != null) {
-          setState(() {
-            _selectedProvider = val;
-            _selectedModel = null;
-            _availableModels = [];
-          });
-          _fetchModels(val);
-        }
-      },
-      displayValue: (v) => providers.firstWhere(
-        (p) => p['id'] == v,
-        orElse: () => {'label': v},
-      )['label']!,
-      itemBuilder: (id) => Row(
-        children: [
-          Image.asset(AppConstants.getProviderIcon(id), width: 18, height: 18),
-          const SizedBox(width: 10),
-          Text(
-            providers.firstWhere(
-              (p) => p['id'] == id,
-              orElse: () => {'label': id},
-            )['label']!,
-            style: const TextStyle(fontSize: AppConstants.fontSizeBody),
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _onPickAvatar() async {
     try {

@@ -11,8 +11,10 @@ import '../../../widgets/app_snackbar.dart';
 import '../../../widgets/app_dialogs.dart';
 
 class MaintenanceTab extends ConsumerStatefulWidget {
-  const MaintenanceTab({super.key, this.onBack});
+  const MaintenanceTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
+  final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
   ConsumerState<MaintenanceTab> createState() => _MaintenanceTabState();
@@ -23,6 +25,8 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
   Widget build(BuildContext context) {
     return AppSettingsPage(
       onBack: widget.onBack,
+      onNext: widget.onNext,
+      topPadding: widget.topPadding,
       subTabLabels: const ['settings.maintenance.tab'],
       children: _buildMaintenanceContent(),
     );
@@ -39,6 +43,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
         onPressed: _onFactoryReset,
         isLoading: isSaveLoading,
         icon: Icons.refresh_rounded,
+        showLoadingAnimation: false,
       ),
 
       const SizedBox(height: AppConstants.settingsSectionSpacing),
@@ -53,6 +58,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
         onPressed: _onBackup,
         isLoading: isSaveLoading,
         icon: Icons.save_alt_rounded,
+        showLoadingAnimation: false,
       ),
 
       const SizedBox(height: AppConstants.settingsSectionSpacing),
@@ -64,6 +70,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
         onPressed: _onRestore,
         isLoading: isSaveLoading,
         icon: Icons.upload_file_rounded,
+        showLoadingAnimation: false,
       ),
     ];
   }
@@ -76,6 +83,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
     required IconData icon,
     Color? buttonColor,
     bool isLoading = false,
+    bool showLoadingAnimation = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,6 +104,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
           onPressed: isLoading ? null : onPressed,
           icon: icon,
           isLoading: isLoading,
+          showLoadingAnimation: showLoadingAnimation,
           expand: true,
         ),
       ],
@@ -139,7 +148,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
             ),
           );
         }
-      });
+      }, silent: true);
     }
   }
 
@@ -169,10 +178,10 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
         );
 
         if (result != null && mounted) {
-          AppSnackBar.showSuccess(context, 'settings.maintenance.backup_success'.tr());
+          // No snackbar here to avoid animation
         }
       }
-    });
+    }, silent: true);
   }
 
   /// Shows a dialog to let the user pick which sections to include in the backup.
@@ -212,53 +221,55 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
       );
 
       if (result != null && result.files.single.path != null) {
-        final filePath = result.files.single.path!;
-        final gateway = ref.read(gatewayClientProvider);
+        await handleSave(() async {
+          final filePath = result.files.single.path!;
+          final gateway = ref.read(gatewayClientProvider);
 
-        // 1. Clear the stale token from local storage AND the server-side
-        // /client-token cache.
-        await ref.read(authTokenProvider.notifier).clearLocalToken();
+          // 1. Clear the stale token from local storage AND the server-side
+          // /client-token cache.
+          await ref.read(authTokenProvider.notifier).clearLocalToken();
 
-        // 2. Send the restore command. The backend reads the file directly
-        // from disk (no base64 over WebSocket).
-        final response = await gateway.call('config.restore', {'path': filePath});
-        final restoredToken = response['token'] as String?;
+          // 2. Send the restore command. The backend reads the file directly
+          // from disk (no base64 over WebSocket).
+          final response = await gateway.call('config.restore', {'path': filePath});
+          final restoredToken = response['token'] as String?;
 
-        if (mounted) {
-          await showDialog<void>(
-            context: context,
-            barrierDismissible: false,
-            builder: (ctx) => AppAlertDialog(
-              title: const Text('System wiederhergestellt'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Das System wurde erfolgreich wiederhergestellt. Bitte starte die App neu.'),
-                  if (restoredToken != null) ...[
-                    const SizedBox(height: 16),
-                    const Text('Dein neuer Token lautet:'),
-                    const SizedBox(height: 8),
-                    SelectableText(
-                      restoredToken,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
+          if (mounted) {
+            await showDialog<void>(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => AppAlertDialog(
+                title: const Text('System wiederhergestellt'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Das System wurde erfolgreich wiederhergestellt. Bitte starte die App neu.'),
+                    if (restoredToken != null) ...[
+                      const SizedBox(height: 16),
+                      const Text('Dein neuer Token lautet:'),
+                      const SizedBox(height: 8),
+                      SelectableText(
+                        restoredToken,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => exit(0),
+                    child: const Text('App schließen', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                  ),
                 ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => exit(0),
-                  child: const Text('App schließen', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
-                ),
-              ],
-            ),
-          );
-        }
+            );
+          }
+        }, silent: true);
       }
     }
   }
