@@ -58,6 +58,9 @@ export 'engine/tools/skills.dart';
 export 'engine/tools/agents.dart';
 export 'engine/tools/vault.dart';
 export 'engine/tools/kanban.dart';
+export 'engine/tools/billing.dart';
+export 'engine/tools/blockchain.dart';
+export 'engine/tools/binance.dart';
 
 // Tasks (Kanban)
 export 'engine/tasks/task.dart';
@@ -69,3 +72,9 @@ export 'engine/tasks/task_orchestrator.dart';
 export 'engine/gateway/agent_router.dart';
 export 'engine/gateway/config_router.dart';
 export 'engine/gateway/kanban_router.dart';
+export 'engine/gateway/email_router.dart';
+
+// Email Integration
+export 'engine/email/email_models.dart';
+export 'engine/email/email_manager.dart';
+export 'engine/email/email_poller.dart';

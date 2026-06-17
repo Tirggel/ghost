@@ -29,7 +29,7 @@ class _SessionModelDialogState extends ConsumerState<SessionModelDialog> {
   String? _selectedProvider;
   String? _selectedModel;
   List<String> _availableModels = [];
-  bool _isLoadingModels = false;
+
 
   @override
   void initState() {
@@ -44,7 +44,6 @@ class _SessionModelDialogState extends ConsumerState<SessionModelDialog> {
   Future<void> _fetchModels() async {
     if (_selectedProvider == null) return;
     setState(() {
-      _isLoadingModels = true;
       _availableModels = [];
     });
 
@@ -55,13 +54,9 @@ class _SessionModelDialogState extends ConsumerState<SessionModelDialog> {
       if (mounted) {
         setState(() {
           _availableModels = models;
-          _isLoadingModels = false;
         });
       }
     } catch (_) {
-      if (mounted) {
-        setState(() => _isLoadingModels = false);
-      }
     }
   }
 

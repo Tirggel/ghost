@@ -20,6 +20,7 @@ class MockProvider implements AIModelProvider {
 
   final List<AIResponse> responses;
   int _callCount = 0;
+  final List<List<Message>> capturedMessages = [];
 
   @override
   String get providerId => 'mock';
@@ -42,6 +43,7 @@ class MockProvider implements AIModelProvider {
     double temperature = 0.7,
     List<ToolDefinition>? tools,
   }) async {
+    capturedMessages.add(List<Message>.from(messages));
     if (_callCount >= responses.length) {
       return const AIResponse(content: 'Final mock response');
     }
@@ -106,6 +108,11 @@ void main() {
         memory: memorySystem,
       );
 
+      await sessionManager.addMessage(
+        sessionId: 's1',
+        role: 'user',
+        content: 'test message',
+      );
       await agent.processMessage(sessionId: 's1', content: 'test message');
 
       final history = await sessionManager.getHistory('s1');
@@ -136,11 +143,29 @@ void main() {
         memory: memorySystem,
       );
 
+      await sessionManager.addMessage(
+        sessionId: 's2',
+        role: 'user',
+        content: 'What time is it?',
+      );
       await agent.processMessage(sessionId: 's2', content: 'What time is it?');
 
       final history = await sessionManager.getHistory('s2');
-      expect(history.last.content, equals('The time is 12:00.'));
+      expect(history.last.content, equals('Let me check the time.The time is 12:00.'));
       expect(mockTool.called, isTrue);
+
+      // Verify focus marker retention on the user request message
+      // 1st iteration message list: should have 1 message (user request with focus marker)
+      expect(provider.capturedMessages.length, equals(2));
+      expect(provider.capturedMessages[0].length, equals(1));
+      expect(provider.capturedMessages[0][0].role, equals('user'));
+      expect(provider.capturedMessages[0][0].content, contains('### ACTIVE REQUEST'));
+
+      // 2nd iteration message list: should have 3 messages (user, assistant tool_call, tool result)
+      // The user request (at index 0) must retain the ### ACTIVE REQUEST focus marker!
+      expect(provider.capturedMessages[1].length, equals(3));
+      expect(provider.capturedMessages[1][0].role, equals('user'));
+      expect(provider.capturedMessages[1][0].content, contains('### ACTIVE REQUEST'));
     });
   });
 }

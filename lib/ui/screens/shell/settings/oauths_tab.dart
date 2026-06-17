@@ -60,6 +60,12 @@ class _OAuthsTabState extends ConsumerState<OAuthsTab> {
               .read(configProvider.notifier)
               .setKey('${servicePrefix}${suffix}', '');
         }
+        // Force a second refresh after a short delay to handle potential
+        // stale state from the secure storage backend.
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        if (mounted) {
+          await ref.read(configProvider.notifier).refresh();
+        }
         if (mounted) {
           AppSnackBar.showSuccess(
             context,

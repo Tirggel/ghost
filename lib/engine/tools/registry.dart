@@ -107,6 +107,16 @@ class ToolGroups {
       'kanban_subtask',
       'kanban_comment',
     ],
+    'group:blockchain': [
+      'execute_blockchain_payment',
+      'execute_token_swap',
+      'wallet_get_balances',
+      'binance_get_balances',
+      'binance_get_ticker',
+      'binance_create_order',
+      'binance_demo_get_balances',
+      'binance_demo_create_order',
+    ],
   };
 
   /// Expand group references in a tool list.
@@ -139,6 +149,7 @@ class ToolProfiles {
       'group:ui',
       'group:vault',
       'group:kanban',
+      'group:blockchain',
     ],
     'messaging': ['message', 'group:sessions'],
     'full': [], // Empty = no restrictions

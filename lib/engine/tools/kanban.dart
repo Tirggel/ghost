@@ -1,6 +1,6 @@
 // Ghost — Kanban Board Tools for Agents.
 
-import 'package:easy_localization/easy_localization.dart';
+
 import '../tasks/task.dart';
 import '../tasks/task_manager.dart';
 import '../tasks/task_orchestrator.dart';
@@ -68,7 +68,7 @@ class KanbanSuggestTool extends Tool {
 
       final agent = orchestrator.agentManager.getAgent(agentId);
       return ToolResult(
-        output: 'Suggested agent: ${agent?.name ?? agentId} ($agentId)',
+        output: 'Suggested agent: ${agent.name} ($agentId)',
         metadata: {'agentId': agentId},
       );
     } catch (e) {

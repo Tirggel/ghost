@@ -10,6 +10,7 @@ class ShellState {
     this.settingsSubTabIndices = const {},
     this.pendingSettingsOpen = false,
     this.showKanban = false,
+    this.showEmail = false,
   });
   final String? activeSessionId;
   final String searchQuery;
@@ -18,6 +19,7 @@ class ShellState {
   final Map<int, int> settingsSubTabIndices;
   final bool pendingSettingsOpen;
   final bool showKanban;
+  final bool showEmail;
 
   ShellState copyWith({
     String? activeSessionId,
@@ -28,6 +30,7 @@ class ShellState {
     bool clearActiveSession = false,
     bool? pendingSettingsOpen,
     bool? showKanban,
+    bool? showEmail,
   }) {
     return ShellState(
       activeSessionId: clearActiveSession
@@ -39,6 +42,7 @@ class ShellState {
       settingsSubTabIndices: settingsSubTabIndices ?? this.settingsSubTabIndices,
       pendingSettingsOpen: pendingSettingsOpen ?? this.pendingSettingsOpen,
       showKanban: showKanban ?? this.showKanban,
+      showEmail: showEmail ?? this.showEmail,
     );
   }
 }
@@ -89,10 +93,30 @@ class ShellNotifier extends Notifier<ShellState> {
   }
 
   void toggleKanban() {
-    state = state.copyWith(showKanban: !state.showKanban);
+    state = state.copyWith(
+      showKanban: !state.showKanban,
+      showEmail: false,
+    );
   }
 
   void setShowKanban(bool value) {
-    state = state.copyWith(showKanban: value);
+    state = state.copyWith(
+      showKanban: value,
+      showEmail: value ? false : state.showEmail,
+    );
+  }
+
+  void toggleEmail() {
+    state = state.copyWith(
+      showEmail: !state.showEmail,
+      showKanban: false,
+    );
+  }
+
+  void setShowEmail(bool value) {
+    state = state.copyWith(
+      showEmail: value,
+      showKanban: value ? false : state.showKanban,
+    );
   }
 }

@@ -20,8 +20,9 @@ class OpenAIProvider implements AIModelProvider {
     String? providerId,
     this.supportsChat = true,
     this.isReasoningModel = false,
-  })  : _displayName = displayName,
-        _providerId = providerId ?? 'openai';
+    this.numCtx,
+  }) : _displayName = displayName,
+       _providerId = providerId ?? 'openai';
 
   final String apiKey;
   final String model;
@@ -32,6 +33,11 @@ class OpenAIProvider implements AIModelProvider {
   /// If true, this is a reasoning model (e.g. deepseek-reasoner) that requires
   /// special message handling — tool call history must be sanitized.
   final bool isReasoningModel;
+
+  /// Optional Ollama-specific context window size (num_ctx).
+  /// When set, passed via `options.num_ctx` in the request body so Ollama
+  /// uses a larger context window than its per-model default.
+  final int? numCtx;
 
   @override
   String get providerId => _providerId;
@@ -48,15 +54,12 @@ class OpenAIProvider implements AIModelProvider {
   @override
   ModelCapabilities get capabilities {
     final lower = model.toLowerCase();
-    
+
     // GPT-4o and GPT-4o-mini support vision
     if (lower.contains('gpt-4o') || lower.contains('gpt-4-turbo')) {
-      return const ModelCapabilities(
-        supportsText: true,
-        supportsImage: true,
-      );
+      return const ModelCapabilities(supportsText: true, supportsImage: true);
     }
-    
+
     return ModelCapabilities.textOnly();
   }
 
@@ -112,9 +115,7 @@ class OpenAIProvider implements AIModelProvider {
           if (a.mimeType.startsWith('image/')) {
             parts.add({
               'type': 'image_url',
-              'image_url': {
-                'url': 'data:${a.mimeType};base64,${a.data}',
-              },
+              'image_url': {'url': 'data:${a.mimeType};base64,${a.data}'},
             });
           }
         }
@@ -123,12 +124,11 @@ class OpenAIProvider implements AIModelProvider {
         content = m.content;
       }
 
-      final msg = <String, dynamic>{
-        'role': m.role,
-        'content': content,
-      };
+      final msg = <String, dynamic>{'role': m.role, 'content': content};
 
-      if (m.metadata.containsKey('reasoning_content')) {
+      // Only send reasoning_content back in history for DeepSeek-style
+      // reasoning models (isReasoningModel=true). Ollama/Gemma reject this field.
+      if (isReasoningModel && m.metadata.containsKey('reasoning_content')) {
         msg['reasoning_content'] = m.metadata['reasoning_content'];
       }
 
@@ -149,7 +149,7 @@ class OpenAIProvider implements AIModelProvider {
               'function': {
                 'name': call['name'],
                 'arguments': jsonEncode(call['arguments']),
-              }
+              },
             };
           }).toList();
         }
@@ -158,22 +158,38 @@ class OpenAIProvider implements AIModelProvider {
       apiMessages.add(msg);
     }
 
-    final body = {
+    // For Ollama: pass num_ctx via options to extend the context window.
+    // Ollama's default num_ctx for local models is often 4096 which is too
+    // small when Ghost's system prompt + all tool definitions are included.
+    // Also skip max_tokens for Ollama — it maps to num_predict and is
+    // separate from num_ctx; leaving it unset lets the model use its full
+    // output budget.
+    final isOllama =
+        _providerId == 'ollama' ||
+        _providerId == 'ipex-llm' ||
+        _providerId == 'lmstudio' ||
+        _providerId == 'vllm';
+    final effectiveNumCtx = numCtx ?? (isOllama ? 32768 : null);
+
+    final body = <String, dynamic>{
       'model': model,
       'messages': apiMessages,
-      'max_tokens': maxTokens,
+      if (!isOllama) 'max_tokens': maxTokens,
       'temperature': temperature,
       if (tools != null && tools.isNotEmpty)
         'tools': tools
-            .map((t) => {
-                  'type': 'function',
-                  'function': {
-                    'name': t.name,
-                    'description': t.description,
-                    'parameters': t.inputSchema,
-                  }
-                })
+            .map(
+              (t) => {
+                'type': 'function',
+                'function': {
+                  'name': t.name,
+                  'description': t.description,
+                  'parameters': t.inputSchema,
+                },
+              },
+            )
             .toList(),
+      if (effectiveNumCtx != null) 'options': {'num_ctx': effectiveNumCtx},
     };
 
     _log.fine('Requesting $displayName ($baseUrl): $model');
@@ -189,7 +205,8 @@ class OpenAIProvider implements AIModelProvider {
 
     if (response.statusCode != 200) {
       _log.severe(
-          '$displayName API error: ${response.statusCode} - ${response.body}');
+        '$displayName API error: ${response.statusCode} - ${response.body}',
+      );
       throw ProviderError(
         'OpenAI API error (${response.statusCode}): ${response.body}',
         provider: 'openai',
@@ -202,7 +219,10 @@ class OpenAIProvider implements AIModelProvider {
     final message = choice['message'] as Map<String, dynamic>;
 
     final textContent = message['content'] as String? ?? '';
-    final reasoningContent = message['reasoning_content'] as String?;
+    // Ollama returns thinking content as 'reasoning'; DeepSeek uses 'reasoning_content'
+    final reasoningContent =
+        (message['reasoning_content'] as String?) ??
+        (message['reasoning'] as String?);
     final toolCalls = <ToolCall>[];
 
     if (message.containsKey('tool_calls') && message['tool_calls'] != null) {
@@ -220,18 +240,24 @@ class OpenAIProvider implements AIModelProvider {
         if (fnName == null || fnName.isEmpty) continue;
 
         try {
-          toolCalls.add(ToolCall(
-            id: callId,
-            name: fnName,
-            arguments: jsonDecode(fnArgs) as Map<String, dynamic>,
-          ));
+          toolCalls.add(
+            ToolCall(
+              id: callId,
+              name: fnName,
+              arguments: jsonDecode(fnArgs) as Map<String, dynamic>,
+            ),
+          );
         } catch (e) {
-          _log.warning('Failed to parse tool arguments for $fnName: $e\nRaw args: $fnArgs');
-          toolCalls.add(ToolCall(
-            id: callId,
-            name: fnName,
-            arguments: {'_error_': 'Invalid JSON in arguments: $fnArgs'},
-          ));
+          _log.warning(
+            'Failed to parse tool arguments for $fnName: $e\nRaw args: $fnArgs',
+          );
+          toolCalls.add(
+            ToolCall(
+              id: callId,
+              name: fnName,
+              arguments: {'_error_': 'Invalid JSON in arguments: $fnArgs'},
+            ),
+          );
         }
       }
     }
@@ -257,10 +283,7 @@ class OpenAIProvider implements AIModelProvider {
     final embedModel = model ?? 'text-embedding-3-small';
     final url = Uri.parse('$baseUrl/embeddings');
 
-    final body = {
-      'model': embedModel,
-      'input': text,
-    };
+    final body = {'model': embedModel, 'input': text};
 
     final response = await http.post(
       url,
@@ -296,9 +319,7 @@ class OpenAIProvider implements AIModelProvider {
     final url = Uri.parse('$baseUrl/models');
     final response = await http.get(
       url,
-      headers: {
-        'Authorization': 'Bearer $apiKey',
-      },
+      headers: {'Authorization': 'Bearer $apiKey'},
     );
 
     if (response.statusCode != 200) {
@@ -310,15 +331,15 @@ class OpenAIProvider implements AIModelProvider {
   }
 
   /// Lists available models for this provider.
-  static Future<List<String>> listModels(String apiKey,
-      {String? baseUrl}) async {
+  static Future<List<String>> listModels(
+    String apiKey, {
+    String? baseUrl,
+  }) async {
     final url = Uri.parse('${baseUrl ?? 'https://api.openai.com/v1'}/models');
     _log.fine('Fetching models from $url...');
     final response = await http.get(
       url,
-      headers: {
-        'Authorization': 'Bearer $apiKey',
-      },
+      headers: {'Authorization': 'Bearer $apiKey'},
     );
 
     if (response.statusCode == 200) {
@@ -328,8 +349,9 @@ class OpenAIProvider implements AIModelProvider {
       return models.map((m) => m['id'] as String).toList();
     }
 
-    _log.warning('Failed to fetch models from $url: ${response.statusCode} ${response.body}');
-
+    _log.warning(
+      'Failed to fetch models from $url: ${response.statusCode} ${response.body}',
+    );
 
     // Fallback known models if list fails
     return [];

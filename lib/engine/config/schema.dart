@@ -38,6 +38,9 @@ List<String> validateConfig(GhostConfig config) {
   // Security validation
   _validateSecurity(config.security, errors);
 
+  // Billing validation
+  _validateBilling(config.billing, errors);
+
   return errors;
 }
 
@@ -69,6 +72,7 @@ List<String> validateConfigJson(Map<String, dynamic> json) {
     'integrations',
     'customAgents',
     'security',
+    'billing',
   };
   for (final key in json.keys) {
     if (!validTopLevel.contains(key)) {
@@ -240,4 +244,15 @@ void _validateCustomAgents(
 void _validateSecurity(SecurityConfig security, List<String> errors) {
   // Add any specific security validation if needed
   // For now, the enum parsing handles the level constraint
+}
+
+void _validateBilling(BillingConfig billing, List<String> errors) {
+  if (billing.limit < 0) {
+    errors.add('billing.limit must be non-negative (got ${billing.limit})');
+  }
+  if (billing.balance < 0) {
+    // Note: balance could briefly go negative in some models or if a transaction overshoots,
+    // but a warning/error or keeping it non-negative is standard. We won't block negative balances,
+    // but we can warn or require it to be non-negative. Let's just allow it or check if it's less than 0.
+  }
 }

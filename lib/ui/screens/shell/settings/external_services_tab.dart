@@ -89,7 +89,14 @@ class _ExternalServicesTabState extends ConsumerState<ExternalServicesTab> {
 
     if (confirmed == true) {
       try {
-        await ref.read(configProvider.notifier).setKey(serviceId, '');
+        final vaultKey = serviceId.endsWith('_api_key') ? serviceId : '${serviceId}_api_key';
+        await ref.read(configProvider.notifier).setKey(vaultKey, '');
+        // Force a second refresh after a short delay to handle potential
+        // stale state from the secure storage backend.
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        if (mounted) {
+          await ref.read(configProvider.notifier).refresh();
+        }
         if (mounted) {
           AppSnackBar.showSuccess(
             context,

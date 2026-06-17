@@ -42,6 +42,32 @@ Agents have tools to list, create, update, assign, and comment on tasks:
 
 ---
 
+## 🎯 Autonomous Coding / Project Execution (`/goal`)
+
+Ghost supports an autonomous goal-oriented execution loop triggered via the `/goal` chat command. This bridges the chat interface with the Kanban task management system, enabling the agent to work on complex, multi-step goals autonomously while providing full transparency.
+
+### How it Works
+
+1. **Trigger & Initialization**:
+   When a user sends a message starting with `/goal <your goal description>`, the system intercepts the request and automatically creates a new Kanban task on the board.
+   - **Task Title**: `🎯 <goal text>` (truncated to the first 60 characters for readability).
+   - **Task Description**: The full prompt containing the goal.
+   - **Initial Status**: Set immediately to `in_progress`.
+   - **Assignee**: Assigned to the current agent handling the session.
+   - **Context Association**: The task is linked directly to the chat `sessionId` so you can observe the agent's work in real-time.
+
+2. **Autonomous Loop**:
+   The agent enters a multi-turn reasoning and tool-execution loop. It executes shell commands, reads/writes files, searches the web, or performs other tasks necessary to achieve the goal.
+
+3. **Resolution & Tracking**:
+   Once the agent finishes its autonomous work, the task is updated based on the outcome:
+   - **Success**: The task status is updated to `done`, and the agent adds a task comment summarizing the outcome: `Ziel erreicht ✅ \n\nZusammenfassung: <summary of steps and results>`.
+   - **Failure / Interruption**: If the agent runs into an unrecoverable error or exception, the task status is moved to `review`, and a system comment is posted with the error trace: `Fehler bei der Ausführung: <error message>`.
+
+This ensures that all autonomous actions are fully tracked on the Kanban board, allowing users to review results, inspect errors, or resume tasks easily.
+
+---
+
 ## Examples
 
 ### Example 1: Creating a Sequential Pipeline

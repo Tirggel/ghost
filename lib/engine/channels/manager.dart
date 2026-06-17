@@ -530,6 +530,65 @@ class ChannelManager {
     return message;
   }
 
+  ChannelConfig? _getChannelConfigById(ChannelsConfig channels, String id) {
+    switch (id) {
+      case 'telegram':
+        return channels.telegram;
+      case 'discord':
+        return channels.discord;
+      case 'whatsapp':
+        return channels.whatsapp;
+      case 'slack':
+        return channels.slack;
+      case 'googleChat':
+        return channels.googleChat;
+      case 'signal':
+        return channels.signal;
+      case 'imessage':
+        return channels.imessage;
+      case 'msTeams':
+        return channels.msTeams;
+      case 'nextcloudTalk':
+        return channels.nextcloudTalk;
+      case 'matrix':
+        return channels.matrix;
+      case 'tlon':
+        return channels.tlon;
+      case 'zalo':
+        return channels.zalo;
+      case 'webchat':
+        return channels.webchat;
+      default:
+        return null;
+    }
+  }
+
+  /// Sends a notification message to all paired users across all active/enabled channels.
+  Future<void> sendNotification(String content) async {
+    _log.info('Sending system notification to active channels: "$content"');
+    final channelsConfig = agentManager.config.channels;
+
+    for (final entry in _channels.entries) {
+      final type = entry.key;
+      final channel = entry.value;
+
+      final cConfig = _getChannelConfigById(channelsConfig, type);
+      if (cConfig == null || !cConfig.enabled) continue;
+
+      for (final peerId in cConfig.allowFrom) {
+        try {
+          _log.fine('Sending notification to user $peerId via $type');
+          await channel.sendMessage(
+            peerId: peerId,
+            content: content,
+          );
+        } catch (e) {
+          _log.warning('Failed to send notification to $peerId via $type: $e');
+        }
+      }
+    }
+  }
+
   /// Shutdown all channels.
   Future<void> shutdown() async {
     final types = _channels.keys.toList();

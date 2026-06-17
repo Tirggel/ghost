@@ -42,6 +42,32 @@ Agenten verfügen über Tools zum Auflisten, Erstellen, Aktualisieren, Zuweisen 
 
 ---
 
+## 🎯 Autonome Codierung / Projekt-Ausführung (`/goal`)
+
+Ghost unterstützt eine autonome, zielorientierte Ausführungsschleife, die über den Chat-Befehl `/goal` gestartet wird. Dies verbindet die Chat-Schnittstelle direkt mit dem Kanban-Aufgabenverwaltungssystem und ermöglicht es dem Agenten, komplexe, mehrstufige Ziele selbstständig zu bearbeiten und gleichzeitig volle Transparenz zu bieten.
+
+### Funktionsweise
+
+1. **Trigger & Initialisierung**:
+   Wenn ein Benutzer eine Nachricht sendet, die mit `/goal <Zielbeschreibung>` beginnt, fängt das System die Anfrage ab und erstellt automatisch einen neuen Kanban-Task auf dem Board.
+   - **Task-Titel**: `🎯 <Zieltext>` (zur besseren Lesbarkeit auf die ersten 60 Zeichen gekürzt).
+   - **Task-Beschreibung**: Der vollständige Prompt mit dem Ziel.
+   - **Anfangsstatus**: Wird sofort auf `in_progress` (in Bearbeitung) gesetzt.
+   - **Zuweisung**: Wird dem aktuellen Agenten zugewiesen, der die Sitzung betreut.
+   - **Kontext-Verknüpfung**: Der Task wird direkt mit der Chat-`sessionId` verknüpft, sodass die Arbeit des Agenten in Echtzeit mitverfolgt werden kann.
+
+2. **Autonome Schleife**:
+   Der Agent startet eine autonome Schleife aus Denkschritten (Reasoning) und Tool-Ausführungen. Er führt Shell-Befehle aus, liest/schreibt Dateien, führt Websuchen durch oder nutzt andere verfügbare Werkzeuge, um das Ziel zu erreichen.
+
+3. **Abschluss & Nachverfolgung**:
+   Sobald der Agent seine autonome Arbeit beendet hat, wird der Task basierend auf dem Ergebnis aktualisiert:
+   - **Erfolg**: Der Task-Status wird auf `done` (erledigt) geändert, und der Agent fügt einen Kommentar mit einer Zusammenfassung hinzu: `Ziel erreicht ✅\n\nZusammenfassung: <Kurzzusammenfassung der Ergebnisse>`.
+   - **Fehlgeschlagen / Unterbrochen**: Tritt während der Ausführung ein nicht behebbarer Fehler auf, wird der Task auf `review` (Überprüfung) gesetzt und ein Systemkommentar mit der Fehlermeldung hinterlassen: `Fehler bei der Ausführung: <Fehlermeldung>`.
+
+Dadurch sind alle autonomen Aktionen auf dem Kanban-Board lückenlos nachvollziehbar, sodass Benutzer Ergebnisse prüfen, Fehler untersuchen oder Aufgaben fortsetzen können.
+
+---
+
 ## Beispiele
 
 ### Beispiel 1: Erstellen einer sequenziellen Pipeline

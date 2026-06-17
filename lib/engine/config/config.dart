@@ -16,6 +16,7 @@ class GhostConfig {
     this.integrations = const IntegrationsConfig(),
     this.customAgents = const [],
     this.security = const SecurityConfig(),
+    this.billing = const BillingConfig(),
   });
 
   factory GhostConfig.fromJson(Map<String, dynamic> json) {
@@ -58,6 +59,9 @@ class GhostConfig {
       security: json['security'] != null
           ? SecurityConfig.fromJson(json['security'] as Map<String, dynamic>)
           : const SecurityConfig(),
+      billing: json['billing'] != null
+          ? BillingConfig.fromJson(json['billing'] as Map<String, dynamic>)
+          : const BillingConfig(),
     );
   }
 
@@ -72,6 +76,7 @@ class GhostConfig {
   final IntegrationsConfig integrations;
   final List<CustomAgentConfig> customAgents;
   final SecurityConfig security;
+  final BillingConfig billing;
 
   Map<String, dynamic> toJson({
     bool includeAgent = true,
@@ -81,6 +86,7 @@ class GhostConfig {
     bool includeTools = false,
     bool includeSession = false,
     bool includeIntegrations = false,
+    bool includeBilling = true,
   }) =>
       {
         'gateway': gateway.toJson(),
@@ -95,6 +101,7 @@ class GhostConfig {
         if (includeCustomAgents)
           'customAgents': customAgents.map((a) => a.toJson()).toList(),
         'security': security.toJson(),
+        if (includeBilling) 'billing': billing.toJson(),
       };
 
   GhostConfig copyWith({
@@ -109,6 +116,7 @@ class GhostConfig {
     IntegrationsConfig? integrations,
     List<CustomAgentConfig>? customAgents,
     SecurityConfig? security,
+    BillingConfig? billing,
   }) {
     return GhostConfig(
       gateway: gateway ?? this.gateway,
@@ -122,6 +130,7 @@ class GhostConfig {
       integrations: integrations ?? this.integrations,
       customAgents: customAgents ?? this.customAgents,
       security: security ?? this.security,
+      billing: billing ?? this.billing,
     );
   }
 
@@ -160,18 +169,73 @@ class GhostConfig {
         ? 'The following custom agents are additionally available in this system: ${customAgents.map((a) => a.name).join(', ')}.'
         : '';
 
+    final enabledChannels = <String>[];
+    if (channels.telegram.enabled) {
+      final botName = channels.telegram.settings['botName'] as String? ?? '';
+      final botSuffix = botName.isNotEmpty ? ' (bot: @$botName)' : '';
+      enabledChannels.add('Telegram$botSuffix - Environment variable: TELEGRAM_BOT_TOKEN');
+    }
+    if (channels.discord.enabled) {
+      enabledChannels.add('Discord - Environment variable: DISCORD_TOKEN');
+    }
+    if (channels.slack.enabled) {
+      enabledChannels.add('Slack - Environment variable: SLACK_TOKEN');
+    }
+    if (channels.whatsapp.enabled) {
+      enabledChannels.add('WhatsApp - Environment variable: WHATSAPP_TOKEN');
+    }
+    if (channels.webchat.enabled) {
+      enabledChannels.add('Webchat');
+    }
+    if (channels.signal.enabled) {
+      enabledChannels.add('Signal - Environment variable: SIGNAL_TOKEN');
+    }
+    if (channels.googleChat.enabled) {
+      enabledChannels.add('Google Chat - Environment variable: GOOGLE_CHAT_TOKEN');
+    }
+    if (channels.imessage.enabled) {
+      enabledChannels.add('iMessage');
+    }
+    if (channels.msTeams.enabled) {
+      enabledChannels.add('Microsoft Teams - Environment variable: MS_TEAMS_TOKEN');
+    }
+    if (channels.nextcloudTalk.enabled) {
+      enabledChannels.add('Nextcloud Talk - Environment variable: NEXTCLOUD_TALK_TOKEN');
+    }
+    if (channels.matrix.enabled) {
+      enabledChannels.add('Matrix - Environment variable: MATRIX_TOKEN');
+    }
+    if (channels.tlon.enabled) {
+      enabledChannels.add('Tlon - Environment variable: TLON_TOKEN');
+    }
+    if (channels.zalo.enabled) {
+      enabledChannels.add('Zalo - Environment variable: ZALO_TOKEN');
+    }
+
+    final channelsContext = enabledChannels.isNotEmpty
+        ? 'Active/configured communication channels:\n'
+            '${enabledChannels.map((c) => '- $c').join('\n')}\n'
+            'When writing scripts or skills to send messages via these channels, use their respective environment variables. Do NOT ask the user for these tokens, as they are already saved in the vault and automatically injected.'
+        : '';
+
     return [
       '### CONCISION & FOCUS (CRITICAL):',
       '1. Focus ONLY on the LATEST user request. Treat each message as a new, independent task unless it explicitly refers to previous context.',
       '2. NEVER repeat information from previous turns (e.g., weather, news, search results) unless the user specifically asks for a summary.',
-      '3. Do NOT provide "comprehensive reports" that include already-known facts. Only provide NEW information requested in the current turn.',
-      '4. Be helpful but extremely concise. Avoid redundant preambles or restating known facts.',
+      '3. The user can see the chat history. Do NOT provide "comprehensive reports" or "status updates" that include already-known facts.',
+      '4. Provide ONLY the NEW information or actions requested in the current turn.',
+      '5. Be helpful but extremely concise. Avoid redundant preambles or restating known facts.',
       '',
       intro,
       vibe,
       if (identityNotes.isNotEmpty) identityNotes,
       if (googleContext.isNotEmpty) googleContext,
       if (agentAwareness.isNotEmpty) agentAwareness,
+      if (channelsContext.isNotEmpty) ...[
+        '',
+        '### Communication Channels Context ###',
+        channelsContext,
+      ],
       if (skillsContext.isNotEmpty) skillsContext,
       if (designSystemContent.isNotEmpty) ...[
         '',
@@ -203,6 +267,11 @@ class GhostConfig {
       '2. Ensure it has a SKILL.md (with "name" and "mcp_command" in frontmatter) or a package.json/requirements.txt.',
       '3. Once complete, use the "import_skill" tool to move it to the permanent .ghost/skills/ directory.',
       'Ghost will then manage the skill (backup, restore, isolated runtime) automatically.',
+      '',
+      '### Custom Agent Creation & Execution:',
+      '1. You can create custom background agents using the "manage_agents" tool with action "create".',
+      '2. IMPORTANT: Custom agents will NOT start executing their tasks unless they have a cron schedule configured or you trigger them manually.',
+      '3. If the user asks you to create an agent to perform a specific task immediately, you MUST first create the agent, and then immediately call the "manage_agents" tool with action "trigger", passing the agent\'s ID and a "/goal <task description>" message so the agent starts working autonomously.',
       '',
       '### Kanban Board & Task Tracking:',
       '1. You have access to a shared Multi-Agent Kanban board for tracking long-term tasks and project progress.',
@@ -1108,6 +1177,48 @@ class SecurityConfig {
       promptHardening: promptHardening ?? this.promptHardening,
       restrictNetwork: restrictNetwork ?? this.restrictNetwork,
       promptAnalyzers: promptAnalyzers ?? this.promptAnalyzers,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Billing Config
+// ---------------------------------------------------------------------------
+
+class BillingConfig {
+  const BillingConfig({
+    this.limit = 0.0,
+    this.balance = 0.0,
+    this.autonomous = false,
+  });
+
+  factory BillingConfig.fromJson(Map<String, dynamic> json) {
+    return BillingConfig(
+      limit: (json['limit'] as num?)?.toDouble() ?? 0.0,
+      balance: (json['balance'] as num?)?.toDouble() ?? 0.0,
+      autonomous: json['autonomous'] as bool? ?? false,
+    );
+  }
+
+  final double limit;
+  final double balance;
+  final bool autonomous;
+
+  Map<String, dynamic> toJson() => {
+        'limit': limit,
+        'balance': balance,
+        'autonomous': autonomous,
+      };
+
+  BillingConfig copyWith({
+    double? limit,
+    double? balance,
+    bool? autonomous,
+  }) {
+    return BillingConfig(
+      limit: limit ?? this.limit,
+      balance: balance ?? this.balance,
+      autonomous: autonomous ?? this.autonomous,
     );
   }
 }

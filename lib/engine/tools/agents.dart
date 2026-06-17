@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import '../agent/manager.dart';
@@ -32,12 +33,12 @@ class ManageAgentsTool extends Tool {
         'properties': {
           'action': {
             'type': 'string',
-            'enum': ['list', 'create', 'delete'],
+            'enum': ['list', 'create', 'delete', 'trigger'],
             'description': 'The action to perform.',
           },
           'id': {
             'type': 'string',
-            'description': 'The ID of the agent (required for delete).',
+            'description': 'The ID of the agent (required for delete or trigger).',
           },
           'name': {
             'type': 'string',
@@ -65,6 +66,10 @@ class ManageAgentsTool extends Tool {
             'description': 'Whether the agent (and its schedule) is enabled.',
             'default': true,
           },
+          'message': {
+            'type': 'string',
+            'description': 'The optional message/goal description to trigger the agent with.',
+          },
         },
         'required': ['action'],
       };
@@ -81,6 +86,8 @@ class ManageAgentsTool extends Tool {
         return _createAgent(input);
       case 'delete':
         return _deleteAgent(input);
+      case 'trigger':
+        return _triggerAgent(input);
       default:
         return ToolResult.error('Unknown action: $action');
     }
@@ -152,6 +159,25 @@ class ManageAgentsTool extends Tool {
       return ToolResult(output: 'Successfully deleted custom agent with ID "$id".');
     } catch (e) {
       return ToolResult.error('Failed to delete custom agent: $e');
+    }
+  }
+
+  Future<ToolResult> _triggerAgent(Map<String, dynamic> input) async {
+    final id = input['id'] as String?;
+    if (id == null || id.isEmpty) {
+      return const ToolResult.error('Field "id" is required for trigger.');
+    }
+    final message = input['message'] as String?;
+
+    try {
+      // Fire and forget runAgent
+      unawaited(agentManager.runAgent(id, customMessage: message));
+      return ToolResult(
+        output: 'Successfully triggered custom agent with ID "$id" in the background.',
+        metadata: {'id': id},
+      );
+    } catch (e) {
+      return ToolResult.error('Failed to trigger custom agent: $e');
     }
   }
 }

@@ -24,6 +24,8 @@ class InternalGatewayManager {
   AgentManager? _agentManager;
   GatewayServer? _server;
   TaskOrchestrator? _orchestrator;
+  EmailManager? _emailManager;
+  EmailPoller? _emailPoller;
   bool _isRunning = false;
 
   bool get isRunning => _isRunning;
@@ -67,6 +69,8 @@ class InternalGatewayManager {
       // 1. Initialize Storage
       final storage = FlutterSecureStorageImpl();
       Hive.init(stateDir);
+      _emailManager = EmailManager(secureStorage: storage, stateDir: stateDir);
+      await _emailManager!.init();
 
       // 2. Load Config (Merge JSON with Vault)
       final configFile = File(configPath);
@@ -126,6 +130,15 @@ class InternalGatewayManager {
         config = config.copyWith(
           tools: ToolsConfig.fromJson(
             jsonDecode(toolsJson) as Map<String, dynamic>,
+          ),
+        );
+      }
+
+      final billingJson = await storage.get('billing_config');
+      if (billingJson != null) {
+        config = config.copyWith(
+          billing: BillingConfig.fromJson(
+            jsonDecode(billingJson) as Map<String, dynamic>,
           ),
         );
       }
@@ -221,6 +234,11 @@ class InternalGatewayManager {
         BrowserTools.registerAll(toolRegistry);
       }
 
+      // Kanban Task Manager
+      final taskStore = TaskStore(stateDir: stateDir);
+      final taskManager = TaskManager(store: taskStore);
+      await taskManager.initialize();
+
       // 5. Initialize Server & Manager
       _server = GatewayServer(
         config: config.gateway,
@@ -242,16 +260,15 @@ class InternalGatewayManager {
         workspaceDir: config.agent.workspace ?? '.',
         stateDir: stateDir,
         configPath: configPath,
+        taskManager: taskManager,
       );
 
       MemoryTools.registerAll(toolRegistry, _agentManager!.memorySystem);
       SkillsTools.registerAll(toolRegistry, _agentManager!.skillManager);
       AgentsTools.registerAll(toolRegistry, _agentManager!);
-
-      // Kanban Task Manager
-      final taskStore = TaskStore(stateDir: stateDir);
-      final taskManager = TaskManager(store: taskStore);
-      await taskManager.initialize();
+      BillingTools.registerAll(toolRegistry, storage, _agentManager!);
+      BlockchainTools.registerAll(toolRegistry, storage, _agentManager!);
+      BinanceTools.registerAll(toolRegistry, storage);
 
       // Orchestrator (Phase 3)
       _orchestrator = TaskOrchestrator(
@@ -273,6 +290,12 @@ class InternalGatewayManager {
         _server?.broadcast('agent.stream', {
           'sessionId': sessionId,
           'chunk': chunk,
+        });
+      };
+      _agentManager!.onSessionActivity = (sessionId, activity) {
+        _server?.broadcast('agent.activity', {
+          'sessionId': sessionId,
+          'activity': activity,
         });
       };
 
@@ -298,6 +321,7 @@ class InternalGatewayManager {
         configPath: configPath,
         gateway: _server!,
       );
+      _agentManager!.channelManager = channelManager;
 
       ConfigRouter(
         gateway: _server!,
@@ -308,11 +332,25 @@ class InternalGatewayManager {
       ).register();
 
       KanbanRouter(gateway: _server!, taskManager: taskManager).register();
+      EmailRouter(
+        gateway: _server!,
+        emailManager: _emailManager!,
+        agentManager: _agentManager!,
+      ).register();
 
       // 8. Start
       await _server!.start();
       unawaited(_agentManager!.initialize());
       unawaited(channelManager.initialize()); // Start enabled channels
+
+      _emailPoller = EmailPoller(
+        emailManager: _emailManager!,
+        agentManager: _agentManager!,
+        onEmailChanged: (accountId) {
+          _server?.broadcast('email.changed', {'accountId': accountId});
+        },
+      );
+      _emailPoller!.start();
 
       _isRunning = true;
       _log.info('Internal gateway started on ws://localhost:${_server!.port}');
@@ -328,6 +366,11 @@ class InternalGatewayManager {
 
     _log.info('Stopping internal gateway...');
     try {
+      _emailPoller?.stop();
+      await _emailManager?.close();
+      _emailPoller = null;
+      _emailManager = null;
+
       await _server?.stop();
       await _agentManager?.shutdown();
       _server = null;

@@ -26,17 +26,27 @@ class SettingsSidebar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(
           horizontal: AppConstants.sidebarPaddingHorizontal,
         ),
-        child: ListView.builder(
-          itemCount: navItems.length,
-          itemBuilder: (context, index) {
-            final item = navItems[index];
-            return SettingsSideNavTile(
-              label: item['label'].toString().tr(),
-              icon: item['icon'] as IconData,
-              isActive: selectedIndex == index,
-              onTap: () => onAction(index),
-            );
-          },
+        child: ListView(
+          children: [
+            ...List.generate(navItems.length, (index) {
+              final item = navItems[index];
+              return SettingsSideNavTile(
+                label: item['label'].toString().tr(),
+                icon: item['icon'] as IconData,
+                isActive: selectedIndex == index,
+                onTap: () => onAction(index),
+              );
+            }),
+            const SizedBox(height: 8),
+            const Divider(color: AppColors.border, height: 1),
+            const SizedBox(height: 8),
+            SettingsSideNavTile(
+              label: 'common.close'.tr(),
+              icon: Icons.close_rounded,
+              isActive: false,
+              onTap: () => Navigator.of(context).pop(),
+            ),
+          ],
         ),
       ),
     );

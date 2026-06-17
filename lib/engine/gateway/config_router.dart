@@ -152,17 +152,35 @@ class ConfigRouter {
       if (key.isEmpty) {
         // Deletion attempt - check constraints
         final keys = await storage.listKeys();
-        final providerKeys = keys
-            .where(
-              (k) =>
-                  k.endsWith('_api_key') ||
-                  k == 'ollama_base_url' ||
-                  k == 'ipex-llm_base_url' ||
-                  k == 'vllm_base_url' ||
-                  k == 'litellm_base_url' ||
-                  k == 'lmstudio_base_url',
-            )
-            .toList();
+        const llmKeys = {
+          'openai_api_key',
+          'anthropic_api_key',
+          'google_api_key',
+          'deepseek_api_key',
+          'openrouter_api_key',
+          'mistral_api_key',
+          'groq_api_key',
+          'together_api_key',
+          'perplexity_api_key',
+          'grok_api_key',
+          'xai_api_key',
+          'moonshot_api_key',
+          'nvidia_api_key',
+          'zai_api_key',
+          'huggingface_api_key',
+          'minimax_api_key',
+          'qwen_api_key',
+          'xiaomi_api_key',
+          'vercel_ai_gateway_api_key',
+          'litellm_api_key',
+          'ollama_base_url',
+          'ipex-llm_base_url',
+          'vllm_base_url',
+          'litellm_base_url',
+          'lmstudio_base_url',
+        };
+        final providerKeys = keys.where((k) => llmKeys.contains(k)).toList();
+
 
         // 1. Ensure at least one provider remains
         if (providerKeys.length <= 1 && providerKeys.contains(storageKey)) {
@@ -1107,6 +1125,28 @@ class ConfigRouter {
       return {'status': 'ok'};
     });
 
+    // 19b. Update billing config
+    gateway.rpcRegistry.register('config.updateBilling', (
+      params,
+      context,
+    ) async {
+      if (params == null) throw ProtocolError('Missing params');
+
+      final config = await loadConfig(configPath);
+      final current = config.billing;
+
+      final updated = BillingConfig(
+        limit: (params['limit'] as num?)?.toDouble() ?? current.limit,
+        balance: (params['balance'] as num?)?.toDouble() ?? current.balance,
+        autonomous: params['autonomous'] as bool? ?? current.autonomous,
+      );
+
+      await saveConfig(config.copyWith(billing: updated), configPath);
+      await _syncAgentManagerConfig();
+
+      return {'status': 'ok', 'billing': updated.toJson()};
+    });
+
     // 20. Factory Reset
     gateway.rpcRegistry.register('config.factoryReset', (
       params,
@@ -1525,6 +1565,25 @@ class ConfigRouter {
       return 'google_client_id_desktop';
     }
     if (service == 'google_client_secret') return 'google_client_secret';
+    // Payments & Wallet
+    if (service == 'payment_card_number' ||
+        service == 'payment_card_expiry' ||
+        service == 'payment_card_cvv' ||
+        service == 'payment_card_holder' ||
+        service == 'payment_card_transactions' ||
+        service == 'reown_project_id' ||
+        service == 'agent_wallet_private_key' ||
+        service == 'active_chain_id' ||
+        service == 'show_personal_wallet' ||
+        service == 'show_agent_wallet' ||
+        service == 'show_binance' ||
+        service == 'binance_api_key' ||
+        service == 'binance_secret_key' ||
+        service == 'show_binance_demo' ||
+        service == 'binance_demo_api_key' ||
+        service == 'binance_demo_secret_key') {
+      return service;
+    }
     if (service.endsWith('_api_key') ||
         service.endsWith('_CLIENT_ID') ||
         service.endsWith('_CLIENT_SECRET') ||

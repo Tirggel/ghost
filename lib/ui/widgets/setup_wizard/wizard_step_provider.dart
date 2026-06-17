@@ -30,7 +30,10 @@ class WizardStepProvider extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           AppUnifiedPicker<String>(
-            value: state.selectedProvider,
+            value: (state.selectedProvider != null &&
+                    state.selectedProvider!.isNotEmpty)
+                ? state.selectedProvider
+                : null,
             label: 'wizard.step_provider',
             hint: 'settings.identity.choose_provider',
             items: providers.map((p) => p['id']!).toList(),
@@ -46,70 +49,73 @@ class WizardStepProvider extends ConsumerWidget {
               notifier.updateProvider(val);
             },
           ),
-          if (state.isLocalProvider) ...[
-            const SizedBox(height: 16),
-            WizardVerificationField(
-              controller: apiKeyController,
-              label: 'settings.api_keys.base_url_label',
-              hint: 'settings.api_keys.base_url_hint',
-              isVerifying: state.loadingModels,
-              isVerified: state.keyVerified,
-              error: state.keyError,
-              onVerify: () =>
-                  notifier.fetchLocalModels(state.selectedProvider!),
-              onChanged: notifier.updateApiKey,
-              obscureText: false,
-              verifyLabel: 'wizard.verify_url'.tr(),
-            ),
+          if (state.selectedProvider != null &&
+              state.selectedProvider!.isNotEmpty) ...[
+            if (state.isLocalProvider) ...[
+              const SizedBox(height: 16),
+              WizardVerificationField(
+                controller: apiKeyController,
+                label: 'settings.api_keys.base_url_label',
+                hint: 'settings.api_keys.base_url_hint',
+                isVerifying: state.loadingModels,
+                isVerified: state.keyVerified,
+                error: state.keyError,
+                onVerify: () =>
+                    notifier.fetchLocalModels(state.selectedProvider!),
+                onChanged: notifier.updateApiKey,
+                obscureText: false,
+                verifyLabel: 'wizard.verify_url'.tr(),
+              ),
+              if (state.keyVerified) ...[
+                const SizedBox(height: 12),
+                WizardStatusCard(
+                  text: 'settings.api_keys.detected_url'.tr(),
+                  status: WizardStatus.success,
+                ),
+              ],
+              if (state.keyError != null) ...[
+                const SizedBox(height: 12),
+                WizardStatusCard(
+                  text: 'settings.api_keys.detection_failed'.tr(),
+                  status: WizardStatus.error,
+                ),
+              ],
+            ] else ...[
+              const SizedBox(height: 16),
+              WizardVerificationField(
+                controller: apiKeyController,
+                label: 'wizard.api_key_label',
+                hint: 'wizard.api_key_hint',
+                isVerifying: state.verifyingKey,
+                isVerified: state.keyVerified,
+                error: state.keyError,
+                onVerify: notifier.verifyKey,
+                onChanged: notifier.updateApiKey,
+              ),
+              if (state.keyError != null) ...[
+                const SizedBox(height: 12),
+                WizardStatusCard(
+                  text:
+                      state.keyError!.toLowerCase().contains('401') ||
+                          state.keyError!.toLowerCase().contains('invalid')
+                      ? 'errors.invalid_key_simple'.tr()
+                      : state.keyError!,
+                  status: WizardStatus.error,
+                ),
+              ],
+            ],
             if (state.keyVerified) ...[
-              const SizedBox(height: 12),
-              WizardStatusCard(
-                text: 'settings.api_keys.detected_url'.tr(),
-                status: WizardStatus.success,
+              const SizedBox(height: 16),
+              AppUnifiedPicker<String>(
+                value: state.selectedModel,
+                items: state.models,
+                label: 'wizard.model_label',
+                hint: 'settings.identity.choose_model',
+                displayValue: (v) => v,
+                onChanged: notifier.updateSelectedModel,
+                loading: state.loadingModels,
               ),
             ],
-            if (state.keyError != null) ...[
-              const SizedBox(height: 12),
-              WizardStatusCard(
-                text: 'settings.api_keys.detection_failed'.tr(),
-                status: WizardStatus.error,
-              ),
-            ],
-          ] else if (state.selectedProvider != null) ...[
-            const SizedBox(height: 16),
-            WizardVerificationField(
-              controller: apiKeyController,
-              label: 'wizard.api_key_label',
-              hint: 'wizard.api_key_hint',
-              isVerifying: state.verifyingKey,
-              isVerified: state.keyVerified,
-              error: state.keyError,
-              onVerify: notifier.verifyKey,
-              onChanged: notifier.updateApiKey,
-            ),
-            if (state.keyError != null) ...[
-              const SizedBox(height: 12),
-              WizardStatusCard(
-                text:
-                    state.keyError!.toLowerCase().contains('401') ||
-                        state.keyError!.toLowerCase().contains('invalid')
-                    ? 'errors.invalid_key_simple'.tr()
-                    : state.keyError!,
-                status: WizardStatus.error,
-              ),
-            ],
-          ],
-          if (state.keyVerified) ...[
-            const SizedBox(height: 16),
-            AppUnifiedPicker<String>(
-              value: state.selectedModel,
-              items: state.models,
-              label: 'wizard.model_label',
-              hint: 'settings.identity.choose_model',
-              displayValue: (v) => v,
-              onChanged: notifier.updateSelectedModel,
-              loading: state.loadingModels,
-            ),
           ],
         ],
       ),

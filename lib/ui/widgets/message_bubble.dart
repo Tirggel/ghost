@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:markdown/markdown.dart' as md;
@@ -316,10 +315,13 @@ class MessageBubble extends ConsumerWidget {
                     )
                   else
                     MarkdownBody(
-                      selectable: false,
+                      selectable: true,
                       onTapLink: (text, href, title) {
                         if (href != null) {
-                          launchUrl(Uri.parse(href));
+                          launchUrl(
+                            Uri.parse(href),
+                            mode: LaunchMode.externalApplication,
+                          );
                         }
                       },
                       data: content.isEmpty && isAssistant
@@ -361,50 +363,53 @@ class MessageBubble extends ConsumerWidget {
                       data: Theme.of(
                         context,
                       ).copyWith(dividerColor: Colors.transparent),
-                      child: ExpansionTile(
-                        title: Text(
-                          '${'common.agent'.tr()} used ${(metadata?['tool_calls'] as List).length} tools',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textDim,
-                            letterSpacing: 0.5,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: ExpansionTile(
+                          title: Text(
+                            '${'common.agent'.tr()} used ${(metadata?['tool_calls'] as List).length} tools',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textDim,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                        ),
-                        tilePadding: EdgeInsets.zero,
-                        childrenPadding: const EdgeInsets.only(bottom: 8),
-                        collapsedIconColor: AppColors.textDim,
-                        iconColor: AppColors.primary,
-                        children: (metadata?['tool_calls'] as List).map((tc) {
-                          final tcMap = tc as Map<String, dynamic>;
-                          final name =
-                              (tcMap['label'] as String?) ??
-                              (tcMap['name'] as String?) ??
-                              '';
-                          final summary = (tcMap['summary'] as String?) ?? '';
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.check_circle_outline,
-                                  size: 14,
-                                  color: AppColors.primary,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    '$name${summary.isNotEmpty ? ': $summary' : ''}',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textMain,
+                          tilePadding: EdgeInsets.zero,
+                          childrenPadding: const EdgeInsets.only(bottom: 8),
+                          collapsedIconColor: AppColors.textDim,
+                          iconColor: AppColors.primary,
+                          children: (metadata?['tool_calls'] as List).map((tc) {
+                            final tcMap = tc as Map<String, dynamic>;
+                            final name =
+                                (tcMap['label'] as String?) ??
+                                (tcMap['name'] as String?) ??
+                                '';
+                            final summary = (tcMap['summary'] as String?) ?? '';
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.check_circle_outline,
+                                    size: 14,
+                                    color: AppColors.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      '$name${summary.isNotEmpty ? ': $summary' : ''}',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.textMain,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
                       ),
                     ),
                   ],
@@ -845,34 +850,11 @@ class _LinkWidgetState extends State<LinkWidget> {
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: () async {
-          final isCtrlPressed =
-              HardwareKeyboard.instance.logicalKeysPressed.contains(
-                LogicalKeyboardKey.controlLeft,
-              ) ||
-              HardwareKeyboard.instance.logicalKeysPressed.contains(
-                LogicalKeyboardKey.controlRight,
-              ) ||
-              HardwareKeyboard.instance.logicalKeysPressed.contains(
-                LogicalKeyboardKey.metaLeft,
-              ) ||
-              HardwareKeyboard.instance.logicalKeysPressed.contains(
-                LogicalKeyboardKey.metaRight,
-              );
-
-          if (isCtrlPressed && widget.href != null) {
+          if (widget.href != null) {
             final uri = Uri.tryParse(widget.href!);
             if (uri != null) {
-              await launchUrl(uri);
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
             }
-          } else if (!isCtrlPressed) {
-            // Optional: Show a small tooltip or snackbar that Ctrl+Click is needed
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Nutze Strg + Klick zum Öffnen des Links'),
-                duration: Duration(seconds: 1),
-              ),
-            );
           }
         },
         child: Text(widget.text, style: style),

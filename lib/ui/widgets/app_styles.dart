@@ -570,17 +570,20 @@ class AppSwitchListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SwitchListTile(
-      value: value,
-      onChanged: onChanged,
-      title: title,
-      subtitle: subtitle,
-      contentPadding: contentPadding,
-      activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
-      activeThumbColor: AppColors.primary,
-      inactiveTrackColor: AppColors.surfaceLight,
-      inactiveThumbColor: AppColors.textDim,
-      trackOutlineColor: WidgetStateProperty.all(AppColors.transparent),
+    return Material(
+      color: Colors.transparent,
+      child: SwitchListTile(
+        value: value,
+        onChanged: onChanged,
+        title: title,
+        subtitle: subtitle,
+        contentPadding: contentPadding,
+        activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
+        activeThumbColor: AppColors.primary,
+        inactiveTrackColor: AppColors.surfaceLight,
+        inactiveThumbColor: AppColors.textDim,
+        trackOutlineColor: WidgetStateProperty.all(AppColors.transparent),
+      ),
     );
   }
 }

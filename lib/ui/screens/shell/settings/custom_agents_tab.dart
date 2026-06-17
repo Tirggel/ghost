@@ -194,13 +194,23 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
   String? _selectedModel;
   final List<String> _selectedSkills = [];
   List<String> _availableModels = [];
-  bool _isLoadingModels = false;
+
   String _selectedDesignSystem = '';
   int _avatarNonce = 0;
   bool _enabled = true;
   bool _sendChatHistory = true;
   int? _lastSaveTrigger;
-  bool _customCronActive = false;
+
+  // Redesigned scheduling UI state
+  String _cronMode = 'preset';
+  TimeOfDay _dailyTime = const TimeOfDay(hour: 9, minute: 0);
+
+  late final TextEditingController _secController;
+  late final TextEditingController _minController;
+  late final TextEditingController _hourController;
+  late final TextEditingController _dayController;
+  late final TextEditingController _monthController;
+  late final TextEditingController _weekdayController;
 
   final Map<String, String> _cronPresets = {
     '': 'settings.agents.cron_none',
@@ -224,6 +234,12 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
   @override
   void initState() {
     super.initState();
+    _secController = TextEditingController();
+    _minController = TextEditingController(text: '*');
+    _hourController = TextEditingController(text: '*');
+    _dayController = TextEditingController(text: '*');
+    _monthController = TextEditingController(text: '*');
+    _weekdayController = TextEditingController(text: '*');
     _loadInitialValues();
   }
 
@@ -264,13 +280,15 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
       }
     }
 
+    _parseCronToFields(_controllers['cronSchedule']!.text.trim());
+
     if (_selectedProvider != null) {
       _fetchModels(_selectedProvider!);
     }
   }
 
   Future<void> _fetchModels(String provider) async {
-    setState(() => _isLoadingModels = true);
+    // No-op
     try {
       final models = await ref
           .read(configProvider.notifier)
@@ -278,18 +296,20 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
       if (mounted) {
         setState(() {
           _availableModels = models;
-          _isLoadingModels = false;
         });
       }
     } catch (_) {
-      if (mounted) {
-        setState(() => _isLoadingModels = false);
-      }
     }
   }
 
   @override
   void dispose() {
+    _secController.dispose();
+    _minController.dispose();
+    _hourController.dispose();
+    _dayController.dispose();
+    _monthController.dispose();
+    _weekdayController.dispose();
     for (final c in _controllers.values) {
       c.dispose();
     }
@@ -491,7 +511,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
           hint: 'settings.agents.cron_hint',
           controller: _controllers['cronSchedule']!,
           value: _getCronDisplay(_controllers['cronSchedule']!.text),
-          customEditWidget: _buildCronDropdown(),
+          customEditWidget: _buildCronScheduler(),
         ),
         BusinessCardField(
           label: 'settings.agents.cron_message_label',
@@ -560,11 +580,127 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
     );
   }
 
+  void _parseCronToFields(String cron) {
+    if (cron.isEmpty) {
+      _cronMode = 'preset';
+      _dailyTime = const TimeOfDay(hour: 9, minute: 0);
+      _secController.text = '';
+      _minController.text = '*';
+      _hourController.text = '*';
+      _dayController.text = '*';
+      _monthController.text = '*';
+      _weekdayController.text = '*';
+      return;
+    }
+
+    if (_cronPresets.containsKey(cron)) {
+      _cronMode = 'preset';
+    }
+
+    final parts = cron.split(RegExp(r'\s+'));
+    bool isDaily = false;
+    int? hour;
+    int? minute;
+
+    if (parts.length == 5 && parts[2] == '*' && parts[3] == '*' && parts[4] == '*') {
+      minute = int.tryParse(parts[0]);
+      hour = int.tryParse(parts[1]);
+      if (minute != null && hour != null && minute >= 0 && minute < 60 && hour >= 0 && hour < 24) {
+        isDaily = true;
+      }
+    } else if (parts.length == 6 && parts[3] == '*' && parts[4] == '*' && parts[5] == '*') {
+      final sec = int.tryParse(parts[0]);
+      minute = int.tryParse(parts[1]);
+      hour = int.tryParse(parts[2]);
+      if (sec != null && minute != null && hour != null && sec >= 0 && sec < 60 && minute >= 0 && minute < 60 && hour >= 0 && hour < 24) {
+        isDaily = true;
+      }
+    }
+
+    if (isDaily && hour != null && minute != null) {
+      _cronMode = 'daily';
+      _dailyTime = TimeOfDay(hour: hour, minute: minute);
+    } else if (!_cronPresets.containsKey(cron)) {
+      if (parts.length == 5 || parts.length == 6) {
+        _cronMode = 'fields';
+      } else {
+        _cronMode = 'custom';
+      }
+    }
+
+    if (parts.length == 5) {
+      _secController.text = '';
+      _minController.text = parts[0];
+      _hourController.text = parts[1];
+      _dayController.text = parts[2];
+      _monthController.text = parts[3];
+      _weekdayController.text = parts[4];
+    } else if (parts.length == 6) {
+      _secController.text = parts[0];
+      _minController.text = parts[1];
+      _hourController.text = parts[2];
+      _dayController.text = parts[3];
+      _monthController.text = parts[4];
+      _weekdayController.text = parts[5];
+    } else {
+      _secController.text = '';
+      _minController.text = '*';
+      _hourController.text = '*';
+      _dayController.text = '*';
+      _monthController.text = '*';
+      _weekdayController.text = '*';
+    }
+  }
+
+  void _updateCronFromMode() {
+    if (_cronMode == 'preset') {
+      final current = _controllers['cronSchedule']!.text;
+      if (!_cronPresets.containsKey(current)) {
+        _controllers['cronSchedule']!.text = '';
+      }
+    } else if (_cronMode == 'daily') {
+      final m = _dailyTime.minute;
+      final h = _dailyTime.hour;
+      _controllers['cronSchedule']!.text = '$m $h * * *';
+    } else if (_cronMode == 'fields') {
+      final s = _secController.text.trim();
+      final min = _minController.text.trim().isEmpty ? '*' : _minController.text.trim();
+      final hr = _hourController.text.trim().isEmpty ? '*' : _hourController.text.trim();
+      final d = _dayController.text.trim().isEmpty ? '*' : _dayController.text.trim();
+      final m = _monthController.text.trim().isEmpty ? '*' : _monthController.text.trim();
+      final w = _weekdayController.text.trim().isEmpty ? '*' : _weekdayController.text.trim();
+
+      if (s.isNotEmpty) {
+        _controllers['cronSchedule']!.text = '$s $min $hr $d $m $w';
+      } else {
+        _controllers['cronSchedule']!.text = '$min $hr $d $m $w';
+      }
+    }
+  }
+
   String _getCronDisplay(String cron) {
     if (_cronPresets.containsKey(cron)) {
       return _cronPresets[cron]!.tr();
     }
     if (cron.isEmpty) return 'settings.agents.cron_none'.tr();
+
+    final parts = cron.trim().split(RegExp(r'\s+'));
+    if (parts.length == 5 && parts[2] == '*' && parts[3] == '*' && parts[4] == '*') {
+      final min = int.tryParse(parts[0]);
+      final hr = int.tryParse(parts[1]);
+      if (min != null && hr != null && min >= 0 && min < 60 && hr >= 0 && hr < 24) {
+        final timeStr = '${hr.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}';
+        return 'settings.agents.cron_mode_daily'.tr() + ' ($timeStr)';
+      }
+    } else if (parts.length == 6 && parts[3] == '*' && parts[4] == '*' && parts[5] == '*') {
+      final sec = int.tryParse(parts[0]);
+      final min = int.tryParse(parts[1]);
+      final hr = int.tryParse(parts[2]);
+      if (sec != null && min != null && hr != null && sec >= 0 && sec < 60 && min >= 0 && min < 60 && hr >= 0 && hr < 24) {
+        final timeStr = '${hr.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}';
+        return 'settings.agents.cron_mode_daily'.tr() + ' ($timeStr)';
+      }
+    }
     return 'settings.agents.cron_custom'.tr(namedArgs: {'schedule': cron});
   }
 
@@ -584,46 +720,35 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
     return 'Gültiges Cron-Format ✓';
   }
 
-  Widget _buildCronDropdown() {
+  Widget _buildCronScheduler() {
     final currentCron = _controllers['cronSchedule']!.text;
-    final isPreset = _cronPresets.containsKey(currentCron);
-    final showCustomField = _customCronActive || !isPreset;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppUnifiedPicker<String>(
-          value: showCustomField ? 'custom' : currentCron,
-          label: 'settings.agents.cron_label',
-          items: [..._cronPresets.keys, 'custom'],
-          displayValue: (v) => v == 'custom' 
-              ? 'settings.agents.cron_custom'.tr(namedArgs: {'schedule': ''}).split(' (').first
-              : _cronPresets[v]!.tr(),
-          onChanged: (val) {
-            setState(() {
-              if (val == 'custom') {
-                _customCronActive = true;
-              } else {
-                _customCronActive = false;
-                _controllers['cronSchedule']!.text = val!;
-              }
-            });
-          },
+        const AppFormLabel('settings.agents.cron_label'),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(child: _buildModeTab('preset', 'settings.agents.cron_mode_preset')),
+            Expanded(child: _buildModeTab('daily', 'settings.agents.cron_mode_daily')),
+            Expanded(child: _buildModeTab('fields', 'settings.agents.cron_mode_fields')),
+            Expanded(child: _buildModeTab('custom', 'settings.agents.cron_mode_custom')),
+          ],
         ),
-        if (showCustomField) ...[
+        const SizedBox(height: 12),
+        if (_cronMode == 'preset')
+          _buildPresetPicker()
+        else if (_cronMode == 'daily')
+          _buildDailyPicker()
+        else if (_cronMode == 'fields')
+          _buildFieldsPicker()
+        else if (_cronMode == 'custom')
+          _buildCustomPicker(),
+        if (_cronMode != 'preset') ...[
           const SizedBox(height: 8),
-          AppFormField.text(
-            controller: _controllers['cronSchedule']!,
-            label: '',
-            hint: 'settings.agents.cron_hint',
-            onChanged: (val) {
-              // If the user types a preset, we could potentially snap back, 
-              // but it's better to stay in custom mode until they use the dropdown.
-              setState(() {}); 
-            },
-          ),
           Padding(
-            padding: const EdgeInsets.only(top: 4, left: 4),
+            padding: const EdgeInsets.only(left: 4),
             child: Text(
               _cronHint(currentCron),
               style: TextStyle(
@@ -635,6 +760,263 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildModeTab(String modeId, String labelKey) {
+    final isActive = _cronMode == modeId;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _cronMode = modeId;
+          _updateCronFromMode();
+        });
+      },
+      child: Container(
+        height: 36,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.white : AppColors.surface,
+          border: Border.all(
+            color: AppColors.white,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          labelKey.tr(),
+          style: TextStyle(
+            color: isActive ? AppColors.black : AppColors.textDim,
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPresetPicker() {
+    final currentCron = _controllers['cronSchedule']!.text;
+    return AppUnifiedPicker<String>(
+      value: _cronPresets.containsKey(currentCron) ? currentCron : '',
+      items: _cronPresets.keys.toList(),
+      displayValue: (v) => _cronPresets[v]!.tr(),
+      onChanged: (val) {
+        setState(() {
+          _controllers['cronSchedule']!.text = val ?? '';
+        });
+      },
+    );
+  }
+
+  Widget _buildDailyPicker() {
+    return Row(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.white),
+          ),
+          child: Row(
+            children: [
+              _buildPeriodButton(true, 'settings.agents.cron_morning'),
+              _buildPeriodButton(false, 'settings.agents.cron_evening'),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: InkWell(
+            onTap: _selectDailyTime,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.white),
+                color: AppColors.black,
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.access_time_rounded, color: AppColors.primary, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'settings.agents.cron_time'.tr() + ': ${_dailyTime.format(context)}',
+                    style: const TextStyle(
+                      color: AppColors.white,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPeriodButton(bool morning, String labelKey) {
+    final isMorning = _dailyTime.hour < 12;
+    final isActive = morning ? isMorning : !isMorning;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          int h = _dailyTime.hour;
+          if (morning && h >= 12) {
+            h -= 12;
+          } else if (!morning && h < 12) {
+            h += 12;
+          }
+          _dailyTime = TimeOfDay(hour: h, minute: _dailyTime.minute);
+          _updateCronFromMode();
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        color: isActive ? AppColors.white.withValues(alpha: 0.15) : AppColors.transparent,
+        child: Text(
+          labelKey.tr(),
+          style: TextStyle(
+            color: isActive ? AppColors.white : AppColors.textDim,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectDailyTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: _dailyTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: AppColors.white,
+              onPrimary: AppColors.black,
+              surface: AppColors.surface,
+              onSurface: AppColors.white,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(foregroundColor: AppColors.white),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _dailyTime = picked;
+        _updateCronFromMode();
+      });
+    }
+  }
+
+  Widget _buildFieldsPicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 6,
+          runSpacing: 8,
+          children: [
+            _buildFieldInput('settings.agents.cron_field_sec', _secController, '0-59 (opt)'),
+            _buildFieldInput('settings.agents.cron_field_min', _minController, '0-59'),
+            _buildFieldInput('settings.agents.cron_field_hour', _hourController, '0-23'),
+            _buildFieldInput('settings.agents.cron_field_day', _dayController, '1-31'),
+            _buildFieldInput('settings.agents.cron_field_month', _monthController, '1-12'),
+            _buildFieldInput('settings.agents.cron_field_weekday', _weekdayController, '0-6'),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          Localizations.localeOf(context).languageCode == 'de'
+              ? '* = alle, */X = alle X (z.B. */5)'
+              : '* = every, */X = every X (e.g. */5)',
+          style: const TextStyle(
+            fontSize: 10,
+            color: AppColors.textDim,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFieldInput(String labelKey, TextEditingController controller, String hint) {
+    return SizedBox(
+      width: 58,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            labelKey.tr(),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDim,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          TextField(
+            controller: controller,
+            style: const TextStyle(
+              color: AppColors.white,
+              fontSize: 12,
+              fontFamily: 'monospace',
+            ),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: hint,
+              hintStyle: const TextStyle(color: AppColors.textDim, fontSize: 10),
+              filled: true,
+              fillColor: AppColors.background,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              enabledBorder: const OutlineInputBorder(
+                borderSide: BorderSide(color: AppColors.white),
+              ),
+              focusedBorder: const OutlineInputBorder(
+                borderSide: BorderSide(color: AppColors.primary),
+              ),
+            ),
+            onChanged: (_) {
+              setState(() {
+                _updateCronFromMode();
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomPicker() {
+    return AppFormField.text(
+      controller: _controllers['cronSchedule']!,
+      label: '',
+      hint: 'settings.agents.cron_hint',
+      onChanged: (val) {
+        setState(() {
+          final cleanVal = val.trim();
+          final parts = cleanVal.split(RegExp(r'\s+'));
+          if (parts.length == 5) {
+            _secController.text = '';
+            _minController.text = parts[0];
+            _hourController.text = parts[1];
+            _dayController.text = parts[2];
+            _monthController.text = parts[3];
+            _weekdayController.text = parts[4];
+          } else if (parts.length == 6) {
+            _secController.text = parts[0];
+            _minController.text = parts[1];
+            _hourController.text = parts[2];
+            _dayController.text = parts[3];
+            _monthController.text = parts[4];
+            _weekdayController.text = parts[5];
+          }
+        });
+      },
     );
   }
 

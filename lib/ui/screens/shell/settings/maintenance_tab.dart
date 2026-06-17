@@ -7,7 +7,6 @@ import 'package:file_picker/file_picker.dart';
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
-import '../../../widgets/app_snackbar.dart';
 import '../../../widgets/app_dialogs.dart';
 
 class MaintenanceTab extends ConsumerStatefulWidget {

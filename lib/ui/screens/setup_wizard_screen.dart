@@ -140,14 +140,14 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen>
       notifier.updateLanguage(context.locale.languageCode);
     }
 
-    // Load existing API key if provider is set
-    if (agent.provider != null) {
-      notifier.updateProvider(agent.provider);
+    // Load existing API key if provider is set and not empty
+    if (agent.provider != null && agent.provider!.isNotEmpty) {
       // Fetch the actual key from the vault if it exists
       final key = await ref.read(configProvider.notifier).getKey(
         agent.provider == 'google' ? 'google_api_key' : '${agent.provider}_api_key',
       );
       if (key != null && key.isNotEmpty) {
+        notifier.updateProvider(agent.provider);
         notifier.updateApiKey(key);
         // If we have a key, try to verify it to load models
         if (AppConstants.isLocalProvider(agent.provider!)) {

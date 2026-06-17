@@ -4,7 +4,6 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../../core/constants.dart';
 import '../../../widgets/app_styles.dart';
-import '../../../widgets/app_snackbar.dart';
 
 class SecurityTab extends ConsumerStatefulWidget {
   const SecurityTab({super.key, this.onBack, this.onNext, this.topPadding});

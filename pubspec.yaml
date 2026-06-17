@@ -30,9 +30,10 @@ dependencies:
   flutter_highlight: ^0.7.0
   sherpa_onnx: ^1.12.36
   record: ^6.2.0
-  flutter_secure_storage: ^10.0.0
+  flutter_secure_storage: ^9.2.4
   objectbox_flutter_libs: ^5.3.1
   window_manager: ^0.4.3
+  reown_appkit: ^1.8.3
 
   # Logic & Backend
   archive: ^4.0.9
@@ -60,6 +61,7 @@ dependencies:
   watcher: ^1.1.1
   web_socket_channel: ^3.0.3
   markdown: any
+  enough_mail: ^2.1.7
 
 dev_dependencies:
   flutter_test:

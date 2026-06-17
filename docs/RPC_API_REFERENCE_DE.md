@@ -36,7 +36,7 @@ Gibt den vollständigen Anwendungszustand zurück.
 ### `config.getKey` / `config.setKey`
 Verwaltet API-Schlüssel im verschlüsselten Tresor (Vault).
 **Parameter:**
-- `service`: (String, z.B. "openai", "google_workspace", "telegram")
+- `service`: (String, z.B. "openai", "google_workspace", "telegram", "reown_project_id", "payment_card_number", "payment_card_holder", "payment_card_expiry", "payment_card_cvv", "agent_wallet_private_key", "binance_api_key", "binance_secret_key", "binance_demo_api_key", "binance_demo_secret_key")
 - `key`: (String)
 
 ### `config.getChannelToken`
@@ -68,8 +68,19 @@ Testet, ob eine Provider/Modell-Kombination Vektor-Embeddings unterstützt.
 - `provider`: (String)
 - `model`: (String)
 
-### `config.updateAgent` / `config.updateUser` / `config.updateIdentity` / `config.updateIntegrations` / `config.updateChannels` / `config.updateMemory` / `config.updateTools` / `config.updateSecurity`
+### `config.updateAgent` / `config.updateUser` / `config.updateIdentity` / `config.updateIntegrations` / `config.updateChannels` / `config.updateMemory` / `config.updateTools` / `config.updateSecurity` / `config.updateBilling`
 Aktualisiert spezifische Konfigurationsblöcke. Alle sensiblen Daten (Schlüssel, Token) werden automatisch in den verschlüsselten Tresor gefiltert und niemals im Klartext gespeichert.
+
+### `config.updateBilling`
+Aktualisiert die autonome Abrechnungs- und Zahlungskonfiguration.
+**Parameter:**
+- `limit`: (Double, optional) Das maximale Abrechnungsbudget.
+- `balance`: (Double, optional) Das aktuell verfügbare Budget.
+- `autonomous`: (Boolean, optional) Falls true, werden Zahlungen selbstständig ohne HITL-Freigabe (Human-In-The-Loop) ausgeführt.
+
+**Antwort:**
+- `status`: "ok"
+- `billing`: (Object) Die aktualisierten Details der Abrechnungskonfiguration.
 
 ### `config.getGoogleCredentials`
 Ruft die Google OAuth Client-IDs und Secrets aus dem Tresor ab.
@@ -105,6 +116,24 @@ Listet alle aktiven Sitzungen auf.
 
 ### `agent.deleteSession`
 Löscht eine spezifische Sitzung.
+**Parameter:**
+- `sessionId`: (String)
+
+### `agent.setSessionModel`
+Aktualisiert das LLM-Modell und den Provider für eine aktive Sitzung.
+**Parameter:**
+- `sessionId`: (String)
+- `model`: (String)
+- `provider`: (String, optional)
+
+### `agent.setSessionTitle`
+Aktualisiert manuell den Titel einer Sitzung.
+**Parameter:**
+- `sessionId`: (String)
+- `title`: (String)
+
+### `agent.stop`
+Stoppt oder unterbricht die aktive Agenten-Ausführung / das Streaming der Antwort für eine Sitzung.
 **Parameter:**
 - `sessionId`: (String)
 
@@ -282,6 +311,144 @@ Fügt einer Aufgabe einen Kommentar hinzu.
 
 ---
 
+## 📧 E-Mail-Integration
+
+### `email.listAccounts`
+Listet alle konfigurierten IMAP/SMTP-E-Mail-Konten auf.
+**Antwort:**
+- `accounts`: (Array of Objects) Liste der konfigurierten E-Mail-Konten.
+
+### `email.getAccount`
+Ruft die Konfiguration eines bestimmten E-Mail-Kontos ab.
+**Parameter:**
+- `id`: (String) Die ID des Kontos.
+**Antwort:**
+- `account`: (Object) Kontodetails.
+
+### `email.saveAccount`
+Speichert oder aktualisiert die Konfiguration eines E-Mail-Kontos. Vertrauliche Passwörter (IMAP/SMTP) werden sicher im Tresor (Vault) hinterlegt.
+**Parameter:**
+- `account`: (Object) Konfigurationsfelder des Kontos.
+- `imapPassword`: (String, optional) IMAP-Passwort.
+- `smtpPassword`: (String, optional) SMTP-Passwort.
+
+### `email.deleteAccount`
+Löscht ein konfiguriertes E-Mail-Konto.
+**Parameter:**
+- `id`: (String) Die ID des Kontos.
+
+### `email.testAccount`
+Testet die Verbindung und die Zugangsdaten für IMAP- und SMTP-Server.
+**Parameter:**
+- `account`: (Object) Konfigurationsfelder des Kontos.
+- `imapPassword`: (String, optional) IMAP-Passwort.
+- `smtpPassword`: (String, optional) SMTP-Passwort.
+**Antwort:**
+- `success`: (Boolean) True, wenn die Verbindungstests erfolgreich sind.
+
+### `email.listFolders`
+Listet die E-Mail-Ordner auf dem IMAP-Server auf.
+**Parameter:**
+- `accountId`: (String) Die ID des E-Mail-Kontos.
+**Antwort:**
+- `folders`: (Array of Objects) Ordnernamen und E-Mail-Zähler.
+
+### `email.listEmails`
+Listet die zwischengespeicherten E-Mails eines bestimmten Ordners auf. Unterstützt Paginierung und Filterung.
+**Parameter:**
+- `accountId`: (String)
+- `folder`: (String, optional) z.B. "INBOX".
+- `limit`: (Int, optional) Standard ist 50.
+- `offset`: (Int, optional) Standard ist 0.
+- `filter`: (String, optional) Suchbegriff.
+**Antwort:**
+- `emails`: (Array of Objects) Liste der zwischengespeicherten E-Mails.
+
+### `email.markFlags`
+Aktualisiert den Gelesen-Status oder die Markierung (Favorit) einer E-Mail.
+**Parameter:**
+- `accountId`: (String)
+- `emailId`: (String)
+- `isRead`: (Boolean, optional)
+- `isFavorite`: (Boolean, optional)
+
+### `email.moveEmail`
+Verschiebt eine einzelne E-Mail in einen anderen Ordner.
+**Parameter:**
+- `accountId`: (String)
+- `emailId`: (String)
+- `targetFolder`: (String)
+
+### `email.emptyFolder`
+Löscht alle E-Mails in einem Ordner (z.B. Papierkorb oder Spam) unwiderruflich.
+**Parameter:**
+- `accountId`: (String)
+- `folder`: (String)
+
+### `email.deleteEmailPermanently`
+Löscht eine E-Mail unwiderruflich vom Server.
+**Parameter:**
+- `accountId`: (String)
+- `emailId`: (String)
+
+### `email.moveEmails`
+Verschiebt eine Liste von E-Mails in einen anderen Ordner.
+**Parameter:**
+- `accountId`: (String)
+- `emailIds`: (Array von Strings)
+- `targetFolder`: (String)
+
+### `email.deleteEmailsPermanently`
+Löscht eine Liste von E-Mails unwiderruflich vom Server.
+**Parameter:**
+- `accountId`: (String)
+- `emailIds`: (Array von Strings)
+
+### `email.sendEmail`
+Sendet eine neue E-Mail via SMTP.
+**Parameter:**
+- `accountId`: (String)
+- `to`: (String) Empfängeradresse.
+- `subject`: (String) E-Mail-Betreff.
+- `bodyMarkdown`: (String) E-Mail-Text in Markdown-Format.
+- `attachmentPaths`: (Array von Strings, optional) Dateipfade von Anhängen auf dem Host-System.
+
+### `email.generateReply`
+Generiert mittels KI einen Antwortentwurf basierend auf der E-Mail und dem Schreibstil des Nutzers.
+**Parameter:**
+- `accountId`: (String)
+- `emailId`: (String)
+**Antwort:**
+- `reply`: (String) Generierter Antwortentwurf.
+
+### `email.downloadAttachment`
+Lädt einen E-Mail-Anhang auf das Host-System herunter.
+**Parameter:**
+- `accountId`: (String)
+- `emailId`: (String)
+- `fileName`: (String) Name der Anhangsdatei.
+**Antwort:**
+- `path`: (String) Absoluter Pfad zur heruntergeladenen Datei.
+
+### `email.getAttachmentNames`
+Ruft alle Anhangsnamen für eine E-Mail ab.
+**Parameter:**
+- `accountId`: (String)
+- `emailId`: (String)
+**Antwort:**
+- `names`: (Array von Strings) Liste von Dateinamen.
+
+### `email.triggerScan`
+Triggert manuell eine Postfach-Synchronisierung für einen Ordner.
+**Parameter:**
+- `accountId`: (String)
+- `folder`: (String, optional) Standard ist "INBOX".
+- `count`: (Int, optional) Anzahl der abzurufenden E-Mails.
+**Antwort:**
+- `status`: "synced"
+
+---
+
 ## 🛠️ Wartung & System
 
 ### `config.factoryReset`
@@ -346,3 +513,12 @@ Wird gesendet, wenn eine Aufgabe erstellt, aktualisiert, verschoben oder gelösc
 
 ### `gateway.error`
 Wird gesendet, wenn ein Hintergrundfehler auftritt (z. B. Verbindungsfehler eines Kanals).
+
+### `email.accountsChanged`
+Wird gesendet, wenn E-Mail-Konten gespeichert oder gelöscht werden.
+
+### `email.changed`
+Wird gesendet, wenn E-Mails aktualisiert, gelöscht oder synchronisiert wurden.
+```json
+{ "accountId": "...", "emailId": "..." }
+```

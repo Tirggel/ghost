@@ -19,6 +19,7 @@ void main() {
   });
 
   tearDown(() async {
+    await store.close();
     await tempDir.delete(recursive: true);
   });
 

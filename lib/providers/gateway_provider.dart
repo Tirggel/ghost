@@ -669,6 +669,16 @@ class ConfigNotifier extends Notifier<AppConfig> {
     }
   }
 
+  Future<void> updateBilling(Map<String, dynamic> billingConfig) async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      await client.call('config.updateBilling', billingConfig);
+      await refresh();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> updateMemory(Map<String, dynamic> memoryConfig) async {
     final client = ref.read(gatewayClientProvider);
     try {

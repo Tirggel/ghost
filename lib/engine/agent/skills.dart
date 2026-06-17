@@ -29,6 +29,10 @@ class SkillManager {
 
   final _skillsChangedController = StreamController<void>.broadcast();
   Stream<void> get onSkillsChanged => _skillsChangedController.stream;
+
+  final _skillInstalledController = StreamController<String>.broadcast();
+  Stream<String> get onSkillInstalled => _skillInstalledController.stream;
+
   StreamSubscription<FileSystemEvent>? _watchSubscription;
 
   Future<void> initialize() async {
@@ -62,6 +66,7 @@ class SkillManager {
   void dispose() {
     _watchSubscription?.cancel();
     _skillsChangedController.close();
+    _skillInstalledController.close();
   }
 
   /// Discover all installed skills.
@@ -307,6 +312,8 @@ class SkillManager {
 
     await initializeRuntimes(foundSlug, skillDir.path);
 
+    _skillInstalledController.add(foundSlug);
+
     return Skill(
       slug: foundSlug,
       name: metaJson['name'] as String? ?? foundSlug,
@@ -407,6 +414,8 @@ class SkillManager {
     }
 
     await initializeRuntimes(foundSlug, targetPath);
+
+    _skillInstalledController.add(foundSlug);
 
     if (moveSource) {
       try {
@@ -725,6 +734,8 @@ const transport = new StdioServerTransport();
 await server.connect(transport);
 ''');
     }
+
+    _skillInstalledController.add(slug);
 
     return Skill(
       slug: slug,

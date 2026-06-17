@@ -11,6 +11,7 @@ import '../../providers/auth_provider.dart';
 import '../../core/constants.dart';
 import 'chat_screen.dart';
 import 'kanban/kanban_screen.dart';
+import 'email/email_screen.dart';
 import 'setup_wizard_screen.dart';
 import '../../providers/shell_provider.dart';
 import '../../core/models/chat_session.dart';
@@ -353,14 +354,16 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                 _confirmDeleteFolder(agentName, sessions, showPendingNew),
           ),
           Expanded(
-            child: shellState.showKanban
-                ? const KanbanScreen()
-                : activeSessionId == null
-                    ? _buildEmptyState()
-                    : ChatScreen(
-                        key: ValueKey(activeSessionId),
-                        sessionId: activeSessionId,
-                      ),
+            child: shellState.showEmail
+                ? const EmailScreen()
+                : shellState.showKanban
+                    ? const KanbanScreen()
+                    : activeSessionId == null
+                        ? _buildEmptyState()
+                        : ChatScreen(
+                            key: ValueKey(activeSessionId),
+                            sessionId: activeSessionId,
+                          ),
           ),
         ],
       ),

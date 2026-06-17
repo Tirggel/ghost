@@ -11,6 +11,7 @@ import '../models/message.dart';
 import '../sessions/manager.dart';
 import '../sessions/session.dart';
 import '../config/config.dart';
+import '../tasks/task.dart';
 
 
 final _log = Logger('Ghost.AgentRouter');
@@ -239,6 +240,35 @@ class AgentRouter {
   Future<void> _processInAgent(
       String sessionId, String content, String? agentId,
       {List<MessageAttachment> attachments = const []}) async {
+    // --- /goal Kanban tracking ---
+    final isGoal = content.trim().startsWith('/goal');
+    final taskManager = agentManager.taskManager;
+    KanbanTask? kanbanTask;
+
+    if (isGoal && taskManager != null) {
+      final goalText = content.trim().substring(5).trim();
+      final shortTitle = goalText.length > 60
+          ? '🎯 ${goalText.substring(0, 60)}...'
+          : '🎯 $goalText';
+      kanbanTask = await taskManager.createTask(
+        title: shortTitle,
+        description: content.trim(),
+        status: TaskStatus.inProgress,
+        assignedAgentId: agentId ?? 'default-agent',
+        assignedAgentName: agentId != null
+            ? agentManager.config.customAgents
+                    .where((a) => a.id == agentId)
+                    .firstOrNull
+                    ?.name ??
+                agentId
+            : agentManager.config.identity.name,
+      );
+      final withSession = kanbanTask.copyWith(sessionId: sessionId);
+      await taskManager.updateTask(withSession);
+      kanbanTask = withSession;
+      _log.info('/goal task created: ${kanbanTask.id}');
+    }
+
     try {
       final session = sessionManager.getSession(sessionId);
       final agent = agentManager.getAgent(agentId ?? session?.agentId);
@@ -283,12 +313,42 @@ class AgentRouter {
           'message': lastMsg.toJson(),
         });
       }
+
+      // --- /goal abgeschlossen → Task auf "done" ---
+      if (isGoal && kanbanTask != null && taskManager != null) {
+        await taskManager.moveTask(kanbanTask.id, TaskStatus.done);
+        final session = sessionManager.getSession(sessionId);
+        String summary = '';
+        if (session != null && session.history.isNotEmpty) {
+          summary = session.history.last.content;
+          if (summary.length > 500) summary = '${summary.substring(0, 500)}...';
+        }
+        await taskManager.addComment(
+          kanbanTask.id,
+          authorId: agentId ?? 'default-agent',
+          authorName: agentManager.config.identity.name,
+          content: 'Ziel erreicht ✅\n\nZusammenfassung:\n$summary',
+        );
+        _log.info('/goal task ${kanbanTask.id} marked as done.');
+      }
     } catch (e) {
       _log.severe('Agent routing error: $e');
       gateway.broadcast('agent.error', {
         'sessionId': sessionId,
         'error': e.toString(),
       });
+
+      // --- /goal Fehler → Task auf "review" ---
+      if (isGoal && kanbanTask != null && taskManager != null) {
+        await taskManager.moveTask(kanbanTask.id, TaskStatus.review);
+        await taskManager.addComment(
+          kanbanTask.id,
+          authorId: 'system',
+          authorName: 'Ghost System',
+          content: 'Fehler bei der Ausführung: $e',
+        );
+        _log.info('/goal task ${kanbanTask.id} moved to review due to error.');
+      }
     }
   }
 }

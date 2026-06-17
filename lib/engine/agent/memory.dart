@@ -9,25 +9,18 @@ final _log = Logger('Ghost.MemoryEngine');
 
 /// A single chunk of text with its metadata.
 class MemoryChunk {
-
   factory MemoryChunk.fromJson(Map<String, dynamic> json) {
     return MemoryChunk(
       text: json['text'] as String,
       metadata: Map<String, dynamic>.from(json['metadata'] as Map),
     );
   }
-  MemoryChunk({
-    required this.text,
-    this.metadata = const {},
-  });
+  MemoryChunk({required this.text, this.metadata = const {}});
 
   final String text;
   final Map<String, dynamic> metadata;
 
-  Map<String, dynamic> toJson() => {
-        'text': text,
-        'metadata': metadata,
-      };
+  Map<String, dynamic> toJson() => {'text': text, 'metadata': metadata};
 }
 
 /// Handles long-term memory via simple keyword matching.
@@ -77,10 +70,12 @@ class MemoryEngine {
   }
 
   /// Retrieve relevant context for a query using basic keyword matching.
-  Future<List<String>> query(String text,
-      {int limit = 5,
-      String? category,
-      AIModelProvider? activeProvider}) async {
+  Future<List<String>> query(
+    String text, {
+    int limit = 5,
+    String? category,
+    AIModelProvider? activeProvider,
+  }) async {
     if (!config.enabled) return [];
 
     if (_hiveBox == null) {
@@ -89,7 +84,8 @@ class MemoryEngine {
     }
 
     _log.info(
-        'Querying memory using keyword matching: "$text" (category: $category)');
+      'Querying memory using keyword matching: "$text" (category: $category)',
+    );
 
     try {
       final chunks = _hiveBox!.values
@@ -100,8 +96,9 @@ class MemoryEngine {
 
       // Check if this is a personal query (I, me, my, ich, mich, mein)
       final personalPronouns = RegExp(
-          r'\b(ich|mich|mir|mein|meine|meinem|meinen|i|me|my|mine)\b',
-          caseSensitive: false);
+        r'\b(ich|mich|mir|mein|meine|meinem|meinen|i|me|my|mine)\b',
+        caseSensitive: false,
+      );
       final isPersonalQuery =
           personalPronouns.hasMatch(text) || category == 'user_profile';
 
@@ -137,8 +134,10 @@ class MemoryEngine {
         }
 
         // Also sanitize chunk text for better matching
-        final sanitizedChunk =
-            chunkTextLower.replaceAll(RegExp(r'[^\w\s]'), ' ');
+        final sanitizedChunk = chunkTextLower.replaceAll(
+          RegExp(r'[^\w\s]'),
+          ' ',
+        );
 
         double score = profileBoost;
 
@@ -183,9 +182,11 @@ class MemoryEngine {
   }
 
   /// Add a document or text chunk to memory.
-  Future<void> add(String text,
-      {Map<String, dynamic> metadata = const {},
-      AIModelProvider? activeProvider}) async {
+  Future<void> add(
+    String text, {
+    Map<String, dynamic> metadata = const {},
+    AIModelProvider? activeProvider,
+  }) async {
     if (!config.enabled) return;
 
     if (_hiveBox == null) {

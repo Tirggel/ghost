@@ -15,7 +15,7 @@ class ExecTools {
 
   /// Builds a map of environment variables by extracting API keys from the secure vault.
   static Future<Map<String, String>> buildVaultEnvironment(SecureStorage? storage) async {
-    final env = <String, String>{};
+    final env = Map<String, String>.from(Platform.environment);
     if (storage == null) return env;
 
     try {

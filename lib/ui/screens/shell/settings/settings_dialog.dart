@@ -12,6 +12,7 @@ import 'channels_tab.dart';
 import 'toolbox_tab.dart';
 import 'gateway_tab.dart';
 import 'security_tab.dart';
+import 'billing_tab.dart';
 import 'maintenance_tab.dart';
 import 'widgets/settings_sidebar.dart';
 
@@ -29,6 +30,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
     {'label': 'settings.tabs.api_management', 'icon': Icons.vpn_key_outlined},
     {'label': 'settings.integrations.tab', 'icon': Icons.extension_outlined},
     {'label': 'settings.channels.tab', 'icon': Icons.hub_outlined},
+    {'label': 'settings.tabs.billing', 'icon': Icons.payment_rounded},
     {'label': 'settings.toolbox.tab', 'icon': Icons.construction_rounded},
     {'label': 'settings.tabs.security', 'icon': Icons.security_rounded},
     {'label': 'settings.gateway.tab', 'icon': Icons.router_rounded},
@@ -77,19 +79,23 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                           onBack: () => ref.read(shellProvider.notifier).setSettingsTabIndex(3),
                           onNext: () => ref.read(shellProvider.notifier).setSettingsTabIndex(5),
                         ),
-                        ToolboxTab(
+                        BillingTab(
                           onBack: () => ref.read(shellProvider.notifier).setSettingsTabIndex(4),
                           onNext: () => ref.read(shellProvider.notifier).setSettingsTabIndex(6),
                         ),
-                        SecurityTab(
+                        ToolboxTab(
                           onBack: () => ref.read(shellProvider.notifier).setSettingsTabIndex(5),
                           onNext: () => ref.read(shellProvider.notifier).setSettingsTabIndex(7),
                         ),
-                        GatewayTab(
+                        SecurityTab(
                           onBack: () => ref.read(shellProvider.notifier).setSettingsTabIndex(6),
                           onNext: () => ref.read(shellProvider.notifier).setSettingsTabIndex(8),
                         ),
-                        MaintenanceTab(onBack: () => ref.read(shellProvider.notifier).setSettingsTabIndex(7)),
+                        GatewayTab(
+                          onBack: () => ref.read(shellProvider.notifier).setSettingsTabIndex(7),
+                          onNext: () => ref.read(shellProvider.notifier).setSettingsTabIndex(9),
+                        ),
+                        MaintenanceTab(onBack: () => ref.read(shellProvider.notifier).setSettingsTabIndex(8)),
                       ],
                     ),
                   ),

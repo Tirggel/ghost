@@ -64,6 +64,7 @@ Future<void> saveConfig(GhostConfig config, String path) async {
     includeMemory: true,
     includeSession: true,
     includeIntegrations: true,
+    includeBilling: true,
   ));
   await file.writeAsString('$json\n');
   _log.info('Config saved to $path');

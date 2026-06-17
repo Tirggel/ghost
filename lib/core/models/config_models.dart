@@ -415,6 +415,46 @@ class SecurityConfig {
   }
 }
 
+class BillingConfig {
+  BillingConfig({
+    this.limit = 0.0,
+    this.balance = 0.0,
+    this.autonomous = false,
+  });
+
+  factory BillingConfig.fromJson(Map<String, dynamic> json) {
+    return BillingConfig(
+      limit: (json['limit'] as num?)?.toDouble() ?? 0.0,
+      balance: (json['balance'] as num?)?.toDouble() ?? 0.0,
+      autonomous: json['autonomous'] as bool? ?? false,
+    );
+  }
+
+  final double limit;
+  final double balance;
+  final bool autonomous;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'limit': limit,
+      'balance': balance,
+      'autonomous': autonomous,
+    };
+  }
+
+  BillingConfig copyWith({
+    double? limit,
+    double? balance,
+    bool? autonomous,
+  }) {
+    return BillingConfig(
+      limit: limit ?? this.limit,
+      balance: balance ?? this.balance,
+      autonomous: autonomous ?? this.autonomous,
+    );
+  }
+}
+
 class AppConfig {
 
   AppConfig({
@@ -424,6 +464,7 @@ class AppConfig {
     required this.memory,
     required this.tools,
     required this.security,
+    required this.billing,
     this.vault = const {},
     this.channels = const {},
     this.integrations = const {},
@@ -442,6 +483,7 @@ class AppConfig {
       memory: MemoryConfig.fromJson(json['memory'] as Map<String, dynamic>? ?? {}),
       tools: ToolsConfig.fromJson(json['tools'] as Map<String, dynamic>? ?? {}),
       security: SecurityConfig.fromJson(json['security'] as Map<String, dynamic>? ?? {}),
+      billing: BillingConfig.fromJson(json['billing'] as Map<String, dynamic>? ?? {}),
       vault: json['vault'] as Map<String, dynamic>? ?? {},
       channels: json['channels'] as Map<String, dynamic>? ?? {},
       integrations: json['integrations'] as Map<String, dynamic>? ?? {},
@@ -463,6 +505,7 @@ class AppConfig {
       memory: MemoryConfig(),
       tools: ToolsConfig(),
       security: SecurityConfig(),
+      billing: BillingConfig(),
     );
   }
   final UserConfig user;
@@ -471,6 +514,7 @@ class AppConfig {
   final MemoryConfig memory;
   final ToolsConfig tools;
   final SecurityConfig security;
+  final BillingConfig billing;
   final Map<String, dynamic> vault;
   final Map<String, dynamic> channels;
   final Map<String, dynamic> integrations;
@@ -501,6 +545,38 @@ class AppConfig {
     return allProviders.where((p) => isProviderConfigured(p['id']!)).toList();
   }
 
+  AppConfig copyWith({
+    UserConfig? user,
+    IdentityConfig? identity,
+    AgentConfig? agent,
+    MemoryConfig? memory,
+    ToolsConfig? tools,
+    SecurityConfig? security,
+    BillingConfig? billing,
+    Map<String, dynamic>? vault,
+    Map<String, dynamic>? channels,
+    Map<String, dynamic>? integrations,
+    List<CustomAgentConfig>? customAgents,
+    List<dynamic>? history,
+    List<Map<String, String>>? detectedLocalProviders,
+  }) {
+    return AppConfig(
+      user: user ?? this.user,
+      identity: identity ?? this.identity,
+      agent: agent ?? this.agent,
+      memory: memory ?? this.memory,
+      tools: tools ?? this.tools,
+      security: security ?? this.security,
+      billing: billing ?? this.billing,
+      vault: vault ?? this.vault,
+      channels: channels ?? this.channels,
+      integrations: integrations ?? this.integrations,
+      customAgents: customAgents ?? this.customAgents,
+      history: history ?? this.history,
+      detectedLocalProviders: detectedLocalProviders ?? this.detectedLocalProviders,
+    );
+  }
+
   dynamic operator [](String key) {
     switch (key) {
       case 'user': return user;
@@ -511,6 +587,7 @@ class AppConfig {
       case 'integrations': return integrations;
       case 'customAgents': return customAgents;
       case 'history': return history;
+      case 'billing': return billing;
       default: return null;
     }
   }

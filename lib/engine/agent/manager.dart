@@ -20,6 +20,8 @@ import 'skills.dart';
 import 'design_system_manager.dart';
 import 'memory_system.dart';
 import '../models/provider.dart';
+import '../tasks/task.dart';
+import '../tasks/task_manager.dart';
 
 final _log = Logger('Ghost.AgentManager');
 
@@ -33,6 +35,10 @@ typedef SessionStreamCallback = void Function(String sessionId, String chunk);
 /// Callback when a session is renamed.
 typedef SessionRenameCallback = void Function(String sessionId, String title);
 
+/// Callback for agent activity updates.
+typedef SessionActivityCallback = void Function(
+    String sessionId, String activity);
+
 /// Manages multiple agents (the default one + custom cron agents)
 class AgentManager {
   AgentManager({
@@ -43,6 +49,7 @@ class AgentManager {
     required this.workspaceDir,
     required this.stateDir,
     this.configPath,
+    this.taskManager,
   }) {
     skillManager = SkillManager(stateDir: stateDir, storage: storage);
     designSystemManager = DesignSystemManager(stateDir: stateDir);
@@ -66,6 +73,8 @@ class AgentManager {
   String workspaceDir;
   final String stateDir;
   final String? configPath;
+  final TaskManager? taskManager;
+  dynamic channelManager;
 
   final _configChangedController = StreamController<void>.broadcast();
   Stream<void> get onConfigChanged => _configChangedController.stream;
@@ -78,6 +87,7 @@ class AgentManager {
   SessionUpdateCallback? onSessionUpdated;
   SessionStreamCallback? onSessionStream;
   SessionRenameCallback? onSessionRenamed;
+  SessionActivityCallback? onSessionActivity;
 
   late Agent defaultAgent;
   late final SkillManager skillManager;
@@ -88,6 +98,7 @@ class AgentManager {
   final Map<String, Agent> _customAgents = {};
   final Map<String, ScheduledTask> _cronTasks = {};
   StreamSubscription<void>? _skillsSubscription;
+  StreamSubscription<String>? _skillInstalledSubscription;
 
   final _cron = Cron();
 
@@ -136,6 +147,7 @@ class AgentManager {
       stateDir: stateDir,
       browserHeadless: config.tools.browserHeadless,
       security: config.security,
+      autonomousPayments: config.billing.autonomous,
     );
 
     // 3. Initialize custom agents
@@ -145,6 +157,11 @@ class AgentManager {
     _skillsSubscription = skillManager.onSkillsChanged.listen((_) {
       _log.info('Skills changed, rebuilding system prompts...');
       updateConfig(config);
+    });
+
+    _skillInstalledSubscription = skillManager.onSkillInstalled.listen((slug) async {
+      _log.info('New skill installed: $slug. Automatically adding to default agent skills.');
+      await _handleNewSkillInstalled(slug);
     });
   }
 
@@ -156,6 +173,43 @@ class AgentManager {
     }
     _cronTasks.clear();
     _customAgents.clear();
+
+    if (taskManager != null) {
+      final activeCronSessionIds = agentConfigs.map((a) => 'cron_${a.id}').toSet();
+      final activeAgentIds = agentConfigs.map((a) => a.id).toSet();
+      for (final t in List<KanbanTask>.from(taskManager!.tasks)) {
+        bool shouldDelete = false;
+
+        // 1. Cron task of a deleted agent
+        if (t.sessionId != null &&
+            t.sessionId!.startsWith('cron_') &&
+            !activeCronSessionIds.contains(t.sessionId)) {
+          shouldDelete = true;
+        }
+
+        // 2. Manual run task of a deleted agent
+        if (t.sessionId != null && t.sessionId!.startsWith('run_')) {
+          final parts = t.sessionId!.split('_');
+          if (parts.length >= 2) {
+            final agentId = parts[1];
+            if (!activeAgentIds.contains(agentId)) {
+              shouldDelete = true;
+            }
+          }
+        }
+
+        // 3. Task assigned to a deleted custom agent
+        if (t.assignedAgentId != null &&
+            t.assignedAgentId != 'default-agent' &&
+            !activeAgentIds.contains(t.assignedAgentId)) {
+          shouldDelete = true;
+        }
+
+        if (shouldDelete) {
+          await taskManager!.deleteTask(t.id);
+        }
+      }
+    }
 
     for (final agentConfig in agentConfigs) {
       try {
@@ -195,11 +249,50 @@ class AgentManager {
           browserHeadless: config.tools.browserHeadless,
           shouldSendChatHistory: agentConfig.shouldSendChatHistory,
           security: config.security,
+          autonomousPayments: config.billing.autonomous,
         );
 
         _customAgents[agentConfig.id] = agent;
         _log.info(
             'Initialized custom agent ${agentConfig.name} (${agentConfig.id})');
+
+        // Sync scheduled agents to Kanban board
+        if (taskManager != null &&
+            agentConfig.cronSchedule != null &&
+            agentConfig.cronSchedule!.isNotEmpty) {
+          final sessionId = 'cron_${agentConfig.id}';
+          KanbanTask? kanbanTask;
+          for (final t in taskManager!.tasks) {
+            if (t.sessionId == sessionId) {
+              kanbanTask = t;
+              break;
+            }
+          }
+
+          if (kanbanTask == null) {
+            kanbanTask = await taskManager!.createTask(
+              title: '🤖 ${agentConfig.name}',
+              description: 'Geplante Aufgabe: ${agentConfig.cronMessage}\nZeitplan: ${agentConfig.cronSchedule}',
+              status: agentConfig.enabled ? TaskStatus.inProgress : TaskStatus.backlog,
+              assignedAgentId: agentConfig.id,
+              assignedAgentName: agentConfig.name,
+            );
+            final updated = kanbanTask.copyWith(sessionId: sessionId);
+            await taskManager!.updateTask(updated);
+          } else {
+            // Update existing task title/description/status
+            final updated = kanbanTask.copyWith(
+              title: '🤖 ${agentConfig.name}',
+              description: 'Geplante Aufgabe: ${agentConfig.cronMessage}\nZeitplan: ${agentConfig.cronSchedule}',
+              status: agentConfig.enabled ? kanbanTask.status : TaskStatus.cancelled,
+              assignedAgentId: agentConfig.id,
+              assignedAgentName: agentConfig.name,
+            );
+            if (updated != kanbanTask) {
+              await taskManager!.updateTask(updated);
+            }
+          }
+        }
 
         // Schedule cron if provided and enabled
         if (agentConfig.enabled &&
@@ -225,10 +318,162 @@ class AgentManager {
     }
   }
 
+  /// Manually trigger a custom agent execution immediately.
+  Future<void> runAgent(String agentId, {String? customMessage}) async {
+    final agentConfig = config.customAgents.firstWhere((a) => a.id == agentId);
+    final agent = _customAgents[agentId];
+    if (agent == null) {
+      throw Exception('Agent $agentId not initialized');
+    }
+
+    final sessionId = 'run_${agentId}_${DateTime.now().millisecondsSinceEpoch}';
+    KanbanTask? kanbanTask;
+
+    if (taskManager != null) {
+      kanbanTask = await taskManager!.createTask(
+        title: '🤖 ${agentConfig.name}',
+        description: customMessage ?? agentConfig.cronMessage,
+        status: TaskStatus.inProgress,
+        assignedAgentId: agentConfig.id,
+        assignedAgentName: agentConfig.name,
+      );
+      final updated = kanbanTask.copyWith(sessionId: sessionId);
+      await taskManager!.updateTask(updated);
+      kanbanTask = updated;
+
+      await taskManager!.addComment(
+        kanbanTask.id,
+        authorId: 'system',
+        authorName: 'Ghost System',
+        content: 'Ausführung gestartet.',
+      );
+    }
+
+    try {
+      final Session session = sessionManager.createSession(
+        id: sessionId,
+        channelType: 'system',
+        peerId: 'trigger',
+      );
+      session.agentName = '${agentConfig.name} Agent';
+
+      final runMessage = customMessage ?? agentConfig.cronMessage;
+
+      await sessionManager.addMessage(
+        sessionId: session.id,
+        role: 'user',
+        content: runMessage,
+        metadata: {
+          'channelType': 'system',
+          'senderId': 'trigger',
+          'agentId': agentConfig.id,
+          'agentName': '${agentConfig.name} Agent',
+        },
+      );
+
+      // Auto-rename if needed
+      unawaited(autoRenameSession(session, agent));
+
+      // Trigger agent processing in the background
+      await agent.processMessage(
+        sessionId: session.id,
+        content: runMessage,
+        onPartialResponse: (chunk) {
+          onSessionStream?.call(session.id, chunk);
+        },
+        onActivityUpdate: (activity) {
+          onSessionActivity?.call(session.id, activity);
+        },
+      );
+
+      // Notify completion
+      if (onSessionUpdated != null && session.history.isNotEmpty) {
+        onSessionUpdated!(session.id, session.history.last);
+      }
+
+      if (taskManager != null && kanbanTask != null) {
+        await taskManager!.moveTask(kanbanTask.id, TaskStatus.done);
+        String summary = '';
+        if (session.history.isNotEmpty) {
+          summary = session.history.last.content;
+          if (summary.length > 500) {
+            summary = '${summary.substring(0, 500)}...';
+          }
+        }
+        await taskManager!.addComment(
+          kanbanTask.id,
+          authorId: agentConfig.id,
+          authorName: agentConfig.name,
+          content: 'Ausführung erfolgreich beendet.\n\nZusammenfassung:\n$summary',
+        );
+      }
+    } catch (e) {
+      _log.severe('Error running custom agent ${agentConfig.name}: $e');
+      
+      if (taskManager != null && kanbanTask != null) {
+        await taskManager!.moveTask(kanbanTask.id, TaskStatus.review);
+        await taskManager!.addComment(
+          kanbanTask.id,
+          authorId: 'system',
+          authorName: 'Ghost System',
+          content: 'Ausführung fehlgeschlagen: $e',
+        );
+      }
+
+      try {
+        await sessionManager.addMessage(
+          sessionId: sessionId,
+          role: 'error',
+          content: '⚠️ Agent failed: $e',
+          metadata: {'is_error': true},
+        );
+        final session = sessionManager.getSession(sessionId);
+        if (onSessionUpdated != null && session != null && session.history.isNotEmpty) {
+          onSessionUpdated!(sessionId, session.history.last);
+        }
+      } catch (innerErr) {
+        _log.severe('Failed to log error to session: $innerErr');
+      }
+    }
+  }
+
   Future<void> _runCronTask(Agent agent, CustomAgentConfig agentConfig) async {
+    final sessionId = 'cron_${agentConfig.id}';
+    KanbanTask? kanbanTask;
+    
+    if (taskManager != null) {
+      for (final t in taskManager!.tasks) {
+        if (t.sessionId == sessionId) {
+          kanbanTask = t;
+          break;
+        }
+      }
+      
+      if (kanbanTask == null) {
+        kanbanTask = await taskManager!.createTask(
+          title: '🤖 ${agentConfig.name}',
+          description: 'Geplante Aufgabe: ${agentConfig.cronMessage}\nZeitplan: ${agentConfig.cronSchedule}',
+          status: TaskStatus.inProgress,
+          assignedAgentId: agentConfig.id,
+          assignedAgentName: agentConfig.name,
+        );
+        final updated = kanbanTask.copyWith(sessionId: sessionId);
+        await taskManager!.updateTask(updated);
+        kanbanTask = updated;
+      } else {
+        await taskManager!.moveTask(kanbanTask.id, TaskStatus.inProgress);
+      }
+      
+      await taskManager!.addComment(
+        kanbanTask.id,
+        authorId: 'system',
+        authorName: 'Ghost System',
+        content: 'Ausführung gestartet.',
+      );
+    }
+
     try {
       // Create or get a system session for this cron job
-      final sessionId = 'cron_${agentConfig.id}';
       final Session session = sessionManager.getSession(sessionId) ??
           sessionManager.createSession(
             id: sessionId,
@@ -272,11 +517,31 @@ class AgentManager {
         onPartialResponse: (chunk) {
           onSessionStream?.call(session.id, chunk);
         },
+        onActivityUpdate: (activity) {
+          onSessionActivity?.call(session.id, activity);
+        },
       );
 
       // Notify completion
       if (onSessionUpdated != null && session.history.isNotEmpty) {
         onSessionUpdated!(session.id, session.history.last);
+      }
+
+      if (taskManager != null && kanbanTask != null) {
+        await taskManager!.moveTask(kanbanTask.id, TaskStatus.done);
+        String summary = '';
+        if (session.history.isNotEmpty) {
+          summary = session.history.last.content;
+          if (summary.length > 500) {
+            summary = '${summary.substring(0, 500)}...';
+          }
+        }
+        await taskManager!.addComment(
+          kanbanTask.id,
+          authorId: agentConfig.id,
+          authorName: agentConfig.name,
+          content: 'Ausführung erfolgreich beendet.\n\nZusammenfassung:\n$summary',
+        );
       }
     } catch (e) {
       _log.severe('Error running cron task for ${agentConfig.name}: $e');
@@ -296,6 +561,16 @@ class AgentManager {
           unawaited(saveCustomAgents(agentsList));
           _log.info('Auto-paused custom agent ${agentConfig.name} due to rate limits.');
         }
+      }
+
+      if (taskManager != null && kanbanTask != null) {
+        await taskManager!.moveTask(kanbanTask.id, TaskStatus.review);
+        await taskManager!.addComment(
+          kanbanTask.id,
+          authorId: 'system',
+          authorName: 'Ghost System',
+          content: 'Ausführung fehlgeschlagen: $errorMessage',
+        );
       }
 
       try {
@@ -338,6 +613,7 @@ class AgentManager {
 
     defaultAgent.workspaceDir = config.agent.workspace ?? workspaceDir;
     workspaceDir = defaultAgent.workspaceDir;
+    defaultAgent.skills = config.agent.skills;
     defaultAgent.systemPrompt = config.buildSystemPrompt(
       workspaceDir: workspaceDir,
       skillsContext: await skillManager.buildSkillContext(config.agent.skills),
@@ -345,6 +621,7 @@ class AgentManager {
     );
     defaultAgent.browserHeadless = config.tools.browserHeadless;
     defaultAgent.security = config.security;
+    defaultAgent.autonomousPayments = config.billing.autonomous;
 
     // 2. Refresh memory engine config
     memoryEngine.config = config.memory;
@@ -386,6 +663,7 @@ class AgentManager {
         agent.browserHeadless = config.tools.browserHeadless;
         agent.shouldSendChatHistory = agentConfig.shouldSendChatHistory;
         agent.security = config.security;
+        agent.autonomousPayments = config.billing.autonomous;
       }
     }
     _log.info('Updated config, providers, and system prompts for all agents');
@@ -421,6 +699,7 @@ class AgentManager {
 
   Future<void> shutdown() async {
     await _skillsSubscription?.cancel();
+    await _skillInstalledSubscription?.cancel();
     for (final task in _cronTasks.values) {
       await task.cancel();
     }
@@ -581,6 +860,31 @@ class AgentManager {
       await ragMemoryEngine.clear();
     } else {
       _log.warning('Unknown memory type to clear: $type');
+    }
+  }
+
+  /// Automatically add a newly installed skill to the main agent's skills list and save.
+  Future<void> _handleNewSkillInstalled(String slug) async {
+    if (!config.agent.skills.contains(slug)) {
+      final updatedSkills = List<String>.from(config.agent.skills)..add(slug);
+      final updatedAgent = config.agent.copyWith(skills: updatedSkills);
+      final newConfig = config.copyWith(agent: updatedAgent);
+
+      if (configPath != null) {
+        try {
+          await saveConfig(newConfig, configPath!);
+        } catch (e) {
+          _log.severe('Failed to save config to $configPath: $e');
+        }
+      }
+      try {
+        await storage.set('agent_config', jsonEncode(updatedAgent.toJson()));
+      } catch (e) {
+        _log.severe('Failed to save agent_config to secure storage: $e');
+      }
+
+      await updateConfig(newConfig);
+      notifyConfigChanged();
     }
   }
 

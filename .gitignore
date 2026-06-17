@@ -102,3 +102,7 @@ gateway.sh
 
 # Python cache
 **/__pycache__/
+
+# Tests (Not needed for execution)
+test/
+

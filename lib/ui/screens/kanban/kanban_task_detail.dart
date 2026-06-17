@@ -3,12 +3,15 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants.dart';
 import '../../../engine/tasks/task.dart';
+import '../../../engine/tasks/local_server_helper.dart';
 import '../../../providers/kanban_provider.dart';
 import '../../../providers/gateway_provider.dart';
 import '../../widgets/app_styles.dart';
+import '../../../providers/chat_provider.dart';
 
 /// Full detail dialog for a Kanban task.
 class KanbanTaskDetailDialog extends ConsumerStatefulWidget {
@@ -39,6 +42,12 @@ class _KanbanTaskDetailDialogState
     _commentCtrl = TextEditingController();
     _priority = widget.task.priority;
     _status = widget.task.status;
+
+    if (widget.task.sessionId != null) {
+      Future.microtask(() {
+        ref.read(chatProvider.notifier).initSession(widget.task.sessionId!);
+      });
+    }
   }
 
   @override
@@ -131,13 +140,13 @@ class _KanbanTaskDetailDialogState
 
     // Re-fetch the task from provider to get latest subtasks/comments
     final tasks = ref.watch(kanbanTasksProvider);
-    final currentTask = tasks.where((t) => t.id == widget.task.id).firstOrNull;
-    if (currentTask == null) {
-      return const SizedBox.shrink();
-    }
+    final currentTask = tasks.where((t) => t.id == widget.task.id).firstOrNull ?? widget.task;
 
     final config = ref.watch(configProvider);
     final agents = config.customAgents;
+
+    final chatStates = ref.watch(chatProvider);
+    final chatState = currentTask.sessionId != null ? chatStates[currentTask.sessionId] : null;
 
     return Dialog(
       backgroundColor: AppColors.background,
@@ -209,6 +218,9 @@ class _KanbanTaskDetailDialogState
                       maxLines: 3,
                     ),
 
+                    _buildLiveLog(chatState),
+                    _buildLocalServers(currentTask, chatState),
+
                     // Status + Priority row
                     Row(
                       children: [
@@ -219,16 +231,21 @@ class _KanbanTaskDetailDialogState
                               const AppFormLabel('kanban.status'),
                               const SizedBox(height: 6),
                               DropdownButtonFormField<TaskStatus>(
-                                value: _status,
+                                initialValue: _status,
                                 decoration: AppInputDecoration.compact(),
                                 dropdownColor: AppColors.surface,
+                                isExpanded: true,
                                 style: const TextStyle(
                                     color: AppColors.textMain,
                                     fontSize: AppConstants.fontSizeBody),
                                 items: TaskStatus.values
                                     .map((s) => DropdownMenuItem(
                                           value: s,
-                                          child: Text(_statusLabel(s)),
+                                          child: Text(
+                                            _statusLabel(s),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
                                         ))
                                     .toList(),
                                 onChanged: (v) =>
@@ -245,9 +262,10 @@ class _KanbanTaskDetailDialogState
                               const AppFormLabel('kanban.priority'),
                               const SizedBox(height: 6),
                               DropdownButtonFormField<TaskPriority>(
-                                value: _priority,
+                                initialValue: _priority,
                                 decoration: AppInputDecoration.compact(),
                                 dropdownColor: AppColors.surface,
+                                isExpanded: true,
                                 style: const TextStyle(
                                     color: AppColors.textMain,
                                     fontSize: AppConstants.fontSizeBody),
@@ -265,7 +283,13 @@ class _KanbanTaskDetailDialogState
                                                 ),
                                               ),
                                               const SizedBox(width: 8),
-                                              Text(p.name.toUpperCase()),
+                                              Expanded(
+                                                child: Text(
+                                                  p.name.toUpperCase(),
+                                                  overflow: TextOverflow.ellipsis,
+                                                  maxLines: 1,
+                                                ),
+                                              ),
                                             ],
                                           ),
                                         ))
@@ -286,28 +310,39 @@ class _KanbanTaskDetailDialogState
                       const AppFormLabel('kanban.assigned_agent'),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String?>(
-                        value: currentTask.assignedAgentId,
+                        initialValue: agents.any((a) => a.id == currentTask.assignedAgentId)
+                            ? currentTask.assignedAgentId
+                            : null,
                         decoration: AppInputDecoration.compact(),
                         dropdownColor: AppColors.surface,
+                        isExpanded: true,
                         style: const TextStyle(
                             color: AppColors.textMain,
                             fontSize: AppConstants.fontSizeBody),
                         items: [
                           DropdownMenuItem<String?>(
                             value: null,
-                            child: Text('kanban.unassigned'.tr(),
-                                style:
-                                    const TextStyle(color: AppColors.textDim)),
+                            child: Text(
+                              'kanban.unassigned'.tr(),
+                              style: const TextStyle(color: AppColors.textDim),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           ),
                           ...agents.map((a) => DropdownMenuItem<String?>(
                                 value: a.id,
                                 child: Row(
                                   children: [
-                                    Text('🤖',
-                                        style:
-                                            const TextStyle(fontSize: 14)),
+                                    const Text('🤖',
+                                        style: TextStyle(fontSize: 14)),
                                     const SizedBox(width: 8),
-                                    Text(a.name),
+                                    Expanded(
+                                      child: Text(
+                                        a.name,
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               )),
@@ -526,6 +561,174 @@ class _KanbanTaskDetailDialogState
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLiveLog(ChatState? chatState) {
+    if (chatState == null || (!chatState.isProcessing && chatState.activity == null)) {
+      return const SizedBox.shrink();
+    }
+
+    final activity = chatState.activity ?? 'Nachdenken...';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppConstants.settingsSectionSpacing),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.05),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1.5),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'LIVE LOG: AGENT IST AKTIV',
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(2),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Text(
+              activity,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 11,
+                color: AppColors.textMain,
+              ),
+            ),
+          ),
+          if (chatState.streamedContent.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              chatState.streamedContent,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textDim,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Set<String> _extractLocalServers(KanbanTask task, ChatState? chatState) {
+    return LocalServerHelper.extractLocalServers(
+      task,
+      streamedContent: chatState?.streamedContent,
+      activity: chatState?.activity,
+      messageContents: chatState?.messages.map((m) => m.content).toList() ?? const [],
+    );
+  }
+
+  Widget _buildLocalServers(KanbanTask task, ChatState? chatState) {
+    final servers = _extractLocalServers(task, chatState);
+    if (servers.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppConstants.settingsSectionSpacing),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10B981).withValues(alpha: 0.05),
+        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3), width: 1.5),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.lan,
+                size: 14,
+                color: Color(0xFF10B981),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'LOKALER SERVER AKTIV',
+                style: const TextStyle(
+                  color: Color(0xFF10B981),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Column(
+            children: servers.map((url) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                child: Material(
+                  color: AppColors.surface,
+                  shape: RoundedRectangleBorder(
+                    side: const BorderSide(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    title: Text(
+                      url,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                        color: AppColors.textMain,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.open_in_new,
+                      size: 14,
+                      color: AppColors.textDim,
+                    ),
+                    onTap: () async {
+                      try {
+                        final uri = Uri.parse(url);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                        }
+                      } catch (e) {
+                        // Ignore launch errors
+                      }
+                    },
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }

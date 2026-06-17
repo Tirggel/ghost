@@ -20,15 +20,12 @@ class DuckDuckGoSearchTool extends Tool {
 
   @override
   Map<String, dynamic> get inputSchema => {
-        'type': 'object',
-        'properties': {
-          'query': {
-            'type': 'string',
-            'description': 'The search query.',
-          },
-        },
-        'required': ['query'],
-      };
+    'type': 'object',
+    'properties': {
+      'query': {'type': 'string', 'description': 'The search query.'},
+    },
+    'required': ['query'],
+  };
 
   @override
   String getLogSummary(Map<String, dynamic> input) =>
@@ -36,7 +33,9 @@ class DuckDuckGoSearchTool extends Tool {
 
   @override
   Future<ToolResult> execute(
-      Map<String, dynamic> input, ToolContext context) async {
+    Map<String, dynamic> input,
+    ToolContext context,
+  ) async {
     final query = input['query']?.toString();
 
     if (query == null || query.isEmpty) {

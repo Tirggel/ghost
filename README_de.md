@@ -77,11 +77,13 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
 ### 📚 Weiterführende Dokumentation
 - **[Google Workspace Setup](docs/GOOGLE_WORKSPACE_SETUP_DE.md)**: Anleitung zur Konfiguration von Gmail, Kalender und Drive.
 - **[Microsoft 365 Setup](docs/MICROSOFT_365_SETUP_DE.md)**: Anleitung zur Konfiguration von Outlook und OneDrive via Azure AD.
+- **[Zahlungs-, Wallet- & Binance-Einrichtung](docs/PAYMENTS_SETUP_DE.md)**: Anleitung zur Konfiguration von Kreditkarten, EVM-Blockchain-Wallets und Binance-API-Handel (einschließlich Spot- und Demo-Konten).
 - **[Skills Development Guide](docs/SKILLS_GUIDE_DE.md)**: Erfahre, wie du eigene KI-Skills erstellst und paketierst.
 - **[STT & TTS Setup](docs/STT_TTS_SETUP_DE.md)**: Konfiguriere lokale Spracherkennung und -synthese.
 - **[Multi-Channel Setup](docs/CHANNELS_DE.md)**: Detaillierte Anleitung für Telegram, Discord, WhatsApp & Co.
 - **[RPC API Referenz](docs/RPC_API_REFERENCE_DE.md)**: Dokumentation der JSON-RPC 2.0 Schnittstelle.
 - **[Kanban & Task-Orchestrierung](docs/KANBAN_ORCHESTRATION_de.md)**: Funktionsweise des Multi-Agenten-Kanban und automatisierter Workflows.
+- **[Design-System-Richtlinien](DESIGN.md)**: Spezifikationen und Anpassungshandbuch für das visuelle Theme („The Monolith“).
 
 
 ---
@@ -93,6 +95,7 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
     - **Task-Orchestrierung**: Phase 3 der Aufgaben-Orchestrierung mit automatisierten Statusübergängen.
     - **Abhängigkeiten**: Aufgaben können von anderen Aufgaben abhängen (`dependsOnIds`), was komplexe Projekt-Workflows ermöglicht.
     - **Automatisierte Ausführung**: Der Hintergrund-`TaskOrchestrator` verschiebt Aufgaben automatisch vom "Backlog" nach "To Do", sobald die Voraussetzungen erfüllt sind.
+    - **Zielorientierte Ausführung (`/goal`)**: Nachrichten, die mit `/goal` beginnen, erstellen automatisch eine Kanban-Aufgabe. Der Agent startet eine autonome Schleife mit mehreren Schritten zur Erreichung des Ziels und aktualisiert den Status sowie die Kommentare. Nach erfolgreichem Abschluss wird die Aufgabe auf `done` (erledigt) gesetzt, bei Fehlern auf `review` (Überprüfung) mit detaillierten Fehlerspuren.
 - **Memory Engine (RAG & Standard)**: Erweitere das Wissen deines Agenten durch lokale Vektor- und Stichwortspeicher.
     - **Standard Memory**: Stichwortbasiertes, verschlüsseltes lokales Gedächtnis (Hive). Informationen werden sicher gespeichert und über exakte Treffer abgerufen.
     - **RAG Memory (ObjectBox)**: Retrieval-Augmented Generation mit semantischer Vektorsuche, betrieben durch eine hochleistungsfähige lokale ObjectBox-Datenbank.
@@ -106,6 +109,11 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
     - **Outlook Mail**: E-Mails lesen, suchen und **senden** via Microsoft Graph.
     - **Outlook Kalender**: Termine auflisten und **neue Events hinzufügen**.
     - **OneDrive**: Dateien in deinem Cloud-Speicher suchen und auflisten.
+- **E-Mail-Integration**:
+    - **IMAP/SMTP-Support**: Konfiguriere mehrere Standard-E-Mail-Konten direkt in den Einstellungen (verschlüsselte Speicherung der Zugangsdaten).
+    - **Hintergrund-Synchronisierung**: Der Hintergrund-`EmailPoller` synchronisiert Postfächer automatisch und speichert E-Mails lokal zwischen.
+    - **KI-Verarbeitung**: Automatische E-Mail-Analyse durch KI, inklusive Priorisierung, Dringlichkeitsprüfung, Spam-Filterung, Erkennung von Terminen und Generierung von Antwortentwürfen im bevorzugten Schreibstil des Nutzers.
+    - **Anhänge**: Liste und lade E-Mail-Anhänge direkt in deinen Workspace herunter.
 - **Erweiterbare Skills**:
     - **Modulares System**: Laden und Verwalten von Skills zur Erweiterung der Fähigkeiten des Agenten.
     - **Agenten-spezifische Skills**: Aktiviere oder deaktiviere Funktionen für spezifische Agenten-Profile.
@@ -140,6 +148,14 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
     - **Netzwerk-Einschränkung**: Komplette Isolation der Web-Tools des Agenten bei hoher Sicherheitsstufe, um unbefugte Datenabflüsse zu verhindern.
     - **Sicherer Tresor**: API-Schlüssel, Agenten-Konfigurationen und Memory-Einstellungen sind mit AES-256-GCM verschlüsselt und nur auf deinem Rechner gespeichert.
     - **KI-Anbieter-Suche & Maskierung**: Sensible API-Schlüssel werden standardmäßig maskiert und können einfach über einen Filter gefunden werden.
+- **Autonome Zahlungen & Budget**:
+    - **Zahlungsabwicklung**: Agenten können im Auftrag des Benutzers Online-Transaktionen durchführen (über das Tool `execute_payment`), sofern die Kreditkartendaten im verschlüsselten Tresor hinterlegt sind.
+    - **Budgetgrenzen**: Das Limit und Guthaben werden über `BillingConfig` verwaltet. Transaktionen über dem Limit schlagen fehl, und der Nutzer wird zum Aufladen benachrichtigt.
+    - **HITL-Freigabe**: Sofern die autonome Abrechnung nicht explizit aktiviert ist, erfordern alle Zahlungsfreigaben eine manuelle Bestätigung im Chat.
+    - **Kreditkarten-Transaktionen**: Lokale Speicherung des Kreditkarten-Transaktionsverlaufs (SUCCESS/FAILED) mit scrollbarem Verlauf und automatischen Benachrichtigungen.
+    - **Web3- & Krypto-Integration**: Anbindung dezentraler Krypto-Wallets über das **Reown AppKit** (ehemals WalletConnect) zur Anzeige von ERC-20-Token-Guthaben und Durchführung von Krypto-Aufladungen direkt in der App.
+    - **Agenten-EVM-Wallet (Autonome Blockchain-Zahlungen)**: Konfiguration eines Private Keys im verschlüsselten Tresor (`agent_wallet_private_key`), damit der Agent selbstständig Zahlungen (`execute_blockchain_payment`) und Token-Swaps (`execute_token_swap`) auf Ketten wie BSC, Polygon und Ethereum ausführen kann.
+    - **Binance & Demo-Trading**: Integration von Binance-Spot- und Demo-Trading-APIs (`binance_get_balances`, `binance_get_ticker`, `binance_create_order`, `binance_demo_get_balances`, `binance_demo_create_order`), mit denen Agenten Guthaben abfragen, Ticker prüfen und echte oder simulierte Orders erteilen können.
 - **Token-Verbrauchsüberwachung**: Behalte den Überblick über Eingabe- und Ausgabe-Token jeder Sitzung, um KI-Nutzung und Kosten zu kontrollieren.
     - **Echtzeit-Monitoring**: Präzise Token-Zählung direkt aus den Metadaten der Modellantworten.
     - **Gesamtverbrauch**: Integrierter "Usage Provider" zur Verfolgung des kumulativen Verbrauchs über Sitzungen hinweg.

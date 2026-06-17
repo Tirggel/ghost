@@ -3,21 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/constants.dart';
 import '../../../../providers/gateway_provider.dart';
+import '../../../../providers/shell_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_settings_input.dart';
 import '../../../widgets/app_dialogs.dart';
 import '../../../widgets/app_snackbar.dart';
+import 'email_tab.dart';
 
-class ChannelsTab extends ConsumerStatefulWidget {
-  const ChannelsTab({super.key, this.onBack, this.onNext});
+class ChannelsSettingsTab extends ConsumerStatefulWidget {
+  const ChannelsSettingsTab({super.key, this.onBack, this.onNext, this.topPadding});
   final VoidCallback? onBack;
   final VoidCallback? onNext;
+  final double? topPadding;
 
   @override
-  ConsumerState<ChannelsTab> createState() => _ChannelsTabState();
+  ConsumerState<ChannelsSettingsTab> createState() => _ChannelsSettingsTabState();
 }
 
-class _ChannelsTabState extends ConsumerState<ChannelsTab> {
+class _ChannelsSettingsTabState extends ConsumerState<ChannelsSettingsTab> {
   final Map<String, Map<String, TextEditingController>> _controllers = {};
   final Map<String, bool> _editingState = {};
   final Map<String, bool> _verifyingState = {};
@@ -458,7 +461,7 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
     return AppSettingsPage(
       onBack: widget.onBack,
       onNext: widget.onNext,
-      subTabLabels: const ['settings.channels.tab'],
+      topPadding: widget.topPadding,
       children: [
         const AppSectionHeader(
           'settings.channels.section_title',
@@ -574,4 +577,48 @@ class _ChannelsTabState extends ConsumerState<ChannelsTab> {
     return widgets;
   }
 
+}
+
+class ChannelsTab extends ConsumerStatefulWidget {
+  const ChannelsTab({super.key, this.onBack, this.onNext});
+  final VoidCallback? onBack;
+  final VoidCallback? onNext;
+
+  @override
+  ConsumerState<ChannelsTab> createState() => _ChannelsTabState();
+}
+
+class _ChannelsTabState extends ConsumerState<ChannelsTab> {
+  final int _mainTabIndex = 4;
+
+  final List<String> _subTabLabels = [
+    'settings.channels.channels_subtab',
+    'settings.email.tab',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final currentIndex = ref.watch(shellProvider.select((s) => s.settingsSubTabIndices[_mainTabIndex] ?? 0));
+
+    return AppSettingsPage(
+      subTabLabels: _subTabLabels,
+      currentSubTabIndex: currentIndex,
+      onSubTabChanged: (index) => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, index),
+      body: IndexedStack(
+        index: currentIndex,
+        children: [
+          ChannelsSettingsTab(
+            topPadding: 0,
+            onBack: widget.onBack,
+            onNext: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 1),
+          ),
+          EmailTab(
+            topPadding: 0,
+            onBack: () => ref.read(shellProvider.notifier).setSettingsSubTabIndex(_mainTabIndex, 0),
+            onNext: widget.onNext,
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -68,7 +68,7 @@ class _AppUnifiedPickerState<T> extends State<AppUnifiedPicker<T>> {
     String displayStr = (widget.hint != null && widget.hint!.isNotEmpty) ? widget.hint!.tr() : '';
     
     if (widget.multiSelect) {
-      final selected = widget.values ?? {};
+      final selected = (widget.values ?? {}).where((v) => widget.items.contains(v)).toSet();
       if (selected.isNotEmpty) {
         if (selected.length == 1) {
           displayStr = widget.displayValue(selected.first);
@@ -294,29 +294,32 @@ class _UnifiedSearchDialogState<T> extends State<_UnifiedSearchDialog<T>> {
                           prefix = widget.itemPrefixIcon!(item);
                         }
 
-                        return ListTile(
-                          leading: prefix,
-                          title: Text(
-                            widget.displayValue(item),
-                            style: TextStyle(
-                              color: isSelected ? AppColors.primary : AppColors.white,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              fontSize: 13,
+                        return Material(
+                          color: Colors.transparent,
+                          child: ListTile(
+                            leading: prefix,
+                            title: Text(
+                              widget.displayValue(item),
+                              style: TextStyle(
+                                color: isSelected ? AppColors.primary : AppColors.white,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                fontSize: 13,
+                              ),
                             ),
-                          ),
-                          trailing: isSelected
-                              ? const Icon(Icons.check, color: AppColors.primary, size: 16)
-                              : null,
-                          onTap: () {
-                            if (widget.multiSelect) {
-                              _toggleSelection(item);
-                            } else {
-                              if (widget.onSelected != null) {
-                                widget.onSelected!(item);
+                            trailing: isSelected
+                                ? const Icon(Icons.check, color: AppColors.primary, size: 16)
+                                : null,
+                            onTap: () {
+                              if (widget.multiSelect) {
+                                _toggleSelection(item);
+                              } else {
+                                if (widget.onSelected != null) {
+                                  widget.onSelected!(item);
+                                }
+                                Navigator.pop(context);
                               }
-                              Navigator.pop(context);
-                            }
-                          },
+                            },
+                          ),
                         );
                       },
                     ),

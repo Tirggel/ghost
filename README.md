@@ -77,11 +77,13 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
 ### 📚 Further Documentation
 - **[Google Workspace Setup](docs/GOOGLE_WORKSPACE_SETUP_EN.md)**: Guide for configuring Gmail, Calendar, and Drive.
 - **[Microsoft 365 Setup](docs/MICROSOFT_365_SETUP_EN.md)**: Guide for configuring Outlook and OneDrive via Azure AD.
+- **[Payments, Wallet & Binance Setup](docs/PAYMENTS_SETUP_EN.md)**: Guide for configuring credit cards, EVM blockchain wallets, and Binance API trading (including spot and demo accounts).
 - **[Skills Development Guide](docs/SKILLS_GUIDE.md)**: Learn how to create and package your own AI skills.
 - **[STT & TTS Setup](docs/STT_TTS_SETUP.md)**: Configure local speech recognition and synthesis.
 - **[Multi-Channel Setup](docs/CHANNELS_EN.md)**: Detailed guide for connecting Telegram, Discord, WhatsApp, etc.
 - **[RPC API Reference](docs/RPC_API_REFERENCE.md)**: Detailed documentation of the JSON-RPC 2.0 WebSocket API.
 - **[Kanban & Task Orchestration](docs/KANBAN_ORCHESTRATION.md)**: How the Multi-Agent Kanban and automated workflows work.
+- **[Design System Guidelines](DESIGN.md)**: Specifications and customization guide for the visual theme ("The Monolith").
 
 
 ---
@@ -93,6 +95,7 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
     - **Task Orchestration**: Phase 3 task orchestration with automated status transitions.
     - **Dependencies**: Tasks can depend on other tasks (`dependsOnIds`), allowing for complex project workflows.
     - **Automated Execution**: The background `TaskOrchestrator` automatically moves tasks from "Backlog" to "To Do" when prerequisites are met.
+    - **Goal-Oriented Execution (`/goal`)**: Messages starting with `/goal` automatically create a Kanban task. The agent enters an autonomous, multi-turn loop to implement the goal, updating status/comments. Tasks are set to `done` on success or `review` with detailed error traces on failure.
 - **Memory Engine (RAG & Standard)**: Expand your agent's knowledge through local vector and keyword storage.
     - **Standard Memory**: Keyword-based, encrypted local memory (Hive). Information is stored securely and retrieved via exact matches.
     - **RAG Memory (ObjectBox)**: Retrieval-Augmented Generation with semantic vector search, powered by a high-performance local ObjectBox database.
@@ -106,6 +109,11 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
     - **Outlook Mail**: Read, search, and **send emails** via Microsoft Graph.
     - **Outlook Calendar**: List appointments and **add new events**.
     - **OneDrive**: Search and list files in your cloud storage.
+- **Email Integration**:
+    - **IMAP/SMTP Support**: Configure multiple standard email accounts directly in settings (using secure storage for credentials).
+    - **Background Syncing**: The background `EmailPoller` automatically syncs mailboxes and stores cached emails locally.
+    - **AI Processing**: Automated AI email analysis including priority classification, urgency checks, spam filtering, calendar detection, and generation of reply drafts based on the user's preferred writing style.
+    - **Attachments**: List and download email attachments directly to your workspace.
 - **Extensible Skills**:
     - **Modular System**: Load and manage skills to extend agent capabilities.
     - **Agent-specific Skills**: Enable or disable features for specific agent profiles.
@@ -121,8 +129,8 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
     - **Interactive Shell**: Execute shell scripts and Python code directly by the agent.
     - **Web Search**: Integrated web search via DuckDuckGo.
     - **File System**: Full access to read, write, and manage local files.
-    - **GitHub**: Integration for managing repositories and issues.
     - **Chat Search (Ctrl+F)**: Fast in-session search with real-time highlighting and interactive navigation between matches.
+    - **GitHub**: Integration for managing repositories and issues.
 - **Multi-Channel Messenger Support**:
     - **13 Channels**: Connect your agent to Telegram, Discord, WhatsApp (Meta), Slack, Signal, iMessage (BlueBubbles), MS Teams, Google Chat, Matrix, Nextcloud Talk, Tlon/Urbit, Zalo, and WebChat.
     - **Smart Sorting & Searching**: Easily manage your communication channels with integrated search filters and automated grouping by status.
@@ -140,6 +148,14 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
     - **Network Restriction**: Complete isolation of the agent's web tools when high security is enabled to prevent unauthorized data exfiltration.
     - **Secure Vault**: API keys, agent configurations, and memory settings are encrypted with AES-256-GCM and stored only on your machine.
     - **AI Provider Search & Masking**: Sensitive API keys are masked by default and can be easily managed with a dedicated search filter.
+- **Autonomous Billing & Payments**:
+    - **Payment Execution**: Agents can perform online transactions on behalf of the user using the `execute_payment` tool if credit card credentials are configured in the secure vault.
+    - **Budget Control**: Limits are configured via `BillingConfig`. Agents cannot exceed the balance, and users are notified to top up if transactions fail due to insufficient funds.
+    - **HITL Integration**: Payments require explicit confirmation unless autonomous billing is explicitly enabled.
+    - **Credit Card Transactions**: Persistent local tracking of credit card transaction history (SUCCESS/FAILED) with scrolling UI and automatic user notifications.
+    - **Web3 & Crypto Integration**: Connecting decentralized crypto wallets via **Reown AppKit** (formerly WalletConnect) to view ERC-20 token balances and perform crypto top-ups directly in the app.
+    - **Agent EVM Wallet (Autonomous Blockchain Payments)**: Configure a private key in the secure vault (`agent_wallet_private_key`) to allow the agent to run autonomous native/ERC-20 token payments (`execute_blockchain_payment`) and token swaps (`execute_token_swap`) on chains like BSC, Polygon, and Ethereum.
+    - **Binance & Demo Trading**: Integrate Binance Spot and Demo Trading APIs (`binance_get_balances`, `binance_get_ticker`, `binance_create_order`, `binance_demo_get_balances`, `binance_demo_create_order`) allowing agents to query spot/demo balances, check tickers, and place live/simulated orders.
 - **Token Usage Tracking**: Monitor input and output tokens for every session to keep track of AI usage and costs.
     - **Real-time Monitoring**: Accurate token counting parsed directly from model response metadata.
     - **Cumulative Usage**: Integrated Usage Provider to track total consumption across sessions and restarts.

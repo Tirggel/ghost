@@ -227,27 +227,48 @@ class _SkillsTabState extends ConsumerState<SkillsTab> with SettingsSaveMixin {
               return agent.skills.contains(slug);
             });
 
+            final bool? confirmed;
             if (isUsedByIdentity || isUsedByCustomAgent) {
-              if (mounted) {
-                showAppErrorDialog(
-                  context,
-                  'settings.skills.delete_error_used'.tr(),
-                );
-              }
-              return;
+              confirmed = await AppAlertDialog.showConfirmation(
+                context: context,
+                title: 'settings.skills.delete_confirm_used_title'.tr(),
+                content: 'settings.skills.delete_confirm_used_content'.tr(
+                  namedArgs: {'name': (skill['name'] as String?) ?? slug},
+                ),
+                confirmLabel: 'common.delete'.tr(),
+                isDestructive: true,
+              );
+            } else {
+              confirmed = await AppAlertDialog.showConfirmation(
+                context: context,
+                title: 'settings.skills.delete_title'.tr(),
+                content: 'settings.skills.delete_content'.tr(
+                  namedArgs: {'name': (skill['name'] as String?) ?? slug},
+                ),
+                confirmLabel: 'common.delete'.tr(),
+                isDestructive: true,
+              );
             }
 
-            final confirmed = await AppAlertDialog.showConfirmation(
-              context: context,
-              title: 'settings.skills.delete_title'.tr(),
-              content: 'settings.skills.delete_content'.tr(
-                namedArgs: {'name': (skill['name'] as String?) ?? slug},
-              ),
-              confirmLabel: 'common.delete'.tr(),
-              isDestructive: true,
-            );
-            if (confirmed == true) {
-              await ref.read(configProvider.notifier).deleteSkill(slug);
+            if (confirmed == true && mounted) {
+              if (isUsedByIdentity) {
+                final nextSkills = config.agent.skills.where((s) => s != slug).toList();
+                await ref.read(configProvider.notifier).updateAgentSkills(nextSkills);
+              }
+              if (isUsedByCustomAgent && mounted) {
+                final currentConfig = ref.read(configProvider);
+                for (final agent in currentConfig.customAgents) {
+                  if (agent.skills.contains(slug)) {
+                    final nextSkills = agent.skills.where((s) => s != slug).toList();
+                    await ref.read(configProvider.notifier).updateCustomAgent(
+                      agent.copyWith(skills: nextSkills).toJson(),
+                    );
+                  }
+                }
+              }
+              if (mounted) {
+                await ref.read(configProvider.notifier).deleteSkill(slug);
+              }
             }
           },
         ),
@@ -377,29 +398,35 @@ class _SkillCreateDialogState extends ConsumerState<_SkillCreateDialog> {
               style: const TextStyle(color: AppColors.textDim, fontSize: 13),
             ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: RadioListTile<String>(
-                    title: Text('settings.skills.type_python'.tr(), style: const TextStyle(color: AppColors.white, fontSize: 14)),
-                    value: 'python',
-                    groupValue: _type,
-                    onChanged: (val) => setState(() => _type = val!),
-                    activeColor: AppColors.primary,
-                    contentPadding: EdgeInsets.zero,
+            RadioGroup<String>(
+              groupValue: _type,
+              onChanged: (val) => setState(() => _type = val!),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: RadioListTile<String>(
+                        title: Text('settings.skills.type_python'.tr(), style: const TextStyle(color: AppColors.white, fontSize: 14)),
+                        value: 'python',
+                        activeColor: AppColors.primary,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: RadioListTile<String>(
-                    title: Text('settings.skills.type_node'.tr(), style: const TextStyle(color: AppColors.white, fontSize: 14)),
-                    value: 'node',
-                    groupValue: _type,
-                    onChanged: (val) => setState(() => _type = val!),
-                    activeColor: AppColors.primary,
-                    contentPadding: EdgeInsets.zero,
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: RadioListTile<String>(
+                        title: Text('settings.skills.type_node'.tr(), style: const TextStyle(color: AppColors.white, fontSize: 14)),
+                        value: 'node',
+                        activeColor: AppColors.primary,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

@@ -74,12 +74,20 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
                   items: [
                     DropdownMenuItem<String?>(
                       value: null,
-                      child: Text('kanban.all_agents'.tr(),
-                          style: const TextStyle(color: AppColors.textDim)),
+                      child: Text(
+                        'kanban.all_agents'.tr(),
+                        style: const TextStyle(color: AppColors.textDim),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
                     ),
                     ...agents.map((a) => DropdownMenuItem<String?>(
                           value: a.id,
-                          child: Text('🤖 ${a.name}'),
+                          child: Text(
+                            '🤖 ${a.name}',
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         )),
                   ],
                   onChanged: (v) => ref.read(kanbanFilterProvider.notifier).update(
@@ -95,12 +103,20 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
                 items: [
                   DropdownMenuItem<TaskPriority?>(
                     value: null,
-                    child: Text('kanban.all_priorities'.tr(),
-                        style: const TextStyle(color: AppColors.textDim)),
+                    child: Text(
+                      'kanban.all_priorities'.tr(),
+                      style: const TextStyle(color: AppColors.textDim),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
                   ...TaskPriority.values.map((p) => DropdownMenuItem<TaskPriority?>(
                         value: p,
-                        child: Text(p.name.toUpperCase()),
+                        child: Text(
+                          p.name.toUpperCase(),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
                       )),
                 ],
                 onChanged: (v) => ref.read(kanbanFilterProvider.notifier).update(
@@ -247,13 +263,18 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
                     initialValue: priority,
                     decoration: AppInputDecoration.compact(),
                     dropdownColor: AppColors.surface,
+                    isExpanded: true,
                     style: const TextStyle(
                         color: AppColors.textMain,
                         fontSize: AppConstants.fontSizeBody),
                     items: TaskPriority.values
                         .map((p) => DropdownMenuItem(
                               value: p,
-                              child: Text(p.name.toUpperCase()),
+                              child: Text(
+                                p.name.toUpperCase(),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
                             ))
                         .toList(),
                     onChanged: (v) =>
@@ -349,6 +370,7 @@ class _FilterDropdown<T> extends StatelessWidget {
         decoration: AppInputDecoration.compact(hint: hint),
         dropdownColor: AppColors.surface,
         isDense: true,
+        isExpanded: true,
         style: const TextStyle(
           color: AppColors.textMain,
           fontSize: AppConstants.fontSizeSmall,

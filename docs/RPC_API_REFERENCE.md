@@ -59,7 +59,7 @@ Returns the complete application state.
 ### `config.getKey` / `config.setKey`
 Manage API keys and secrets in the vault.
 **Params:**
-- `service`: (String, e.g., "openai", "google_workspace", "telegram")
+- `service`: (String, e.g., "openai", "google_workspace", "telegram", "reown_project_id", "payment_card_number", "payment_card_holder", "payment_card_expiry", "payment_card_cvv", "agent_wallet_private_key", "binance_api_key", "binance_secret_key", "binance_demo_api_key", "binance_demo_secret_key")
 - `key`: (String)
 
 ### `config.getChannelToken`
@@ -94,13 +94,25 @@ Tests if a provider/model combination supports vector embeddings.
 - `provider`: (String)
 - `model`: (String)
 
-### `config.updateAgent` / `config.updateUser` / `config.updateIdentity` / `config.updateIntegrations` / `config.updateChannels` / `config.updateMemory` / `config.updateTools` / `config.updateSecurity`
+### `config.updateAgent` / `config.updateUser` / `config.updateIdentity` / `config.updateIntegrations` / `config.updateChannels` / `config.updateMemory` / `config.updateTools` / `config.updateSecurity` / `config.updateBilling`
 Update specific configuration blocks. All sensitive data (keys, tokens) is automatically filtered into the encrypted vault and never stored in plaintext.
+
+### `config.updateBilling`
+Updates the autonomous billing and payment configuration.
+**Params:**
+- `limit`: (Double, optional) The maximum billing limit budget.
+- `balance`: (Double, optional) The current available budget balance.
+- `autonomous`: (Boolean, optional) If true, payments will be executed autonomously without human-in-the-loop (HITL) confirmation.
+
+**Response:**
+- `status`: "ok"
+- `billing`: (Object) The updated billing configuration details.
 
 ### `config.getGoogleCredentials`
 Retrieves the Google OAuth client IDs and secrets from the vault.
 
 ---
+
 
 ## 🤖 Agent Methods
 
