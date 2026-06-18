@@ -62,10 +62,28 @@ If you need to perform a factory reset or want to check the system status, use t
 
 ---
 
+---
+
+### 5. RAG & Workspace RAG Setup
+Ghost includes a local vector search engine (RAG) powered by **ObjectBox**.
+
+1. **Native Libraries**: Before enabling RAG, ensure the ObjectBox native C library is installed for your OS:
+   - **Linux**: Run `bash docs/installation/scripts/install_linux.sh` (installs `libobjectbox.so` version `5.3.2`).
+   - **macOS**: Run `bash docs/installation/scripts/install_mac.sh` (installs `libobjectbox.dylib` version `5.3.2`).
+   - **Windows**: Run `powershell docs/installation/scripts/install.ps1` (installs `objectbox.dll` version `5.3.2`).
+2. **Local Provider Requirement**: To protect your privacy, indexing local documents requires a **local embedding provider** (e.g., Ollama or LM Studio). Enable Ollama/LM Studio and ensure a valid embedding model (like `qwen3-embedding` or similar) is selected.
+3. **Workspace Folder**:
+   - Once RAG and Workspace RAG are enabled in the settings screen (**Settings > Memory**), create a folder named `rag` inside your configured workspace directory.
+   - Place any `.txt`, `.md`, `.json`, or `.pdf` files inside. They will be scanned and indexed incrementally (Shortest Job First, meaning small files are indexed instantly first).
+   - Any modifications or deletions of files in this directory will be synced automatically on agent startup or message turns.
+
+---
+
 ## 📚 Specialized Guides
 Check out our specialized documentation for advanced configuration and development:
 - **[Skills Development Guide](../SKILLS_GUIDE.md)**: Create your own AI capabilities.
 - **[STT & TTS Setup](../STT_TTS_SETUP.md)**: Local high-performance speech recognition/synthesis.
 - **[RPC API Reference](../RPC_API_REFERENCE.md)**: Detailed documentation of the JSON-RPC 2.0 WebSocket API.
+
 
 ---

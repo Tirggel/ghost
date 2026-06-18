@@ -1358,6 +1358,18 @@
       "languageVersion": "3.1"
     },
     {
+      "name": "syncfusion_flutter_core",
+      "rootUri": "file:///home/peter/.pub-cache/hosted/pub.dev/syncfusion_flutter_core-33.2.13+1",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
+      "name": "syncfusion_flutter_pdf",
+      "rootUri": "file:///home/peter/.pub-cache/hosted/pub.dev/syncfusion_flutter_pdf-33.2.13",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
       "name": "synchronized",
       "rootUri": "file:///home/peter/.pub-cache/hosted/pub.dev/synchronized-3.4.1",
       "packageUri": "lib/",

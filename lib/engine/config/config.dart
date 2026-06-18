@@ -941,6 +941,7 @@ class MemoryConfig {
   const MemoryConfig({
     this.enabled = true,
     this.ragEnabled = false,
+    this.workspaceRagEnabled = false,
     this.backend = 'hive',
     this.embeddingProvider = '',
     this.embeddingModel = '',
@@ -954,6 +955,7 @@ class MemoryConfig {
     return MemoryConfig(
       enabled: json['enabled'] as bool? ?? true,
       ragEnabled: json['ragEnabled'] as bool? ?? false,
+      workspaceRagEnabled: json['workspaceRagEnabled'] as bool? ?? false,
       backend: json['backend'] as String? ?? 'hive',
       embeddingProvider: json['embeddingProvider'] as String? ?? '',
       embeddingModel: json['embeddingModel'] as String? ?? '',
@@ -966,6 +968,7 @@ class MemoryConfig {
 
   final bool enabled;
   final bool ragEnabled;
+  final bool workspaceRagEnabled;
   final String backend;
   final String embeddingProvider;
   final String embeddingModel;
@@ -977,6 +980,7 @@ class MemoryConfig {
   Map<String, dynamic> toJson() => {
         'enabled': enabled,
         'ragEnabled': ragEnabled,
+        'workspaceRagEnabled': workspaceRagEnabled,
         'backend': backend,
         'embeddingProvider': embeddingProvider,
         'embeddingModel': embeddingModel,
@@ -989,6 +993,7 @@ class MemoryConfig {
   MemoryConfig copyWith({
     bool? enabled,
     bool? ragEnabled,
+    bool? workspaceRagEnabled,
     String? backend,
     String? embeddingProvider,
     String? embeddingModel,
@@ -1000,6 +1005,7 @@ class MemoryConfig {
     return MemoryConfig(
       enabled: enabled ?? this.enabled,
       ragEnabled: ragEnabled ?? this.ragEnabled,
+      workspaceRagEnabled: workspaceRagEnabled ?? this.workspaceRagEnabled,
       backend: backend ?? this.backend,
       embeddingProvider: embeddingProvider ?? this.embeddingProvider,
       embeddingModel: embeddingModel ?? this.embeddingModel,

@@ -252,12 +252,17 @@ class InternalGatewayManager {
         },
       );
 
+      final wsDir = config.agent.workspace;
+      final resolvedWorkspaceDir = (wsDir == null || wsDir.isEmpty || wsDir == '.')
+          ? Env.defaultWorkspaceDir
+          : wsDir;
+
       _agentManager = AgentManager(
         config: config,
         sessionManager: sessionManager,
         toolRegistry: toolRegistry,
         storage: storage,
-        workspaceDir: config.agent.workspace ?? '.',
+        workspaceDir: resolvedWorkspaceDir,
         stateDir: stateDir,
         configPath: configPath,
         taskManager: taskManager,

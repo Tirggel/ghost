@@ -24,6 +24,7 @@ class MemoryTab extends ConsumerStatefulWidget {
 class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
   late bool _standardEnabled;
   late bool _ragEnabled;
+  late bool _workspaceRagEnabled;
   late String _embeddingProvider;
   late String _embeddingModel;
   bool _isInit = false;
@@ -45,6 +46,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
       final config = ref.read(configProvider);
       _standardEnabled = config.memory.enabled;
       _ragEnabled = config.memory.ragEnabled;
+      _workspaceRagEnabled = config.memory.workspaceRagEnabled;
       _embeddingProvider = config.memory.embeddingProvider;
       _embeddingModel = config.memory.embeddingModel;
       _selectedProvider = _embeddingProvider.isNotEmpty
@@ -90,12 +92,14 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
       _availableModels = [];
       _loadingModels = true;
       _ragEnabled = false; // Disable RAG on provider change
+      _workspaceRagEnabled = false;
     });
 
     // Update backend immediately to disable RAG
     await ref.read(configProvider.notifier).updateMemory({
       'enabled': _standardEnabled,
       'ragEnabled': false,
+      'workspaceRagEnabled': false,
       'embeddingProvider': provider,
       'embeddingModel': '',
     });
@@ -151,6 +155,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
       await ref.read(configProvider.notifier).updateMemory({
         'enabled': _standardEnabled,
         'ragEnabled': true,
+        'workspaceRagEnabled': _workspaceRagEnabled,
         'embeddingProvider': provider,
         'embeddingModel': model,
       });
@@ -355,6 +360,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
           await ref.read(configProvider.notifier).updateMemory({
             'enabled': _standardEnabled,
             'ragEnabled': _ragEnabled,
+            'workspaceRagEnabled': _workspaceRagEnabled,
             'embeddingProvider': _embeddingProvider,
             'embeddingModel': _embeddingModel,
           });
@@ -382,6 +388,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
             await ref.read(configProvider.notifier).updateMemory({
               'enabled': val,
               'ragEnabled': _ragEnabled,
+              'workspaceRagEnabled': _workspaceRagEnabled,
             });
             if (!context.mounted) return;
             AppSnackBar.showSuccess(
@@ -485,14 +492,66 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
           value: _ragEnabled,
           onChanged:
               (_embeddingProvider.isEmpty ||
-                  _embeddingModel.isEmpty ||
-                  !_ragEnabled)
-              ? null // can't enable without a model OR if it was disabled (must test first)
+                  _embeddingModel.isEmpty)
+              ? null // can't enable without a model
               : (val) async {
-                  setState(() => _ragEnabled = val);
+                  final newWorkspaceRag = val ? _workspaceRagEnabled : false;
+                  setState(() {
+                    _ragEnabled = val;
+                    if (!val) _workspaceRagEnabled = false;
+                  });
                   await ref.read(configProvider.notifier).updateMemory({
                     'enabled': _standardEnabled,
                     'ragEnabled': val,
+                    'workspaceRagEnabled': newWorkspaceRag,
+                    'embeddingProvider': _embeddingProvider,
+                    'embeddingModel': _embeddingModel,
+                  });
+                  if (!context.mounted) return;
+                  AppSnackBar.showSuccess(
+                    context,
+                    'settings.memory.saved'.tr(),
+                  );
+                },
+        ),
+
+        const SizedBox(height: AppConstants.settingsContentSpacing),
+
+        // Workspace RAG on/off switch
+        AppSwitchListTile(
+          title: Text('settings.memory.workspace_rag_enable'.tr()),
+          subtitle: (!_ragEnabled)
+              ? const Text(
+                  'Workspace RAG (RAG Required)',
+                  style: TextStyle(
+                    color: AppColors.textDim,
+                    fontSize: 12,
+                  ),
+                )
+              : (!AppConstants.isLocalProvider(_embeddingProvider))
+                  ? Text(
+                      'settings.memory.workspace_rag_local_only'.tr(),
+                      style: const TextStyle(
+                        color: AppColors.warning,
+                        fontSize: 12,
+                      ),
+                    )
+                  : Text(
+                      'settings.memory.workspace_rag_desc'.tr(),
+                      style: const TextStyle(
+                        color: AppColors.textDim,
+                        fontSize: 12,
+                      ),
+                    ),
+          value: _workspaceRagEnabled,
+          onChanged: (!_ragEnabled || !AppConstants.isLocalProvider(_embeddingProvider))
+              ? null
+              : (val) async {
+                  setState(() => _workspaceRagEnabled = val);
+                  await ref.read(configProvider.notifier).updateMemory({
+                    'enabled': _standardEnabled,
+                    'ragEnabled': _ragEnabled,
+                    'workspaceRagEnabled': val,
                     'embeddingProvider': _embeddingProvider,
                     'embeddingModel': _embeddingModel,
                   });
@@ -672,8 +731,8 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
                         _selectedModel = val;
                         _embeddingProvider = _selectedProvider ?? '';
                         _embeddingModel = val;
-                        _ragEnabled =
-                            false; // Disable RAG on model change
+                        _ragEnabled = false; // Disable RAG on model change
+                        _workspaceRagEnabled = false;
                       });
                       // Update backend to disable RAG
                       await ref
@@ -681,6 +740,7 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
                           .updateMemory({
                             'enabled': _standardEnabled,
                             'ragEnabled': false,
+                            'workspaceRagEnabled': false,
                             'embeddingProvider': _embeddingProvider,
                             'embeddingModel': val,
                           });

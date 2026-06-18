@@ -1,3 +1,10 @@
-faster-whisper
-piper-tts
-pathvalidate
+# Ghost System Python Dependencies
+
+# Speech-to-Text (STT) local transcription engine
+faster-whisper>=1.0.3
+
+# Text-to-Speech (TTS) local audio synthesis engine
+piper-tts>=1.2.0
+
+# File system sanitization helper for skills and downloads
+pathvalidate>=3.2.0

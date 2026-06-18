@@ -99,6 +99,9 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
 - **Memory Engine (RAG & Standard)**: Erweitere das Wissen deines Agenten durch lokale Vektor- und Stichwortspeicher.
     - **Standard Memory**: Stichwortbasiertes, verschlüsseltes lokales Gedächtnis (Hive). Informationen werden sicher gespeichert und über exakte Treffer abgerufen.
     - **RAG Memory (ObjectBox)**: Retrieval-Augmented Generation mit semantischer Vektorsuche, betrieben durch eine hochleistungsfähige lokale ObjectBox-Datenbank.
+    - **Workspace RAG**: Indiziert automatisch Dateien im Ordner `rag` innerhalb deines Workspace-Verzeichnisses. Klartextdateien (`.txt`, `.md`, `.json` usw.) und PDFs werden analysiert und indiziert.
+    - **Shortest-Job-First (SJF) Indizierung**: Zu indizierende Dateien werden nach Größe sortiert. Kleine Dateien werden sofort indiziert, was eine sofortige Verfügbarkeit von leichten Dokumenten garantiert, während große Dateien im Hintergrund verarbeitet werden.
+    - **Lokaler Datenschutz**: Workspace-RAG ist auf lokale Embedding-Provider (z. B. Ollama, LM Studio) beschränkt, um sicherzustellen, dass keine vollständigen Dokumente an externe Cloud-APIs gesendet werden.
     - **Automatische Embeddings**: Wenn ein OpenRouter-API-Schlüssel vorhanden ist, nutzt RAG Memory standardmäßig das kostenlose Modell `nvidia/llama-nemotron-embed-vl-1b-v2:free`.
     - **Langzeitgedächtnis**: Der Agent kann wichtige Fakten speichern und später mittels semantischer Suche wiederfinden.
 - **Google Workspace Integration**:

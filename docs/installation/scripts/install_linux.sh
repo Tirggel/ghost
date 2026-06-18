@@ -4,7 +4,7 @@ set -eu
 # ObjectBox Linux Installation Script
 # https://github.com/objectbox/objectbox-c/releases
 
-cLibVersion=5.1.0
+cLibVersion=5.3.2
 cLibArgs="$*"
 
 echo "Installing ObjectBox native library for Linux (v${cLibVersion})..."

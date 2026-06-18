@@ -715,9 +715,9 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
   }
 
   String _cronHint(String cron) {
-    if (cron.isEmpty) return 'min hour day month weekday';
-    if (!_isCronValid(cron)) return 'Ungültiges Format (z.B. */15 * * * *)';
-    return 'Gültiges Cron-Format ✓';
+    if (cron.isEmpty) return 'settings.agents.cron_empty_hint'.tr();
+    if (!_isCronValid(cron)) return 'settings.agents.cron_invalid_hint'.tr();
+    return 'settings.agents.cron_valid_hint'.tr();
   }
 
   Widget _buildCronScheduler() {
@@ -737,6 +737,19 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
           ],
         ),
         const SizedBox(height: 12),
+        if (_cronMode != 'preset') ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              _cronHint(currentCron).toUpperCase(),
+              style: TextStyle(
+                fontSize: AppConstants.fontSizeLabelTiny,
+                color: _isCronValid(currentCron) ? AppColors.textDim : AppColors.error,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
         if (_cronMode == 'preset')
           _buildPresetPicker()
         else if (_cronMode == 'daily')
@@ -745,20 +758,6 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
           _buildFieldsPicker()
         else if (_cronMode == 'custom')
           _buildCustomPicker(),
-        if (_cronMode != 'preset') ...[
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: Text(
-              _cronHint(currentCron),
-              style: TextStyle(
-                fontSize: AppConstants.fontSizeCaption,
-                color: _isCronValid(currentCron) ? AppColors.textDim : AppColors.error,
-                fontFamily: 'monospace',
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }

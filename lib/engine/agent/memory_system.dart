@@ -8,12 +8,15 @@ class MemorySystem {
   final MemoryEngine standard;
   final RAGMemoryEngine rag;
 
-  Future<List<String>> query(String text, {int limit = 5, String? category, AIModelProvider? activeProvider}) async {
+  Future<List<String>> query(String text, {int limit = 5, String? category, AIModelProvider? activeProvider, String? workspaceDir}) async {
     final results = <String>[];
     if (standard.config.enabled) {
       results.addAll(await standard.query(text, limit: limit, category: category, activeProvider: activeProvider));
     }
     if (rag.config.ragEnabled) {
+      if (workspaceDir != null && rag.config.workspaceRagEnabled) {
+        await rag.syncWorkspaceRag(workspaceDir);
+      }
       // RAG must always use its own configured embedding provider, not the chat provider.
       results.addAll(await rag.query(text, category: category));
     }

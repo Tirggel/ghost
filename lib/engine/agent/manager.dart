@@ -22,6 +22,7 @@ import 'memory_system.dart';
 import '../models/provider.dart';
 import '../tasks/task.dart';
 import '../tasks/task_manager.dart';
+import '../infra/env.dart';
 
 final _log = Logger('Ghost.AgentManager');
 
@@ -117,6 +118,9 @@ class AgentManager {
       agentProvider: config.agent.provider,
     );
     await ragMemoryEngine.initialize();
+    if (config.memory.ragEnabled && config.memory.workspaceRagEnabled) {
+      unawaited(ragMemoryEngine.syncWorkspaceRag(workspaceDir));
+    }
 
     // 1.6. Initialize SkillManager
     await skillManager.initialize();
@@ -611,7 +615,11 @@ class AgentManager {
       defaultDesignSystemContent = ds?.content ?? '';
     }
 
-    defaultAgent.workspaceDir = config.agent.workspace ?? workspaceDir;
+    final wsDir = config.agent.workspace;
+    final resolvedWs = (wsDir == null || wsDir.isEmpty || wsDir == '.')
+        ? Env.defaultWorkspaceDir
+        : wsDir;
+    defaultAgent.workspaceDir = resolvedWs;
     workspaceDir = defaultAgent.workspaceDir;
     defaultAgent.skills = config.agent.skills;
     defaultAgent.systemPrompt = config.buildSystemPrompt(
@@ -631,6 +639,9 @@ class AgentManager {
     );
     ragMemoryEngine.updateConfig(config.memory);
     await ragMemoryEngine.initialize();
+    if (config.memory.ragEnabled && config.memory.workspaceRagEnabled) {
+      unawaited(ragMemoryEngine.syncWorkspaceRag(workspaceDir));
+    }
 
     // 3. Refresh custom agents (prompts & providers)
     for (final agentConfig in config.customAgents) {

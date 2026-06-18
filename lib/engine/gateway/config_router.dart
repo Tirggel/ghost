@@ -1044,6 +1044,8 @@ class ConfigRouter {
       final updated = MemoryConfig(
         enabled: params['enabled'] as bool? ?? current.enabled,
         ragEnabled: params['ragEnabled'] as bool? ?? current.ragEnabled,
+        workspaceRagEnabled:
+            params['workspaceRagEnabled'] as bool? ?? current.workspaceRagEnabled,
         backend: params['backend'] as String? ?? current.backend,
         embeddingProvider:
             params['embeddingProvider'] as String? ?? current.embeddingProvider,
@@ -1694,6 +1696,7 @@ class ConfigRouter {
         final corrected = MemoryConfig(
           enabled: memory.enabled,
           ragEnabled: false,
+          workspaceRagEnabled: memory.workspaceRagEnabled,
           backend: memory.backend,
           embeddingProvider: '',
           embeddingModel: '',

@@ -279,6 +279,7 @@ class MemoryConfig {
   MemoryConfig({
     this.enabled = true,
     this.ragEnabled = false,
+    this.workspaceRagEnabled = false,
     this.backend = 'hive',
     this.embeddingProvider = '',
     this.embeddingModel = '',
@@ -292,6 +293,7 @@ class MemoryConfig {
     return MemoryConfig(
       enabled: json['enabled'] as bool? ?? true,
       ragEnabled: json['ragEnabled'] as bool? ?? false,
+      workspaceRagEnabled: json['workspaceRagEnabled'] as bool? ?? false,
       backend: json['backend'] as String? ?? 'hive',
       embeddingProvider: json['embeddingProvider'] as String? ?? '',
       embeddingModel: json['embeddingModel'] as String? ?? '',
@@ -303,6 +305,7 @@ class MemoryConfig {
   }
   final bool enabled;
   final bool ragEnabled;
+  final bool workspaceRagEnabled;
   final String backend;
   final String embeddingProvider;
   final String embeddingModel;
@@ -315,6 +318,7 @@ class MemoryConfig {
     return {
       'enabled': enabled,
       'ragEnabled': ragEnabled,
+      'workspaceRagEnabled': workspaceRagEnabled,
       'backend': backend,
       'embeddingProvider': embeddingProvider,
       'embeddingModel': embeddingModel,

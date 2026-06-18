@@ -57,7 +57,7 @@ Future<void> saveConfig(GhostConfig config, String path) async {
   await file.parent.create(recursive: true);
 
   final json = const JsonEncoder.withIndent('  ').convert(config.toJson(
-    includeAgent: false,
+    includeAgent: true,
     includeCustomAgents: true,
     includeChannels: true,
     includeTools: true,

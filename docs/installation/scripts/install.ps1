@@ -1,7 +1,7 @@
 # ObjectBox Windows Installation Script
 # https://github.com/objectbox/objectbox-c/releases
 
-$cLibVersion = "5.1.0"
+$cLibVersion = "5.3.2"
 $url = "https://github.com/objectbox/objectbox-c/releases/download/v$cLibVersion/objectbox-windows-x64.zip"
 $destZip = "objectbox.zip"
 $destDll = "lib/objectbox.dll"

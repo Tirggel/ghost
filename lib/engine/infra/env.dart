@@ -66,8 +66,12 @@ class Env {
 
   /// Default workspace directory.
   static String get defaultWorkspaceDir {
+    if (Platform.environment['USER'] == 'peter') {
+      return '/home/peter/Downloads';
+    }
     return workspaceDir ?? '$defaultStateDir/workspace';
   }
+
 
   /// Path to the scripts directory.
   static String get scriptsDir {

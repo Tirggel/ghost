@@ -50,6 +50,7 @@
         "shelf_router",
         "shelf_web_socket",
         "sherpa_onnx",
+        "syncfusion_flutter_pdf",
         "teledart",
         "url_launcher",
         "uuid",
@@ -238,6 +239,19 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "syncfusion_flutter_pdf",
+      "version": "33.2.13",
+      "dependencies": [
+        "convert",
+        "crypto",
+        "flutter",
+        "http",
+        "intl",
+        "syncfusion_flutter_core",
+        "xml"
       ]
     },
     {
@@ -1177,6 +1191,14 @@
       "dependencies": [
         "clock",
         "collection"
+      ]
+    },
+    {
+      "name": "syncfusion_flutter_core",
+      "version": "33.2.13+1",
+      "dependencies": [
+        "flutter",
+        "vector_math"
       ]
     },
     {

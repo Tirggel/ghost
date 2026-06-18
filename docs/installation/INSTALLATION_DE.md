@@ -62,8 +62,23 @@ Falls du einen Factory Reset durchführen möchtest oder den Systemstatus prüfe
 
 ---
 
+### 5. RAG & Workspace-RAG Einrichtung
+Ghost enthält eine lokale Vektorsuchmaschine (RAG), die auf **ObjectBox** basiert.
+
+1. **Native Bibliotheken**: Stelle vor der Aktivierung von RAG sicher, dass die native ObjectBox-C-Bibliothek für dein Betriebssystem installiert ist:
+   - **Linux**: Führe `bash docs/installation/scripts/install_linux.sh` aus (installiert `libobjectbox.so` in Version `5.3.2`).
+   - **macOS**: Führe `bash docs/installation/scripts/install_mac.sh` aus (installiert `libobjectbox.dylib` in Version `5.3.2`).
+   - **Windows**: Führe `powershell docs/installation/scripts/install.ps1` aus (installiert `objectbox.dll` in Version `5.3.2`).
+2. **Lokaler Provider erforderlich**: Um deine Privatsphäre zu schützen, erfordert das Indizieren lokaler Dokumente zwingend einen **lokalen Embedding-Provider** (z. B. Ollama oder LM Studio). Aktiviere Ollama/LM Studio und stelle sicher, dass ein gültiges Embedding-Modell (wie `qwen3-embedding` oder ähnlich) ausgewählt ist.
+3. **Workspace-Ordner**:
+   - Sobald RAG und Workspace-RAG in den Einstellungen (**Einstellungen > Gedächtnis**) aktiviert sind, erstelle einen Ordner namens `rag` in deinem konfigurierten Workspace-Verzeichnis.
+   - Lege dort beliebige `.txt`, `.md`, `.json` oder `.pdf` Dateien ab. Diese werden inkrementell gescannt und indiziert (Shortest Job First: Kleine Dateien werden zuerst verarbeitet).
+   - Alle Änderungen oder Löschungen von Dateien in diesem Ordner werden automatisch beim Start des Agenten oder bei neuen Nachrichten-Turns synchronisiert.
+
+---
+
 ## 📚 Spezialisierte Anleitungen
-Schau in unsere spezialisierte Dokumentation für fortgeschrittene Konfigurationen:
+Check out our specialized documentation for advanced configuration and development:
 - **[Skills Development Guide](../SKILLS_GUIDE_DE.md)**: Erstelle deine eigenen KI-Funktionen.
 - **[STT & TTS Setup](../STT_TTS_SETUP_DE.md)**: Lokale Hochleistungs-Spracherkennung/-synthese.
 - **[RPC API Referenz](../RPC_API_REFERENCE_DE.md)**: Dokumentation der JSON-RPC 2.0 Schnittstelle.

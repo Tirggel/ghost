@@ -1,11 +1,14 @@
 // Ghost — RAG Memory Engine using ObjectBox.
 
 import 'dart:convert';
+import 'dart:io';
 import 'package:logging/logging.dart';
 // ignore: unnecessary_import
 import 'package:objectbox/objectbox.dart';
 import 'dart:math' as math;
 import 'package:uuid/uuid.dart';
+import 'package:path/path.dart' as p;
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 import 'providers/factory.dart';
 import '../config/config.dart';
@@ -61,6 +64,7 @@ class RAGMemoryEngine {
   Store? _store;
   Box<RAGChunk>? _box;
   bool _initialized = false;
+  bool _syncing = false;
   
   final _uuid = const Uuid();
 
@@ -239,5 +243,233 @@ class RAGMemoryEngine {
     if (_box == null) return;
     _box!.removeAll();
     _log.info('Cleared all chunks from RAG memory');
+  }
+
+  Future<void> syncWorkspaceRag(String workspacePath, {AIModelProvider? testProvider}) async {
+    if (!config.ragEnabled || !config.workspaceRagEnabled || !_initialized) {
+      // If RAG is disabled or workspace RAG is disabled, clean up indexed chunks from workspace
+      _cleanAllWorkspaceRagChunks();
+      return;
+    }
+
+    if (_syncing) {
+      _log.info('Workspace RAG sync already in progress. Skipping.');
+      return;
+    }
+
+    _syncing = true;
+    try {
+      final ragDir = Directory(p.join(workspacePath, 'rag'));
+      if (!await ragDir.exists()) {
+        _log.info('RAG directory does not exist in workspace: ${ragDir.path}');
+        _cleanAllWorkspaceRagChunks();
+        return;
+      }
+
+      final files = <File>[];
+      await for (final entity in ragDir.list(recursive: true)) {
+        if (entity is File) {
+          files.add(entity);
+        }
+      }
+
+      final provider = testProvider ?? await _getEmbeddingProvider();
+      if (provider == null) {
+        _log.warning('No embedding provider available for RAG workspace sync.');
+        return;
+      }
+
+      // Build maps of relative path -> lastModified (ms) and file size (bytes)
+      final currentFilesMTime = <String, int>{};
+      final currentFilesSize = <String, int>{};
+      for (final file in files) {
+        final relPath = p.relative(file.path, from: ragDir.path);
+        // Skip hidden files/directories (starting with .)
+        if (p.split(relPath).any((part) => part.startsWith('.'))) {
+          continue;
+        }
+        try {
+          final stat = await file.stat();
+          currentFilesMTime[relPath] = stat.modified.millisecondsSinceEpoch;
+          currentFilesSize[relPath] = stat.size;
+        } catch (e) {
+          _log.warning('Failed to stat file $relPath: $e');
+        }
+      }
+
+      // Get all existing chunks for "workspace_rag" source
+      final allChunks = _box!.getAll();
+      final workspaceChunks = allChunks.where((c) {
+        try {
+          return c.metadata['source'] == 'workspace_rag';
+        } catch (_) {
+          return false;
+        }
+      }).toList();
+
+      // Find the modified time of the files stored in the DB
+      final dbFilesModifiedTime = <String, int>{};
+      final chunksByFile = <String, List<RAGChunk>>{};
+      for (final chunk in workspaceChunks) {
+        final meta = chunk.metadata;
+        final filePath = meta['filePath'] as String?;
+        final modifiedTime = meta['modifiedTime'] as int?;
+        if (filePath != null && modifiedTime != null) {
+          chunksByFile.putIfAbsent(filePath, () => []).add(chunk);
+          final currentMax = dbFilesModifiedTime[filePath] ?? 0;
+          if (modifiedTime > currentMax) {
+            dbFilesModifiedTime[filePath] = modifiedTime;
+          }
+        }
+      }
+
+      // Identify files to delete, update, or add
+      final filesToDelete = <String>{};
+      for (final dbFilePath in dbFilesModifiedTime.keys) {
+        if (!currentFilesMTime.containsKey(dbFilePath)) {
+          filesToDelete.add(dbFilePath);
+        }
+      }
+
+      final filesToIndex = <Map<String, dynamic>>[];
+      for (final entry in currentFilesMTime.entries) {
+        final filePath = entry.key;
+        final mTime = entry.value;
+        final dbMTime = dbFilesModifiedTime[filePath];
+        if (dbMTime == null || mTime != dbMTime) {
+          final size = currentFilesSize[filePath] ?? 0;
+          filesToIndex.add({
+            'filePath': filePath,
+            'mTime': mTime,
+            'size': size,
+          });
+        }
+      }
+
+      // Sort files by size ascending (Shortest Job First)
+      filesToIndex.sort((a, b) => (a['size'] as int).compareTo(b['size'] as int));
+
+      // 1. Delete removed files
+      if (filesToDelete.isNotEmpty) {
+        _log.info('Deleting chunks for removed files: $filesToDelete');
+        _cleanDeletedWorkspaceRagChunks(filesToDelete);
+      }
+
+      // 2. Index new/modified files (smallest first)
+      for (final item in filesToIndex) {
+        final filePath = item['filePath'] as String;
+        final mTime = item['mTime'] as int;
+
+        // Delete any existing chunks for this file first
+        final existing = chunksByFile[filePath];
+        if (existing != null && existing.isNotEmpty) {
+          _box!.removeMany(existing.map((c) => c.obxId).toList());
+        }
+
+        final file = File(p.join(ragDir.path, filePath));
+        _log.info('Indexing workspace RAG file: $filePath (Size: ${item['size']} bytes)');
+        try {
+          final text = await _extractTextFromFile(file);
+          if (text.trim().isEmpty) continue;
+
+          final chunks = _chunkText(text, config.chunkSize, config.chunkOverlap);
+          for (final chunkText in chunks) {
+            final embedding = await provider.embed(chunkText, model: config.embeddingModel);
+            final chunk = RAGChunk(
+              uuid: _uuid.v4(),
+              text: chunkText,
+              metadataJson: jsonEncode({
+                'source': 'workspace_rag',
+                'filePath': filePath,
+                'modifiedTime': mTime,
+              }),
+              embedding: embedding,
+            );
+            _box!.put(chunk);
+          }
+        } catch (e) {
+          _log.severe('Failed to index workspace file $filePath: $e');
+        }
+      }
+    } catch (e) {
+      _log.severe('Error during workspace RAG sync: $e');
+    } finally {
+      _syncing = false;
+    }
+  }
+
+  Future<String> _extractTextFromFile(File file) async {
+    final ext = p.extension(file.path).toLowerCase();
+    if (ext == '.pdf') {
+      try {
+        final bytes = await file.readAsBytes();
+        final document = PdfDocument(inputBytes: bytes);
+        final extractor = PdfTextExtractor(document);
+        final text = extractor.extractText();
+        document.dispose();
+        return text;
+      } catch (e) {
+        _log.warning('Failed to extract PDF text from ${file.path}: $e');
+        return '';
+      }
+    }
+
+    // List of allowed text extensions
+    const textExtensions = {
+      '.txt', '.md', '.markdown', '.json', '.csv', '.xml', 
+      '.yaml', '.yml', '.html', '.htm', '.css', '.js', 
+      '.ts', '.dart', '.py', '.sh', '.bat', '.ini', '.cfg'
+    };
+
+    if (ext.isNotEmpty && !textExtensions.contains(ext)) {
+      _log.fine('Skipping non-text file extension: $ext for ${file.path}');
+      return '';
+    }
+
+    try {
+      return await file.readAsString(encoding: utf8);
+    } catch (e) {
+      _log.warning('Failed to read file as UTF-8 text ${file.path}: $e');
+      return '';
+    }
+  }
+
+  void _cleanAllWorkspaceRagChunks() {
+    if (_box == null) return;
+    final allChunks = _box!.getAll();
+    final toDelete = <int>[];
+    for (final chunk in allChunks) {
+      try {
+        final meta = chunk.metadata;
+        if (meta['source'] == 'workspace_rag') {
+          toDelete.add(chunk.obxId);
+        }
+      } catch (_) {}
+    }
+    if (toDelete.isNotEmpty) {
+      _box!.removeMany(toDelete);
+      _log.info('Removed all (${toDelete.length}) workspace RAG chunks');
+    }
+  }
+
+  void _cleanDeletedWorkspaceRagChunks(Set<String> filesToDelete) {
+    if (_box == null) return;
+    final allChunks = _box!.getAll();
+    final toDelete = <int>[];
+    for (final chunk in allChunks) {
+      try {
+        final meta = chunk.metadata;
+        if (meta['source'] == 'workspace_rag') {
+          final filePath = meta['filePath'] as String?;
+          if (filePath == null || filesToDelete.contains(filePath)) {
+            toDelete.add(chunk.obxId);
+          }
+        }
+      } catch (_) {}
+    }
+    if (toDelete.isNotEmpty) {
+      _box!.removeMany(toDelete);
+      _log.info('Removed ${toDelete.length} workspace RAG chunks');
+    }
   }
 }

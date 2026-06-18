@@ -215,6 +215,7 @@ class Agent {
         memoryContext = await memory.query(
           content,
           activeProvider: activeProvider,
+          workspaceDir: workspaceDir,
         );
         if (memoryContext.isNotEmpty) {
           _log.info('Found ${memoryContext.length} relevant memory chunks:');
