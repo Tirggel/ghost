@@ -825,7 +825,9 @@ await server.connect(transport);
     for (final slug in slugsToLoad) {
       final content = await readSkillContent(slug);
       if (content.isNotEmpty) {
+        final skillDirPath = p.join(skillsDir, slug);
         buffer.writeln('=== SKILL: $slug ===');
+        buffer.writeln('Skill directory: $skillDirPath');
         buffer.writeln(content);
         buffer.writeln();
       }

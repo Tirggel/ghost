@@ -13,22 +13,61 @@ class ExecTools {
     registry.register(TerminalTool(storage: storage));
   }
 
-  /// Builds a map of environment variables by extracting API keys from the secure vault.
+  /// Builds a map of environment variables by extracting external service API keys from the secure vault.
+  /// Internal sensitive tokens (auth_token, client_token, internal configurations, crypto keys)
+  /// are strictly blocked to prevent credential leakage.
   static Future<Map<String, String>> buildVaultEnvironment(SecureStorage? storage) async {
     final env = Map<String, String>.from(Platform.environment);
     if (storage == null) return env;
 
+    const blockedKeys = {
+      'auth_token',
+      'client_token',
+      'agent_config',
+      'custom_agents_config',
+      'migration_v1_done',
+      'payment_card_transactions',
+      'wallet_private_key',
+      'wallet_seed',
+      'wallet_mnemonic',
+      'binance_secret_key',
+    };
+
     try {
       final keys = await storage.listKeys();
       for (final key in keys) {
+        final lowerKey = key.toLowerCase();
+
+        // 1. Block internal vault config keys (starting with _ or in blocked set)
+        if (lowerKey.startsWith('_') || blockedKeys.contains(lowerKey)) {
+          continue;
+        }
+
+        // 2. Export external service credentials & any user vault key
         final value = await storage.get(key);
         if (value != null && value.isNotEmpty) {
-          // Normalize key name for environment (e.g. spotify_client_id -> SPOTIFY_CLIENT_ID)
-          env[key.toUpperCase()] = value;
+          final cleanKey = key.startsWith('vault_') ? key.substring(6) : key;
+          final envKey = cleanKey.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_').toUpperCase();
+          env[envKey] = value;
+
+          // Provide common aliases for API keys:
+          // e.g. WEATHERAPI_API_KEY -> WEATHERAPI_KEY, WEATHERAPI, WEATHER_API_KEY
+          if (envKey.endsWith('_API_KEY')) {
+            final base = envKey.substring(0, envKey.length - 8);
+            env['${base}_KEY'] = value;
+            env[base] = value;
+          } else if (envKey.endsWith('_KEY')) {
+            final base = envKey.substring(0, envKey.length - 4);
+            env['${base}_API_KEY'] = value;
+            env[base] = value;
+          } else {
+            env['${envKey}_API_KEY'] = value;
+            env['${envKey}_KEY'] = value;
+          }
         }
       }
     } catch (e) {
-      // Ignore storage errors, just return empty env
+      // Ignore storage errors, return default env
     }
     return env;
   }

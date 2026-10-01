@@ -7,6 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:logging/logging.dart';
 
 import '../../providers/gateway_provider.dart';
+import '../../providers/chat_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/constants.dart';
 import 'chat_screen.dart';
@@ -389,11 +390,22 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
       final provider = ref.read(sessionsProvider.notifier);
       final shellNotifier = ref.read(shellProvider.notifier);
       final activeSessionId = ref.read(shellProvider).activeSessionId;
+
+      final idsToDelete = <String>[];
       for (final s in folderSessions) {
         final id = s.id;
         final isPending = showPendingNew && id == activeSessionId;
-        if (!isPending) unawaited(provider.deleteSession(id));
-        if (activeSessionId == id) shellNotifier.setActiveSession(null);
+        if (!isPending) {
+          idsToDelete.add(id);
+        }
+        if (activeSessionId == id) {
+          shellNotifier.setActiveSession(null);
+        }
+      }
+
+      if (idsToDelete.isNotEmpty) {
+        ref.read(chatProvider.notifier).removeSessions(idsToDelete);
+        await provider.deleteSessions(idsToDelete);
       }
     }
   }

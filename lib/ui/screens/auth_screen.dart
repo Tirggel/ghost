@@ -80,7 +80,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         // Try to reach the gateway to trigger a full server-side wipe
         try {
           await client.connect().timeout(const Duration(seconds: 3));
-          await client.call('config.factoryReset', {});
+          await client.call('config.factoryReset', {'confirm': 'CONFIRM_RESET'});
         } catch (e) {
           _log.warning('Gateway unreachable for factory reset, proceeding with local wipe: $e');
         }

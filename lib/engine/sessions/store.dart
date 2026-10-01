@@ -81,10 +81,15 @@ class SessionStore {
   /// Delete a session transcript.
   Future<void> deleteTranscript(String sessionId) async {
     await _ensureOpen();
-    if (_box.containsKey(sessionId)) {
-      await _box.delete(sessionId);
-      _log.info('Deleted transcript for session $sessionId');
-    }
+    await _box.delete(sessionId);
+    _log.info('Deleted transcript for session $sessionId');
+  }
+
+  /// Delete multiple session transcripts.
+  Future<void> deleteTranscripts(Iterable<String> sessionIds) async {
+    await _ensureOpen();
+    await _box.deleteAll(sessionIds);
+    _log.info('Deleted ${sessionIds.length} transcripts');
   }
 
   /// List all session IDs that have transcripts.

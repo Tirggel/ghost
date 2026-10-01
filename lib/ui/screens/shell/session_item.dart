@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../core/constants.dart';
 import '../../../providers/gateway_provider.dart';
+import '../../../providers/chat_provider.dart';
 import 'session_model_dialog.dart';
 import '../../widgets/app_dialogs.dart';
 
@@ -282,6 +283,7 @@ class _DeleteButton extends ConsumerWidget {
         );
 
         if (confirmed == true) {
+          ref.read(chatProvider.notifier).removeSession(sessionId);
           unawaited(
             ref.read(sessionsProvider.notifier).deleteSession(sessionId),
           );

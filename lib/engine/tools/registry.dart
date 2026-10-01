@@ -79,8 +79,17 @@ class ToolGroups {
   ToolGroups._();
 
   static const Map<String, List<String>> groups = {
-    'group:runtime': ['exec', 'bash', 'process'],
-    'group:fs': ['read', 'write', 'edit', 'apply_patch'],
+    'group:runtime': ['exec', 'bash', 'terminal', 'process'],
+    'group:fs': [
+      'read_file',
+      'write_file',
+      'list_dir',
+      'download_file',
+      'read',
+      'write',
+      'edit',
+      'apply_patch',
+    ],
     'group:sessions': [
       'sessions_list',
       'sessions_history',
@@ -94,7 +103,7 @@ class ToolGroups {
       'memory_add',
       'memory_query'
     ],
-    'group:web': ['web_search', 'web_fetch'],
+    'group:web': ['web_search', 'web_fetch', 'download_file'],
     'group:ui': ['browser', 'canvas'],
     'group:github': ['github'],
     'group:vault': ['store_api_key'],

@@ -207,33 +207,46 @@ class Agent {
         }
       }
 
-      // 2.5 Query Memory (RAG) — never block chat if this fails
+      // 2.5 Query Memory (RAG) — skip for short greetings & enforce strict timeout
       List<String> memoryContext = [];
-      try {
-        _log.fine('Automatic memory retrieval for: $content');
-        onActivityUpdate?.call('Memory: Searching...');
-        memoryContext = await memory.query(
-          content,
-          activeProvider: activeProvider,
-          workspaceDir: workspaceDir,
-        );
-        if (memoryContext.isNotEmpty) {
-          _log.info('Found ${memoryContext.length} relevant memory chunks:');
-          for (var i = 0; i < memoryContext.length; i++) {
-            _log.info('  Memory [$i]: ${memoryContext[i]}');
-          }
-          onActivityUpdate?.call('Memory: Found context');
-        } else {
-          _log.info('No relevant facts found in memory for query: "$content"');
-          onActivityUpdate?.call('Memory: No relevant facts');
-        }
-      } catch (e) {
-        _log.warning('Memory query failed (non-blocking): $e');
-        onActivityUpdate?.call('');
-      }
+      final trimmedLower = content.trim().toLowerCase();
+      final isShortGreeting = RegExp(
+        r'^(hallo|hi|hey|moin|servus|hello|howdy|guten (morgen|tag|abend)|danke|tschüss|bye|grüß dich)(\s+[\w\s]{1,20})?[\.!\?]?$',
+        caseSensitive: false,
+      ).hasMatch(trimmedLower);
 
-      // Wait a tiny bit so the user can see the memory status
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (!isShortGreeting && content.trim().length >= 4) {
+        try {
+          _log.fine('Automatic memory retrieval for: $content');
+          onActivityUpdate?.call('Memory: Searching...');
+          memoryContext = await memory.query(
+            content,
+            activeProvider: activeProvider,
+            workspaceDir: workspaceDir,
+          ).timeout(
+            const Duration(seconds: 2),
+            onTimeout: () {
+              _log.warning('Memory retrieval timed out after 2s (continuing)');
+              return [];
+            },
+          );
+          if (memoryContext.isNotEmpty) {
+            _log.info('Found ${memoryContext.length} relevant memory chunks:');
+            for (var i = 0; i < memoryContext.length; i++) {
+              _log.info('  Memory [$i]: ${memoryContext[i]}');
+            }
+            onActivityUpdate?.call('Memory: Found context');
+            // Brief pause so user can see memory context was found
+            await Future<void>.delayed(const Duration(milliseconds: 200));
+          } else {
+            _log.info('No relevant facts found in memory for query: "$content"');
+            onActivityUpdate?.call('');
+          }
+        } catch (e) {
+          _log.warning('Memory query failed (non-blocking): $e');
+          onActivityUpdate?.call('');
+        }
+      }
 
       final List<Map<String, dynamic>> executedToolSummaries = [];
       final contentBuffer = StringBuffer();
@@ -282,12 +295,10 @@ class Agent {
             'When you use "memory_add" for personal facts, use the category "user_profile".\n';
 
         const String vaultInstruction =
-            '\n[VAULT NAMING CONVENTION]\n'
-            'When accessing credentials from the Vault in skills or code:\n'
-            '- Service names are used as prefixes (e.g., "SPOTIFY").\n'
-            '- Keys like "Client ID" or "Client Secret" are appended as "_CLIENT_ID" or "_CLIENT_SECRET".\n'
-            '- The resulting environment variables are in ALL CAPS (e.g., "SPOTIFY_CLIENT_ID").\n'
-            '- Do NOT append "_API_KEY" to these variables unless explicitly required by the service.\n';
+            '\n[VAULT CREDENTIALS]\n'
+            'Credentials saved in the secure vault are automatically injected into the process environment in ALL CAPS '
+            '(e.g., WEATHERAPI_KEY, WEATHERAPI_API_KEY, SPOTIFY_CLIENT_ID).\n'
+            'In bash scripts or code, access them directly via environment variables (e.g., \$WEATHERAPI_KEY or os.environ.get("WEATHERAPI_KEY")).\n';
 
         const String focusInstruction =
             '\n[CRITICAL INSTRUCTION — MANDATORY]\n'
@@ -298,16 +309,16 @@ class Agent {
             '3. Do NOT provide "status updates" or "running summaries" of the chat.\n'
             '4. Treat every turn as a fresh, independent request unless it explicitly refers to a previous detail.\n';
 
-        // Explicit instruction to use tools — critical for small local models
-        // that otherwise claim they have no access to real-time information.
+        // Explicit instruction to use tools when needed, but answer greetings directly and prioritize active skills
         const String toolUseInstruction =
-            '\n[TOOL USE — CRITICAL]\n'
-            'You have fully working tools available. ALWAYS use them proactively:\n'
-            '- weather, news, prices, scores, or ANY real-time / current data → call web_search immediately. NEVER say you lack access to this data.\n'
-            '- reading or writing files → use read_file / write_file / list_dir.\n'
-            '- running commands or code → use bash.\n'
-            '- finding past conversations or user facts → use memory_query.\n'
-            'Do NOT apologize for missing tools. If the information requires the internet, call web_search.\n';
+            '\n[TOOL USE GUIDELINES]\n'
+            '- For simple greetings, small talk, pleasantries, or general questions, answer directly in natural language without calling tools.\n'
+            '- If an available active skill covers the user\'s request (e.g. weather skills, specific API integrations, custom tools), ALWAYS prioritize following the instructions and tools of that skill first before falling back to generic web_search.\n'
+            '- For real-time web information (current news, live prices, sports scores, or weather when NO specialized weather skill is installed) → call web_search.\n'
+            '- For reading or writing local files → use read_file / write_file / list_dir.\n'
+            '- For running commands, scripts, or skill code → use bash.\n'
+            '- For past conversations or user facts → use memory_query.\n'
+            'Do NOT call tools unnecessarily when answering simple conversational questions.\n';
 
         final goalInstruction = isGoalMode
             ? '\n[AUTONOMOUS GOAL MODE ACTIVE (Google Antigravity 2.0)]\n'
@@ -350,15 +361,20 @@ class Agent {
               (d) => ToolDefinition(
                 name: (d['name'] as String?) ?? '',
                 description: (d['description'] as String?) ?? '',
-                inputSchema: d['input_schema'] as Map<String, dynamic>? ?? {},
+                inputSchema: (d['input_schema'] is Map)
+                    ? (d['input_schema'] as Map).cast<String, dynamic>()
+                    : <String, dynamic>{},
               ),
             )
             .where((t) => t.name.isNotEmpty)
             .toList();
 
-        final activeTools = isLocalProvider
-            ? allTools.where((t) => _localCoreTools.contains(t.name)).toList()
-            : allTools;
+        // For pure greetings outside goal mode, skip tools entirely so the model responds instantly
+        final activeTools = (isShortGreeting && !isGoalMode)
+            ? <ToolDefinition>[]
+            : (isLocalProvider
+                ? allTools.where((t) => _localCoreTools.contains(t.name)).toList()
+                : allTools);
 
         // Inject focus marker into the last user message, and strip any
         // leftover markers from earlier messages so the LLM only sees one.
@@ -421,11 +437,16 @@ class Agent {
 
         onActivityUpdate?.call('AI: Waiting for provider...');
         AIResponse response;
+        bool streamedAny = false;
         try {
           response = await activeProvider.chat(
             messages: processedMessages,
             systemPrompt: dynamicSystemPrompt,
             tools: activeTools,
+            onPartialResponse: (chunk) {
+              streamedAny = true;
+              onPartialResponse?.call(chunk);
+            },
           );
           if (response.reasoningContent != null) {
             lastReasoningContent = response.reasoningContent;
@@ -449,7 +470,7 @@ class Agent {
 
         if (response.content.isNotEmpty) {
           contentBuffer.write(response.content);
-          if (onPartialResponse != null) {
+          if (!streamedAny && onPartialResponse != null) {
             onPartialResponse(response.content);
           }
         }
@@ -516,6 +537,8 @@ class Agent {
               'label': label,
               'summary': summary,
               'arguments': call.arguments,
+              if (call.thoughtSignature != null)
+                'thought_signature': call.thoughtSignature,
             });
 
             final result = await _executeToolWithHITL(
@@ -667,13 +690,23 @@ class Agent {
         bool isConfirmed = false;
         if (lastUser != null) {
           final text = lastUser.content.toLowerCase().trim();
-          // Use whole-word matching to avoid false positives.
-          // e.g. 'y' would match 'py', 'schreibe' contains 'y' etc.
-          final confirmPattern = RegExp(
-            r'\b(ja|yes|ok|okay|yep|sure|bestätige|bestätig|erlaubt|gerne|klar|natürlich|do it|go ahead|proceed|confirm|allow|weiter|mach es|mach das)\b',
+          // First, check for negative/decline words to prevent false positives like "Nein, ..., ja?"
+          final negativePattern = RegExp(
+            r"\b(nein|no|nicht|stop|halt|cancel|abbruch|abbrechen|block|don'?t|never|verbieten|ablehnen)\b",
             caseSensitive: false,
           );
-          isConfirmed = confirmPattern.hasMatch(text);
+
+          if (!negativePattern.hasMatch(text)) {
+            // Explicit standalone confirmation or concise affirmative statement
+            final confirmPattern = RegExp(
+              r'^(ja|yes|ok|okay|yep|sure|bestätige|bestätigt|erlaubt|gerne|klar|natürlich|do it|go ahead|proceed|confirm|allow|weiter|mach es|mach das)[\.!]?$',
+              caseSensitive: false,
+            );
+            isConfirmed = confirmPattern.hasMatch(text) ||
+                (text.length <= 40 &&
+                    RegExp(r'\b(ja|yes|bestätige|confirm|go ahead|do it)\b', caseSensitive: false)
+                        .hasMatch(text));
+          }
         }
 
         if (!isConfirmed) {

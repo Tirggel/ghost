@@ -59,6 +59,21 @@ class ChatNotifier extends Notifier<Map<String, ChatState>> {
     return state[sessionId] ?? ChatState.initial();
   }
 
+  void removeSession(String sessionId) {
+    _subs[sessionId]?.cancel();
+    _subs.remove(sessionId);
+    state = Map.fromEntries(state.entries.where((e) => e.key != sessionId));
+  }
+
+  void removeSessions(Iterable<String> sessionIds) {
+    final idSet = sessionIds.toSet();
+    for (final id in idSet) {
+      _subs[id]?.cancel();
+      _subs.remove(id);
+    }
+    state = Map.fromEntries(state.entries.where((e) => !idSet.contains(e.key)));
+  }
+
   void initSession(String sessionId) {
     if (state.containsKey(sessionId)) return;
 

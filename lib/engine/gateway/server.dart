@@ -120,6 +120,25 @@ class GatewayServer {
           'Access-Control-Allow-Headers': 'Content-Type',
         };
 
+        // Reject cross-origin WebSocket upgrade from untrusted external browser origins
+        final isWebSocketUpgrade =
+            request.headers['upgrade']?.toLowerCase() == 'websocket';
+        final origin = request.headers['origin'];
+        if (isWebSocketUpgrade && origin != null && origin != 'null') {
+          final uri = Uri.tryParse(origin);
+          final host = uri?.host.toLowerCase();
+          final isAllowedHost = host == 'localhost' ||
+              host == '127.0.0.1' ||
+              host == '0.0.0.0' ||
+              host == Platform.localHostname.toLowerCase();
+          if (!isAllowedHost) {
+            _log.warning('Blocked untrusted cross-origin WebSocket from $origin');
+            return shelf.Response.forbidden(
+              'Cross-origin WebSocket connections from $origin are not allowed.',
+            );
+          }
+        }
+
         // Handle CORS preflight
         if (request.method == 'OPTIONS') {
           return shelf.Response.ok('', headers: corsHeaders);
@@ -381,6 +400,21 @@ class GatewayServer {
           );
           _send(client, error.toJsonString());
           return;
+        }
+
+        // For unauthenticated factoryReset, require explicit confirmation token
+        if (request.method == 'config.factoryReset') {
+          final confirm = request.params?['confirm'];
+          if (confirm != 'CONFIRM_RESET') {
+            final error = RpcErrorResponse(
+              id: request.id,
+              code: RpcErrorCodes.authRequired,
+              message:
+                  'Authentication required or explicit confirmation missing ("confirm": "CONFIRM_RESET").',
+            );
+            _send(client, error.toJsonString());
+            return;
+          }
         }
       } on ProtocolError catch (e) {
         final error = RpcErrorResponse(

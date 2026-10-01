@@ -132,15 +132,23 @@ class AgentRouter {
       return {'sessions': sessionManager.listSessions()};
     });
 
-    // 4. Delete a session
+    // 4. Delete a session (single or batch)
     gateway.rpcRegistry.register('agent.deleteSession',
         (params, context) async {
       final sessionId = params?['sessionId'] as String?;
-      if (sessionId == null) {
-        throw ProtocolError('Missing required parameter: sessionId');
+      final sessionIds = (params?['sessionIds'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList();
+
+      if (sessionIds != null && sessionIds.isNotEmpty) {
+        await sessionManager.deleteSessions(sessionIds);
+        return {'status': 'ok', 'count': sessionIds.length};
+      } else if (sessionId != null) {
+        await sessionManager.deleteSession(sessionId);
+        return {'status': 'ok', 'sessionId': sessionId};
+      } else {
+        throw ProtocolError('Missing required parameter: sessionId or sessionIds');
       }
-      await sessionManager.deleteSession(sessionId);
-      return {'status': 'ok', 'sessionId': sessionId};
     });
 
     // 5. Set model for a specific session
@@ -277,11 +285,6 @@ class AgentRouter {
           ? agentManager.config.identity.name
           : '${agentManager.config.customAgents.firstWhere((a) => a.id == agent.id, orElse: () => const CustomAgentConfig(id: '', name: 'Unknown')).name} Agent';
 
-      // Auto-rename if this is a new session with no title yet
-      if (session != null && session.title == null && session.history.length == 1) {
-        unawaited(agentManager.autoRenameSession(session, agent));
-      }
-
       await agent.processMessage(
         sessionId: sessionId,
         content: content,
@@ -312,6 +315,11 @@ class AgentRouter {
           'sessionId': sessionId,
           'message': lastMsg.toJson(),
         });
+      }
+
+      // Auto-rename in background AFTER response is delivered so chat is never blocked
+      if (session != null && session.title == null && session.history.length <= 2) {
+        unawaited(agentManager.autoRenameSession(session, agent));
       }
 
       // --- /goal abgeschlossen → Task auf "done" ---

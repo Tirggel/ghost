@@ -80,11 +80,10 @@ class SessionManager {
           );
 
 
-          final key = groupId != null
-              ? '$channelType:$groupId'
-              : '$channelType:$peerId';
-          _sessions[key] = session;
+          _sessions[id] = session;
           _log.fine('Loaded session $id from disk');
+        } else {
+          await store.deleteTranscript(id);
         }
       } catch (e) {
         _log.warning('Failed to load session $id: $e');
@@ -118,12 +117,13 @@ class SessionManager {
     required String peerId,
     String? groupId,
   }) async {
-    final key =
-        groupId != null ? '$channelType:$groupId' : '$channelType:$peerId';
-
     // Check in-memory cache
-    if (_sessions.containsKey(key)) {
-      return _sessions[key]!;
+    for (final s in _sessions.values) {
+      if (s.channelType == channelType &&
+          s.peerId == peerId &&
+          (groupId == null || s.groupId == groupId)) {
+        return s;
+      }
     }
 
     // Create new session
@@ -186,15 +186,15 @@ class SessionManager {
             lastActiveAt: transcript.last.timestamp,
           );
 
-          _sessions[key] = restored;
-          _log.fine('Restored session $existingId for $key');
+          _sessions[restored.id] = restored;
+          _log.fine('Restored session $existingId for $channelType:$peerId');
           return restored;
         }
       }
     }
 
-    _sessions[key] = session;
-    _log.info('Created new session ${session.id} for $key');
+    _sessions[session.id] = session;
+    _log.info('Created new session ${session.id} for $channelType:$peerId');
     return session;
   }
 
@@ -233,10 +233,7 @@ class SessionManager {
 
   /// Get a session by ID.
   Session? getSession(String sessionId) {
-    for (final session in _sessions.values) {
-      if (session.id == sessionId) return session;
-    }
-    return null;
+    return _sessions[sessionId];
   }
 
   /// List all active sessions.
@@ -265,15 +262,25 @@ class SessionManager {
   }
 
   /// Clear a session from memory.
-  void evictSession(String sessionKey) {
-    _sessions.remove(sessionKey);
+  void evictSession(String sessionKeyOrId) {
+    _sessions.remove(sessionKeyOrId);
+    _sessions.removeWhere((_, s) => s.sessionKey == sessionKeyOrId);
   }
 
   /// Delete a session by ID: remove from cache and delete transcript.
   Future<void> deleteSession(String sessionId) async {
-    _sessions.removeWhere((_, s) => s.id == sessionId);
+    _sessions.remove(sessionId);
     await store.deleteTranscript(sessionId);
     _log.info('Deleted session $sessionId');
+  }
+
+  /// Delete multiple sessions by ID.
+  Future<void> deleteSessions(List<String> sessionIds) async {
+    for (final id in sessionIds) {
+      _sessions.remove(id);
+    }
+    await store.deleteTranscripts(sessionIds);
+    _log.info('Deleted ${sessionIds.length} sessions');
   }
 
   /// Clear all cached sessions.

@@ -108,13 +108,110 @@ class TaskOrchestrator {
           content: 'All dependencies met. Task is now ready for execution.',
         );
 
-        // If it's already assigned, we could auto-start it?
-        if (dependent.assignedAgentId != null && dependent.status == TaskStatus.backlog) {
-           _log.info('Auto-starting task ${dependent.id} as it is already assigned.');
-           await taskManager.moveTask(dependent.id, TaskStatus.inProgress);
+        // If it's already assigned, auto-start execution with the assigned agent
+        if (dependent.assignedAgentId != null &&
+            dependent.status == TaskStatus.backlog) {
+          _log.info(
+            'Auto-starting task ${dependent.id} with agent ${dependent.assignedAgentId}.',
+          );
+          await taskManager.moveTask(dependent.id, TaskStatus.inProgress);
+          unawaited(_executeTaskWithAgent(dependent));
         }
       }
     }
+  }
+
+  /// Autonomously executes a Kanban task using its assigned agent.
+  Future<void> _executeTaskWithAgent(KanbanTask task) async {
+    final agentId = task.assignedAgentId;
+    if (agentId == null) return;
+
+    try {
+      final agent = agentManager.getAgent(agentId);
+      if (agent == null) {
+        _log.warning('Agent $agentId not found for task ${task.id}');
+        return;
+      }
+
+      final sessionId = task.sessionId ?? 'task_${task.id}';
+      if (task.sessionId == null) {
+        final updated = task.copyWith(sessionId: sessionId);
+        await taskManager.updateTask(updated);
+      }
+
+      _log.info(
+        'Orchestrator starting autonomous execution of "${task.title}" with agent $agentId in session $sessionId',
+      );
+
+      await taskManager.addComment(
+        task.id,
+        authorId: 'system',
+        authorName: 'Ghost Orchestrator',
+        content: '🤖 Agent "${agent.name}" führt die Aufgabe jetzt autonom aus...',
+      );
+
+      final goalPrompt = '/goal ${task.title}\n\n${task.description}';
+
+      if (agentManager.sessionManager.getSession(sessionId) == null) {
+        agentManager.sessionManager.createSession(
+          id: sessionId,
+          channelType: 'kanban',
+          peerId: agentId,
+        );
+      }
+
+      await agentManager.sessionManager.addMessage(
+        sessionId: sessionId,
+        role: 'user',
+        content: goalPrompt,
+      );
+
+      await agent.processMessage(
+        sessionId: sessionId,
+        content: goalPrompt,
+      );
+
+      await taskManager.moveTask(task.id, TaskStatus.done);
+      await taskManager.addComment(
+        task.id,
+        authorId: 'system',
+        authorName: 'Ghost Orchestrator',
+        content: '✅ Aufgabe erfolgreich abgeschlossen.',
+      );
+      _log.info('Task ${task.id} successfully completed by agent $agentId.');
+    } catch (e) {
+      _log.severe('Error executing task ${task.id} with agent $agentId: $e');
+      await taskManager.moveTask(task.id, TaskStatus.review);
+      await taskManager.addComment(
+        task.id,
+        authorId: 'system',
+        authorName: 'Ghost Orchestrator',
+        content: '⚠️ Ausführung fehlgeschlagen: $e',
+      );
+    }
+  }
+
+  /// Check whether adding dependencies to a task would create a circular dependency cycle.
+  bool wouldCreateCycle(String taskId, List<String> newDependsOnIds) {
+    final visited = <String>{};
+
+    bool hasPath(String current, String target) {
+      if (current == target) return true;
+      if (!visited.add(current)) return false;
+      final t = taskManager.getTask(current);
+      if (t == null) return false;
+      for (final dep in t.dependsOnIds) {
+        if (hasPath(dep, target)) return true;
+      }
+      return false;
+    }
+
+    for (final depId in newDependsOnIds) {
+      if (hasPath(depId, taskId)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// Create a pipeline of tasks.

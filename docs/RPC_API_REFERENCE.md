@@ -141,9 +141,10 @@ Retrieves the message history for a session.
 Lists all active sessions.
 
 ### `agent.deleteSession`
-Deletes a specific session.
+Deletes a specific session or multiple sessions in a batch.
 **Params:**
-- `sessionId`: (String)
+- `sessionId`: (String, optional) Single session ID to delete.
+- `sessionIds`: (Array of Strings, optional) List of session IDs for batch deletion (e.g. deleting all sessions in a folder).
 
 ---
 
@@ -323,6 +324,8 @@ Adds a comment to a task.
 
 ### `config.factoryReset`
 Wipes the entire application state, including all databases and the vault. Reboots the gateway into "first start" mode.
+**Params:**
+- `confirm`: (String, required) Must be `"CONFIRM_RESET"` to prevent accidental resets.
 
 ### `config.backup`
 Creates an encrypted ZIP archive of the system state.

@@ -122,7 +122,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
     if (confirmed == true) {
       await handleSave(() async {
         final gateway = ref.read(gatewayClientProvider);
-        await gateway.call('config.factoryReset', {});
+        await gateway.call('config.factoryReset', {'confirm': 'CONFIRM_RESET'});
         
         // Also clear local state to allow fresh discovery on restart
         await ref.read(authTokenProvider.notifier).logout();

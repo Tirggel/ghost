@@ -14,6 +14,7 @@ import 'package:crypto/crypto.dart';
 import '../config/io.dart';
 import '../config/secure_storage.dart';
 import '../gateway/server.dart';
+import '../gateway/protocol.dart';
 import '../infra/errors.dart';
 import '../agent/manager.dart';
 import '../agent/providers/factory.dart';
@@ -1154,6 +1155,12 @@ class ConfigRouter {
       params,
       context,
     ) async {
+      if (!context.isAuthenticated && params?['confirm'] != 'CONFIRM_RESET') {
+        throw ProtocolError(
+          'Authentication required or explicit confirmation missing ("confirm": "CONFIRM_RESET").',
+          rpcCode: RpcErrorCodes.authRequired,
+        );
+      }
       _log.info('Factory reset requested via RPC');
 
       // 1. Properly shutdown all managers and releases file handles

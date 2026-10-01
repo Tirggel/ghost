@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'memory.dart';
 import 'rag_memory.dart';
 import '../infra/errors.dart';
@@ -15,7 +16,8 @@ class MemorySystem {
     }
     if (rag.config.ragEnabled) {
       if (workspaceDir != null && rag.config.workspaceRagEnabled) {
-        await rag.syncWorkspaceRag(workspaceDir);
+        // Workspace sync should run in background without stalling user message queries
+        unawaited(rag.syncWorkspaceRag(workspaceDir));
       }
       // RAG must always use its own configured embedding provider, not the chat provider.
       results.addAll(await rag.query(text, category: category));

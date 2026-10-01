@@ -115,9 +115,10 @@ Ruft den Nachrichtenverlauf einer Sitzung ab.
 Listet alle aktiven Sitzungen auf.
 
 ### `agent.deleteSession`
-Löscht eine spezifische Sitzung.
+Löscht eine spezifische Sitzung oder mehrere Sitzungen im Batch.
 **Parameter:**
-- `sessionId`: (String)
+- `sessionId`: (String, optional) Einzelne Sitzungs-ID zum Löschen.
+- `sessionIds`: (Array von Strings, optional) Liste von Sitzungs-IDs für Batch-Löschung (z. B. Ordnerbereinigung).
 
 ### `agent.setSessionModel`
 Aktualisiert das LLM-Modell und den Provider für eine aktive Sitzung.
@@ -453,6 +454,8 @@ Triggert manuell eine Postfach-Synchronisierung für einen Ordner.
 
 ### `config.factoryReset`
 Löscht den gesamten Anwendungszustand, einschließlich aller Datenbanken und des Tresors. Startet das Gateway im "Erststart"-Modus neu.
+**Parameter:**
+- `confirm`: (String, erforderlich) Muss `"CONFIRM_RESET"` lauten, um versehentliches Löschen zu verhindern.
 
 ### `config.backup`
 Erstellt ein verschlüsseltes ZIP-Archiv des Systemzustands.

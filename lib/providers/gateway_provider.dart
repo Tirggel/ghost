@@ -319,12 +319,32 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
 
   Future<bool> deleteSession(String sessionId) async {
     _pending.removeWhere((s) => s.id == sessionId);
+    state = state.where((s) => s.id != sessionId).toList();
     final client = ref.read(gatewayClientProvider);
     try {
       await client.call('agent.deleteSession', {'sessionId': sessionId});
-      state = state.where((s) => s.id != sessionId).toList();
       return true;
     } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteSessions(List<String> sessionIds) async {
+    if (sessionIds.isEmpty) return true;
+    final idSet = sessionIds.toSet();
+    _pending.removeWhere((s) => idSet.contains(s.id));
+    state = state.where((s) => !idSet.contains(s.id)).toList();
+
+    final client = ref.read(gatewayClientProvider);
+    try {
+      await client.call('agent.deleteSession', {'sessionIds': sessionIds});
+      return true;
+    } catch (_) {
+      for (final id in sessionIds) {
+        try {
+          await client.call('agent.deleteSession', {'sessionId': id});
+        } catch (_) {}
+      }
       return false;
     }
   }

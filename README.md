@@ -20,7 +20,8 @@
 
 Ghost features a modern, integrated architecture:
 - **Integrated Engine**: A high-performance backend managing AI agents, memory, and tools—built directly into the Flutter application.
-- **Sleek UI**: A minimalist, high-performance interface for Desktop (Linux, macOS, Windows) an- **Agents & Skills**: Extensible AI capabilities added via a modular, Markdown-based system.
+- **Sleek UI**: A minimalist, high-performance interface for Desktop (Linux, macOS, Windows) and Web.
+- **Agents & Skills**: Extensible AI capabilities added via a modular, Markdown-based system.
 - **Kanban & Task Orchestration**: Integrated Multi-Agent Kanban system for automated task management, dependency tracking (`dependsOnIds`), and autonomous workflow transitions.
 - **Design Systems**: Centralized theme management with custom branding, Markdown-based styling ("The Monolith"), and unified token distribution.
 - **Memory Engine**: Dual-mode memory using Hive (standard) and ObjectBox (RAG) for secure, local knowledge.
@@ -69,7 +70,7 @@ For new users, Ghost includes an interactive **Setup Wizard** that starts automa
 
 ### 🛠️ Maintenance & Backup
 Ghost features a dedicated **Maintenance Tab** in the settings, giving you full control over your system:
-- **Factory Reset**: Completely wipe the application state and databases with a silent, high-performance reset and automatic reboot.
+- **Factory Reset**: Completely wipe the application state and databases with explicit confirmation protection (`CONFIRM_RESET`), silent high-performance reset, and automatic reboot.
 - **System Backup**: Create an encrypted ZIP archive of your entire configuration (including agents, skills, and design systems).
 - **Restore**: Import a backup archive and seamlessly restore your Ghost assistant's state without UI disruptions.
 - **Design Systems**: Manage, export, and restore visual themes independently.
@@ -91,6 +92,9 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
 ## 🌟 Features
 
 - **Multi-Model Support**: Use Anthropic (Claude), OpenAI (GPT), Google (Gemini), DeepSeek, Mistral, Groq, Together AI, Perplexity, X.AI (Grok), or local models via **LM Studio**, Ollama, and OpenRouter.
+    - **Google Gemini 2.5 & 3**: Comprehensive support for Gemini 1.5, 2.0, 2.5 (`gemini-2.5-flash`), and Gemini 3 models. Features native Multi-Turn Function Calling with cryptographic Thought Signature preservation (`thought_signature`), automated resilience fallback (`skip_thought_signature_validator`), and clean separation of internal reasoning tokens (`reasoningContent`) from visible text.
+    - **Streaming & Reasoning Models**: Real-time SSE streaming with chunk buffering, multi-turn tool call accumulation, and dedicated support for reasoning models (e.g. DeepSeek Reasoner, OpenAI o1/o3-mini).
+    - **Local AI Sovereignty**: Complete offline privacy with LM Studio, Ollama, and vLLM.
 - **Multi-Agent Kanban System**: 
     - **Task Orchestration**: Phase 3 task orchestration with automated status transitions.
     - **Dependencies**: Tasks can depend on other tasks (`dependsOnIds`), allowing for complex project workflows.
@@ -165,15 +169,17 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
     - **Encrypted Database**: Chat sessions and avatars are stored in a local Hive database with additional encryption.
     - **Avatar Management**: Images are stored directly in the database for maximum privacy.
     - **Self-hosted**: Full control over your data and codebase.
-- **Modern User Interface**:
+- **Modern User Interface & Session Management**:
     - **"The Monolith" Design**: A minimalist, high-contrast interface inspired by "Ghost Minimalist Noir" for a distraction-free experience.
+    - **Folder Organization & Batch Deletion**: Group chats into folders and batch-delete entire session trees permanently from disk, guaranteeing complete transcript cleanup without reappearance.
+    - **Smart Autoscroll**: Intelligent viewport tracking that respects your reading position during history inspection and automatically scrolls only on new prompts or active bottom streaming.
     - **Chat & Kanban Integration**: Quick access to conversations and project tasks via the sidebar.
     - **Code Rendering**: Highlights and formats code blocks for easy reading.
     - **Settings Hub**: Centrally manage all your configurations, including dedicated tabs for Gateway, Security, **Skills**, **Design Systems**, and **Maintenance**.
 - **System Stability & Maintenance**:
     - **Gateway Status & Live Logs**: Real-time monitoring of gateway performance, connected clients, and system logs directly in the app.
     - **Secure Shutdown**: Robust background shutdown process ensuring all databases are properly closed before the system exits or resets.
-    - **Backups with Token Persistence**: Your API tokens are securely included in backups and automatically restored to the vault.d in backups and automatically restored to the vault.
+    - **Backups with Token Persistence**: Your API tokens are securely included in backups and automatically restored to the vault.
 
 
 ---

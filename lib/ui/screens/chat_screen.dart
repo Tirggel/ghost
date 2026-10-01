@@ -57,14 +57,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.dispose();
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool force = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        final position = _scrollController.position;
+        final isNearBottom = (position.maxScrollExtent - position.pixels) <= 80;
+        if (force || isNearBottom) {
+          _scrollController.animateTo(
+            position.maxScrollExtent,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          );
+        }
       }
     });
   }
@@ -175,7 +179,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'attachments': chatAttachments.map((a) => a.toJson()).toList(),
     });
     notifier.setProcessing(widget.sessionId, true);
-    _scrollToBottom();
+    _scrollToBottom(force: true);
 
     try {
       // Prefer session-specific model over global config
@@ -313,10 +317,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final nextState = next[widget.sessionId];
       if (nextState == null) return;
 
-      if (nextState.messages.length > (prevState?.messages.length ?? 0) ||
-          nextState.streamedContent.length >
-              (prevState?.streamedContent.length ?? 0)) {
-        _scrollToBottom();
+      final hasNewMessage =
+          nextState.messages.length > (prevState?.messages.length ?? 0);
+      final isStreaming = nextState.streamedContent.length >
+          (prevState?.streamedContent.length ?? 0);
+
+      if (hasNewMessage) {
+        _scrollToBottom(force: true);
+      } else if (isStreaming) {
+        _scrollToBottom(force: false);
       }
     });
 

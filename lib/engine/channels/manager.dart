@@ -21,6 +21,12 @@ import 'slack.dart';
 import 'whatsapp.dart';
 import 'google_chat.dart';
 import 'matrix.dart';
+import 'signal.dart';
+import 'imessage.dart';
+import 'ms_teams.dart';
+import 'nextcloud_talk.dart';
+import 'tlon.dart';
+import 'zalo.dart';
 
 final _log = Logger('Ghost.ChannelManager');
 
@@ -61,6 +67,18 @@ class ChannelManager {
         settings: channels.googleChat.settings);
     await updateChannel('matrix', channels.matrix.enabled,
         settings: channels.matrix.settings);
+    await updateChannel('signal', channels.signal.enabled,
+        settings: channels.signal.settings);
+    await updateChannel('imessage', channels.imessage.enabled,
+        settings: channels.imessage.settings);
+    await updateChannel('msTeams', channels.msTeams.enabled,
+        settings: channels.msTeams.settings);
+    await updateChannel('nextcloudTalk', channels.nextcloudTalk.enabled,
+        settings: channels.nextcloudTalk.settings);
+    await updateChannel('tlon', channels.tlon.enabled,
+        settings: channels.tlon.settings);
+    await updateChannel('zalo', channels.zalo.enabled,
+        settings: channels.zalo.settings);
     
     // Webchat is internal and usually handled by the UI connecting to gateway,
     // but if it has any background logic, it would go here.
@@ -161,13 +179,47 @@ class ChannelManager {
           );
           break;
         case 'signal':
-        case 'webchat':
+          channel = SignalChannel(
+            phoneNumber: token,
+            apiUrl: s['apiUrl'] as String? ?? 'http://localhost:8080',
+          );
+          break;
         case 'imessage':
+          channel = IMessageChannel(
+            serverPassword: token,
+            serverUrl: s['serverUrl'] as String? ??
+                s['apiUrl'] as String? ??
+                'http://localhost:1234',
+          );
+          break;
         case 'msTeams':
+          channel = MsTeamsChannel(
+            appPassword: token,
+            appId: s['appId'] as String? ?? '',
+          );
+          break;
         case 'nextcloudTalk':
+          channel = NextcloudTalkChannel(
+            basicAuthCredentials: token,
+            nextcloudUrl: s['nextcloudUrl'] as String? ?? '',
+            roomToken: s['roomToken'] as String?,
+          );
+          break;
         case 'tlon':
+          channel = TlonChannel(
+            code: token,
+            shipUrl: s['shipUrl'] as String? ?? '',
+            shipName: s['shipName'] as String? ?? '',
+          );
+          break;
         case 'zalo':
-          _log.warning('Channel type $type placeholder in manager');
+          channel = ZaloChannel(
+            oaAccessToken: token,
+            oaId: s['oaId'] as String?,
+          );
+          break;
+        case 'webchat':
+          // Webchat is internal and connects directly via Gateway WebSocket
           break;
         default:
           _log.warning('Channel type $type update not fully implemented yet');

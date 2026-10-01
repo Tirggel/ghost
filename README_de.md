@@ -69,7 +69,7 @@ Für neue Benutzer bietet Ghost einen interaktiven **Einrichtungsassistenten**, 
 
 ### 🛠️ Wartung & Backup
 Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, der dir volle Kontrolle über dein System gibt:
-- **Factory Reset**: Vollständiges Zurücksetzen der Anwendung und Datenbanken mit einem geräuschlosen, hochperformanten Reset und automatischem Neustart.
+- **Factory Reset**: Vollständiges Zurücksetzen der Anwendung und Datenbanken mit explizitem Bestätigungsschutz (`CONFIRM_RESET`), geräuschlosem, hochperformantem Reset und automatischem Neustart.
 - **System-Backup**: Erstellt ein verschlüsseltes ZIP-Archiv deiner gesamten Konfiguration (inklusive Agenten, Skills und Design Systemen).
 - **Wiederherstellung**: Importiert ein Backup-Archiv und stellt den Zustand deines Ghost-Assistenten nahtlos und ohne UI-Unterbrechungen wieder her.
 - **Design Systems**: Verwalte, exportiere und stelle visuelle Themes unabhängig wieder her.
@@ -91,6 +91,9 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
 ## 🌟 Funktionen
 
 - **Multi-Modell-Unterstützung**: Nutze Anthropic (Claude), OpenAI (GPT), Google (Gemini), DeepSeek, Mistral, Groq, Together AI, Perplexity, X.AI (Grok) oder lokale Modelle via **LM Studio**, Ollama und OpenRouter.
+    - **Google Gemini 2.5 & 3**: Umfassende Unterstützung für Gemini 1.5, 2.0, 2.5 (`gemini-2.5-flash`) und Gemini 3 Modelle. Beinhaltet natives Multi-Turn Function Calling mit Erhaltung kryptografischer Thought-Signatures (`thought_signature`), automatischer Fallback-Absicherung (`skip_thought_signature_validator`) und sauberer Trennung interner Denk-Token (`reasoningContent`) von der sichtbaren Textausgabe.
+    - **Streaming & Reasoning-Modelle**: Echtzeit-SSE-Streaming mit intelligenter Drosselung/Pufferung, paralleler Tool-Call-Akkumulation und dedizierter Unterstützung für Denk-Modelle (z. B. DeepSeek Reasoner, OpenAI o1/o3-mini).
+    - **Lokale KI-Souveränität**: Vollständige Offline-Privatsphäre mit LM Studio, Ollama und vLLM.
 - **Multi-Agenten-Kanban-System**:
     - **Task-Orchestrierung**: Phase 3 der Aufgaben-Orchestrierung mit automatisierten Statusübergängen.
     - **Abhängigkeiten**: Aufgaben können von anderen Aufgaben abhängen (`dependsOnIds`), was komplexe Projekt-Workflows ermöglicht.
@@ -165,8 +168,10 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
     - **Verschlüsselte Datenbank**: Chat-Sitzungen und Avatare werden in einer lokalen Hive-Datenbank mit zusätzlicher Verschlüsselung gespeichert.
     - **Avatar-Management**: Bilder werden direkt in der Datenbank gespeichert, um maximale Privatsphäre zu gewährleisten.
     - **Selbstgehostet**: Volle Kontrolle über deine Daten und die Codebasis.
-- **Moderne Benutzeroberfläche**:
+- **Moderne Benutzeroberfläche & Sitzungsverwaltung**:
     - **"The Monolith" Design**: Eine minimalistische, kontrastreiche Benutzeroberfläche im Stil von "Ghost Minimalist Noir" für ein ablenkungsfreies Erlebnis.
+    - **Ordner-Organisation & Batch-Löschung**: Gruppiere Chats in Ordnern und lösche komplette Sitzungsverläufe unwiderruflich von der Festplatte – ohne dass gelöschte Transkripte nach Neustarts wieder auftauchen.
+    - **Intelligenter Auto-Scroll**: Kontextbewusstes Viewport-Tracking, das deine Leseposition bei der Verlaufsansicht respektiert und nur bei neuen Eingaben oder aktivem Streaming am Chat-Ende automatisch mitscrollt.
     - **Chat- & Kanban-Integration**: Schneller Zugriff auf Konversationen und Projekt-Aufgaben über die Seitenleiste.
     - **Code-Darstellung**: Hebt Code-Blöcke hervor und formatiert sie für eine bessere Lesbarkeit.
     - **Einstellungszentrale**: Verwalte alle deine Konfigurationen zentral, einschließlich dedizierter Tabs für Gateway, Sicherheit, **Skills**, **Design Systems** und **Wartung**.

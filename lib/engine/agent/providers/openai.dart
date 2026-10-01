@@ -1,5 +1,6 @@
 // Ghost — OpenAI Provider implementation.
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
@@ -70,6 +71,8 @@ class OpenAIProvider implements AIModelProvider {
     int maxTokens = 4096,
     double temperature = 0.7,
     List<ToolDefinition>? tools,
+    int? numCtx,
+    void Function(String chunk)? onPartialResponse,
   }) async {
     final url = Uri.parse('$baseUrl/chat/completions');
 
@@ -169,7 +172,8 @@ class OpenAIProvider implements AIModelProvider {
         _providerId == 'ipex-llm' ||
         _providerId == 'lmstudio' ||
         _providerId == 'vllm';
-    final effectiveNumCtx = numCtx ?? (isOllama ? 32768 : null);
+    // Use 8192 for local models so memory allocation is fast and doesn't take minutes
+    final effectiveNumCtx = numCtx ?? (isOllama ? 8192 : null);
 
     final body = <String, dynamic>{
       'model': model,
@@ -194,13 +198,203 @@ class OpenAIProvider implements AIModelProvider {
 
     _log.fine('Requesting $displayName ($baseUrl): $model');
 
+    // --- STREAMING PATH (when onPartialResponse is provided) ---
+    if (onPartialResponse != null) {
+      final client = http.Client();
+      final streamChunkBuffer = StringBuffer();
+      Timer? flushTimer;
+
+      void flushStreamChunk() {
+        flushTimer?.cancel();
+        flushTimer = null;
+        if (streamChunkBuffer.isNotEmpty) {
+          final textToEmit = streamChunkBuffer.toString();
+          streamChunkBuffer.clear();
+          onPartialResponse(textToEmit);
+        }
+      }
+
+      try {
+        final request = http.Request('POST', url)
+          ..headers.addAll({
+            'Authorization': 'Bearer $apiKey',
+            'content-type': 'application/json',
+            'Accept': 'text/event-stream',
+            'User-Agent': 'Ghost/1.0',
+          })
+          ..body = jsonEncode({...body, 'stream': true});
+
+        final streamedResponse = await client.send(request).timeout(
+          const Duration(seconds: 180),
+          onTimeout: () => throw TimeoutException(
+            'Request to $displayName ($baseUrl) timed out after 180s',
+          ),
+        );
+
+        if (streamedResponse.statusCode != 200) {
+          final errorBody = await streamedResponse.stream.bytesToString();
+          _log.severe(
+            '$displayName API error: ${streamedResponse.statusCode} - $errorBody',
+          );
+          throw ProviderError(
+            'OpenAI API error (${streamedResponse.statusCode}): $errorBody',
+            provider: 'openai',
+          );
+        }
+
+        final contentBuffer = StringBuffer();
+        final reasoningBuffer = StringBuffer();
+
+        final Map<int, Map<String, dynamic>> accumulatedToolCalls = {};
+        TokenUsage? tokenUsage;
+        String? finishReason;
+
+        await for (final line in streamedResponse.stream
+            .transform(utf8.decoder)
+            .transform(const LineSplitter())) {
+          final trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          final payload = trimmed.substring(5).trim();
+          if (payload.isEmpty) continue;
+          if (payload == '[DONE]') break;
+
+          try {
+            final data = jsonDecode(payload) as Map<String, dynamic>;
+            final choices = data['choices'] as List<dynamic>?;
+            if (choices != null && choices.isNotEmpty) {
+              final choice = (choices.first is Map)
+                  ? (choices.first as Map)
+                  : <dynamic, dynamic>{};
+              if (choice['finish_reason'] != null) {
+                finishReason = choice['finish_reason']?.toString();
+              }
+              final delta = (choice['delta'] is Map) ? (choice['delta'] as Map) : null;
+              if (delta != null) {
+                final chunk = delta['content'] as String?;
+                if (chunk != null && chunk.isNotEmpty) {
+                  contentBuffer.write(chunk);
+                  streamChunkBuffer.write(chunk);
+                  final bufStr = streamChunkBuffer.toString();
+                  // Flush on natural word boundaries, line breaks, punctuation or when buffer reaches 25 chars
+                  if (bufStr.length >= 25 ||
+                      bufStr.endsWith('\n') ||
+                      (bufStr.length >= 6 &&
+                          (bufStr.endsWith(' ') ||
+                              bufStr.endsWith('.') ||
+                              bufStr.endsWith(',') ||
+                              bufStr.endsWith('!') ||
+                              bufStr.endsWith('?') ||
+                              bufStr.endsWith(':')))) {
+                    flushStreamChunk();
+                  } else {
+                    flushTimer ??= Timer(
+                      const Duration(milliseconds: 25),
+                      flushStreamChunk,
+                    );
+                  }
+                }
+                final reasoningChunk = (delta['reasoning_content'] as String?) ??
+                    (delta['reasoning'] as String?);
+                if (reasoningChunk != null && reasoningChunk.isNotEmpty) {
+                  reasoningBuffer.write(reasoningChunk);
+                }
+                final toolCallDeltas = delta['tool_calls'] as List<dynamic>?;
+                if (toolCallDeltas != null) {
+                  for (final tc in toolCallDeltas) {
+                    final map = (tc is Map) ? (tc as Map) : <dynamic, dynamic>{};
+                    final idx = (map['index'] as num?)?.toInt() ?? 0;
+                    final existing = accumulatedToolCalls.putIfAbsent(
+                      idx,
+                      () => {
+                        'id': map['id'] ?? 'call_$idx',
+                        'name': '',
+                        'arguments': StringBuffer(),
+                      },
+                    );
+                    if (map['id'] != null &&
+                        (map['id'] as String).isNotEmpty) {
+                      existing['id'] = map['id'];
+                    }
+                    final fn = (map['function'] is Map) ? (map['function'] as Map) : null;
+                    if (fn != null) {
+                      if (fn['name'] != null &&
+                          (fn['name'] as String).isNotEmpty) {
+                        existing['name'] = fn['name'];
+                      }
+                      if (fn['arguments'] != null) {
+                        (existing['arguments'] as StringBuffer)
+                            .write(fn['arguments']);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            if (data.containsKey('usage') && data['usage'] is Map) {
+              final u = data['usage'] as Map<String, dynamic>;
+              tokenUsage = TokenUsage(
+                inputTokens: (u['prompt_tokens'] as num?)?.toInt() ?? 0,
+                outputTokens: (u['completion_tokens'] as num?)?.toInt() ?? 0,
+              );
+            }
+          } catch (_) {}
+        }
+
+        final toolCalls = <ToolCall>[];
+        for (final entry in accumulatedToolCalls.entries) {
+          final data = entry.value;
+          final name = data['name'] as String? ?? '';
+          final rawArgs = (data['arguments'] as StringBuffer).toString();
+          Map<String, dynamic> parsedArgs = {};
+          try {
+            if (rawArgs.trim().isNotEmpty) {
+              parsedArgs = jsonDecode(rawArgs) as Map<String, dynamic>;
+            }
+          } catch (e) {
+            _log.warning('Failed to parse streaming tool args: $e');
+          }
+          if (name.isNotEmpty) {
+            toolCalls.add(
+              ToolCall(
+                id: data['id'] as String? ?? 'call_${entry.key}',
+                name: name,
+                arguments: parsedArgs,
+              ),
+            );
+          }
+        }
+
+        return AIResponse(
+          content: contentBuffer.toString(),
+          reasoningContent: reasoningBuffer.isNotEmpty
+              ? reasoningBuffer.toString()
+              : null,
+          toolCalls: toolCalls,
+          stopReason: finishReason,
+          usage: tokenUsage,
+        );
+      } finally {
+        flushTimer?.cancel();
+        flushStreamChunk();
+        client.close();
+      }
+    }
+
+    // --- NON-STREAMING FALLBACK PATH ---
     final response = await http.post(
       url,
       headers: {
         'Authorization': 'Bearer $apiKey',
         'content-type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'Ghost/1.0',
       },
       body: jsonEncode(body),
+    ).timeout(
+      const Duration(seconds: 180),
+      onTimeout: () => throw TimeoutException(
+        'Request to $displayName ($baseUrl) timed out after 180s',
+      ),
     );
 
     if (response.statusCode != 200) {
@@ -228,8 +422,8 @@ class OpenAIProvider implements AIModelProvider {
     if (message.containsKey('tool_calls') && message['tool_calls'] != null) {
       final calls = message['tool_calls'] as List<dynamic>;
       for (final call in calls) {
-        final callMap = call as Map<String, dynamic>;
-        final fn = callMap['function'] as Map<String, dynamic>?;
+        final callMap = (call is Map) ? (call as Map) : <dynamic, dynamic>{};
+        final fn = (callMap['function'] is Map) ? (callMap['function'] as Map) : null;
         if (fn == null) continue;
 
         final callId =
@@ -262,7 +456,7 @@ class OpenAIProvider implements AIModelProvider {
       }
     }
 
-    final usage = data['usage'] as Map<String, dynamic>?;
+    final usage = (data['usage'] is Map) ? (data['usage'] as Map) : null;
 
     return AIResponse(
       content: textContent,

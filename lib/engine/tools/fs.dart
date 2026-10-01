@@ -9,6 +9,21 @@ import '../tools/registry.dart';
 class FileSystemTools {
   FileSystemTools._();
 
+  /// Resolve and validate that a path is strictly inside the workspace directory.
+  /// Prevents directory traversal attacks (e.g. "../" or absolute system paths).
+  static String? resolveSafePath(String workspaceDir, String inputPath) {
+    if (inputPath.trim().isEmpty) return null;
+    final canonicalWorkspace = p.canonicalize(workspaceDir);
+    final resolved = p.isAbsolute(inputPath)
+        ? p.canonicalize(inputPath)
+        : p.canonicalize(p.join(canonicalWorkspace, inputPath));
+
+    if (resolved != canonicalWorkspace && !p.isWithin(canonicalWorkspace, resolved)) {
+      return null;
+    }
+    return resolved;
+  }
+
   /// Register all file system tools to the registry.
   static void registerAll(ToolRegistry registry) {
     registry.register(ReadFileTool());
@@ -52,7 +67,11 @@ class DownloadTool extends Tool {
       Map<String, dynamic> input, ToolContext context) async {
     final urlStr = input['url'] as String;
     final relPath = input['path'] as String;
-    final file = File(p.join(context.workspaceDir, relPath));
+    final safePath = FileSystemTools.resolveSafePath(context.workspaceDir, relPath);
+    if (safePath == null) {
+      return ToolResult.error('Access denied: Path "$relPath" is outside the workspace directory.');
+    }
+    final file = File(safePath);
 
     try {
       final response = await http.get(Uri.parse(urlStr));
@@ -103,7 +122,11 @@ class ReadFileTool extends Tool {
   Future<ToolResult> execute(
       Map<String, dynamic> input, ToolContext context) async {
     final path = input['path'] as String;
-    final file = File(p.join(context.workspaceDir, path));
+    final safePath = FileSystemTools.resolveSafePath(context.workspaceDir, path);
+    if (safePath == null) {
+      return ToolResult.error('Access denied: Path "$path" is outside the workspace directory.');
+    }
+    final file = File(safePath);
 
     if (!await file.exists()) {
       return ToolResult.error('File not found: $path');
@@ -149,8 +172,12 @@ class WriteFileTool extends Tool {
   Future<ToolResult> execute(
       Map<String, dynamic> input, ToolContext context) async {
     final path = input['path'] as String;
+    final safePath = FileSystemTools.resolveSafePath(context.workspaceDir, path);
+    if (safePath == null) {
+      return ToolResult.error('Access denied: Path "$path" is outside the workspace directory.');
+    }
     final content = input['content'] as String;
-    final file = File(p.join(context.workspaceDir, path));
+    final file = File(safePath);
 
     try {
       await file.parent.create(recursive: true);
@@ -189,7 +216,11 @@ class ListDirTool extends Tool {
   Future<ToolResult> execute(
       Map<String, dynamic> input, ToolContext context) async {
     final relPath = input['path'] as String? ?? '.';
-    final dir = Directory(p.join(context.workspaceDir, relPath));
+    final safePath = FileSystemTools.resolveSafePath(context.workspaceDir, relPath);
+    if (safePath == null) {
+      return ToolResult.error('Access denied: Path "$relPath" is outside the workspace directory.');
+    }
+    final dir = Directory(safePath);
 
     if (!await dir.exists()) {
       return ToolResult.error('Directory not found: $relPath');

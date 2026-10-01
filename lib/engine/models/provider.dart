@@ -23,6 +23,7 @@ abstract class AIModelProvider {
     int maxTokens = 4096,
     double temperature = 0.7,
     List<ToolDefinition>? tools,
+    void Function(String chunk)? onPartialResponse,
   });
 
   /// Generate embeddings for the given text.
@@ -133,24 +134,31 @@ class ToolCall {
     required this.id,
     required this.name,
     required this.arguments,
+    this.thoughtSignature,
   });
 
   factory ToolCall.fromJson(Map<String, dynamic> json) {
     return ToolCall(
       id: json['id'] as String,
       name: json['name'] as String,
-      arguments: json['arguments'] as Map<String, dynamic>,
+      arguments: json['arguments'] is Map
+          ? Map<String, dynamic>.from(json['arguments'] as Map)
+          : <String, dynamic>{},
+      thoughtSignature: json['thought_signature'] as String? ??
+          json['thoughtSignature'] as String?,
     );
   }
 
   final String id;
   final String name;
   final Map<String, dynamic> arguments;
+  final String? thoughtSignature;
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
         'arguments': arguments,
+        if (thoughtSignature != null) 'thought_signature': thoughtSignature,
       };
 }
 

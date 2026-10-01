@@ -1,5 +1,6 @@
 // Ghost — Anthropic AI Provider implementation.
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
@@ -63,6 +64,7 @@ class AnthropicProvider implements AIModelProvider {
     int maxTokens = 4096,
     double temperature = 0.7,
     List<ToolDefinition>? tools,
+    void Function(String chunk)? onPartialResponse,
   }) async {
     final url = Uri.parse(baseUrl);
 
@@ -154,6 +156,9 @@ class AnthropicProvider implements AIModelProvider {
         'content-type': 'application/json',
       },
       body: jsonEncode(body),
+    ).timeout(
+      const Duration(seconds: 180),
+      onTimeout: () => throw TimeoutException('Request to Anthropic API ($model) timed out after 180s'),
     );
 
     if (response.statusCode != 200) {
@@ -183,7 +188,11 @@ class AnthropicProvider implements AIModelProvider {
       }
     }
 
-    final usage = data['usage'] as Map<String, dynamic>?;
+    if (onPartialResponse != null && textContent.isNotEmpty) {
+      onPartialResponse(textContent);
+    }
+
+    final usage = (data['usage'] is Map) ? (data['usage'] as Map) : null;
 
     return AIResponse(
       content: textContent,

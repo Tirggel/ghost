@@ -1,5 +1,6 @@
 // Ghost — RAG Memory Engine using ObjectBox.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:logging/logging.dart';
@@ -148,7 +149,10 @@ class RAGMemoryEngine {
 
     try {
       _log.fine('RAG query using provider: ${provider.providerId}, model: ${config.embeddingModel}');
-      final queryEmbedding = await provider.embed(queryText, model: config.embeddingModel);
+      final queryEmbedding = await provider.embed(queryText, model: config.embeddingModel).timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => throw TimeoutException('RAG embedding timed out after 3s'),
+      );
       
       final queryBoxResult = _box!.getAll();
       
@@ -181,14 +185,47 @@ class RAGMemoryEngine {
   List<String> _chunkText(String text, int size, int overlap) {
     if (text.isEmpty) return [];
     if (text.length <= size) return [text];
-    
+
+    // Guard against invalid overlap causing an infinite loop
+    final effectiveOverlap =
+        (overlap >= size) ? math.max(0, size ~/ 5) : math.max(0, overlap);
+
     final chunks = <String>[];
     int start = 0;
     while (start < text.length) {
-      final end = math.min(start + size, text.length);
-      chunks.add(text.substring(start, end));
-      if (end == text.length) break;
-      start += (size - overlap);
+      int end = math.min(start + size, text.length);
+
+      // If we aren't at the end of the text, try to find a natural break point (paragraph, sentence, line, or space)
+      if (end < text.length) {
+        // Look back within the upper 40% of the chunk window for a natural boundary
+        final minCut = math.max(start + (size * 6 ~/ 10), start);
+        final slice = text.substring(minCut, end);
+
+        final paraBreak = slice.lastIndexOf('\n\n');
+        final lineBreak = slice.lastIndexOf('\n');
+        final sentenceBreak = slice.lastIndexOf(RegExp(r'[\.\?!]\s'));
+
+        if (paraBreak != -1) {
+          end = minCut + paraBreak + 2;
+        } else if (sentenceBreak != -1) {
+          end = minCut + sentenceBreak + 2;
+        } else if (lineBreak != -1) {
+          end = minCut + lineBreak + 1;
+        } else {
+          final spaceBreak = slice.lastIndexOf(' ');
+          if (spaceBreak != -1) {
+            end = minCut + spaceBreak + 1;
+          }
+        }
+      }
+
+      final chunk = text.substring(start, end).trim();
+      if (chunk.isNotEmpty) {
+        chunks.add(chunk);
+      }
+
+      if (end >= text.length) break;
+      start = math.max(start + 1, end - effectiveOverlap);
     }
     return chunks;
   }
@@ -199,11 +236,13 @@ class RAGMemoryEngine {
     double normA = 0.0;
     double normB = 0.0;
     for (int i = 0; i < a.length; i++) {
-      dotProduct += a[i] * b[i];
-      normA += math.pow(a[i], 2);
-      normB += math.pow(b[i], 2);
+      final ai = a[i];
+      final bi = b[i];
+      dotProduct += ai * bi;
+      normA += ai * ai;
+      normB += bi * bi;
     }
-    if (normA == 0.0 || normB == 0.0) return 0.0;
+    if (normA <= 0.0 || normB <= 0.0) return 0.0;
     return dotProduct / (math.sqrt(normA) * math.sqrt(normB));
   }
 

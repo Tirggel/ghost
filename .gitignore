@@ -95,6 +95,8 @@ test_*.log
 # Database files (Local only)
 **/objectbox/
 !lib/objectbox-model.json
+lib/libobjectbox.so
+*.so
 
 # Local scripts
 app.sh

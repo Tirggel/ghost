@@ -375,9 +375,6 @@ class AgentManager {
         },
       );
 
-      // Auto-rename if needed
-      unawaited(autoRenameSession(session, agent));
-
       // Trigger agent processing in the background
       await agent.processMessage(
         sessionId: session.id,
@@ -389,6 +386,9 @@ class AgentManager {
           onSessionActivity?.call(session.id, activity);
         },
       );
+
+      // Auto-rename in background AFTER agent run
+      unawaited(autoRenameSession(session, agent));
 
       // Notify completion
       if (onSessionUpdated != null && session.history.isNotEmpty) {
@@ -506,14 +506,6 @@ class AgentManager {
         },
       );
 
-      // Auto-rename if this is a cron session with no fitting title yet
-      if (session.title == null ||
-          session.title!.isEmpty ||
-          session.title!.contains('cron_') ||
-          session.title == agentConfig.cronMessage) {
-        unawaited(autoRenameSession(session, agent));
-      }
-
       // Trigger agent processing in the background
       await agent.processMessage(
         sessionId: session.id,
@@ -525,6 +517,14 @@ class AgentManager {
           onSessionActivity?.call(session.id, activity);
         },
       );
+
+      // Auto-rename if this is a cron session with no fitting title yet (after response)
+      if (session.title == null ||
+          session.title!.isEmpty ||
+          session.title!.contains('cron_') ||
+          session.title == agentConfig.cronMessage) {
+        unawaited(autoRenameSession(session, agent));
+      }
 
       // Notify completion
       if (onSessionUpdated != null && session.history.isNotEmpty) {
@@ -732,6 +732,31 @@ class AgentManager {
     try {
       _log.info('Auto-renaming session ${session.id}...');
 
+      // Fast path: for short initial messages (e.g. "hallo", "hi", "test"), set title directly without calling LLM
+      final firstUserMsg = session.history.where((m) => m.role == 'user').firstOrNull;
+      if (firstUserMsg != null) {
+        final text = firstUserMsg.content.trim();
+        final isShortGreeting = RegExp(
+          r'^(hallo|hi|hey|moin|servus|hello|howdy|guten (morgen|tag|abend)|danke|tschüss|bye|grüß dich)[\.!\?]?$',
+          caseSensitive: false,
+        ).hasMatch(text);
+        if (isShortGreeting || (text.length <= 16 && !text.contains('\n'))) {
+          final cleanTitle = text.isEmpty
+              ? 'Chat'
+              : '${text[0].toUpperCase()}${text.substring(1).replaceAll(RegExp(r'[\.\?!]'), '')}';
+          session.title = cleanTitle;
+          _log.info('Session ${session.id} quickly renamed without LLM: $cleanTitle');
+          await sessionManager.addMessage(
+            sessionId: session.id,
+            role: 'system',
+            content: 'session_rename',
+            metadata: {'title': cleanTitle},
+          );
+          onSessionRenamed?.call(session.id, cleanTitle);
+          return;
+        }
+      }
+
       // Resolve the session-specific provider
       AIModelProvider activeProvider = agent.provider;
       if (session.model != null || session.provider != null) {
@@ -780,9 +805,10 @@ class AgentManager {
       // back to the provider (which causes 400 Bad Request on some APIs).
       final messages = session.history
           .where((m) => m.role != 'system')
+          .take(4) // Only consider first 4 messages for titling
           .map((m) => Message(
                 role: m.role,
-                content: m.content,
+                content: m.content.length > 300 ? m.content.substring(0, 300) : m.content,
                 timestamp: m.timestamp,
               ))
           .toList();
@@ -798,7 +824,8 @@ class AgentManager {
       final response = await activeProvider.chat(
         messages: messages,
         systemPrompt: titlingSystemPrompt,
-      );
+        maxTokens: 15,
+      ).timeout(const Duration(seconds: 5));
 
       if (response.content.isNotEmpty) {
         var title = response.content.trim();

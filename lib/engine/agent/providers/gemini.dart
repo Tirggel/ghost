@@ -1,5 +1,6 @@
 // Ghost — Google Gemini AI Model Provider.
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
@@ -36,8 +37,11 @@ class GeminiProvider extends AIModelProvider {
   ModelCapabilities get capabilities {
     final lower = model.toLowerCase();
     
-    // Gemini 1.5 and 2.0 are fully multimodal
-    if (lower.contains('gemini-1.5') || lower.contains('gemini-2.0')) {
+    // Gemini 1.5, 2.0, 2.5, 3 are fully multimodal
+    if (lower.contains('gemini-1.5') ||
+        lower.contains('gemini-2.0') ||
+        lower.contains('gemini-2.5') ||
+        lower.contains('gemini-3')) {
       return const ModelCapabilities(
         supportsText: true,
         supportsImage: true,
@@ -58,48 +62,125 @@ class GeminiProvider extends AIModelProvider {
     int maxTokens = 4096,
     double temperature = 0.7,
     List<ToolDefinition>? tools,
+    void Function(String chunk)? onPartialResponse,
   }) async {
     final normalizedModel =
         model.startsWith('models/') ? model : 'models/$model';
-    final generativeModel = GenerativeModel(
-      model: normalizedModel,
-      apiKey: apiKey,
-      systemInstruction:
-          systemPrompt != null ? Content.system(systemPrompt) : null,
-      tools: tools != null ? [_buildTools(tools)] : null,
-    );
+    final interceptingClient = _InterceptingHttpClient(http.Client());
 
-    final history = _convertToGeminiHistory(messages);
+    try {
+      final generativeModel = GenerativeModel(
+        model: normalizedModel,
+        apiKey: apiKey,
+        httpClient: interceptingClient,
+        systemInstruction:
+            systemPrompt != null ? Content.system(systemPrompt) : null,
+        tools: tools != null ? [_buildTools(tools)] : null,
+      );
 
-    final response = await generativeModel.generateContent(
-      history,
-      generationConfig: GenerationConfig(
-        maxOutputTokens: maxTokens,
-        temperature: temperature,
-      ),
-    );
+      final history = _convertToGeminiHistory(messages);
 
-    final text = response.text ?? '';
-    final toolCalls = <ToolCall>[];
+      final response = await generativeModel.generateContent(
+        history,
+        generationConfig: GenerationConfig(
+          maxOutputTokens: maxTokens,
+          temperature: temperature,
+        ),
+      ).timeout(
+        const Duration(seconds: 180),
+        onTimeout: () => throw TimeoutException('Request to Google Gemini ($model) timed out after 180s'),
+      );
 
-    // Handle function calls
-    final functionCalls = response.functionCalls.toList();
-    for (final call in functionCalls) {
-      toolCalls.add(ToolCall(
-        id: 'gemini-${DateTime.now().microsecondsSinceEpoch}',
-        name: call.name,
-        arguments: call.args,
-      ));
+      // Extract raw thought signature and separate reasoning content from raw JSON response
+      String? extractedThoughtSignature;
+      String? extractedReasoningContent;
+      String? extractedVisibleText;
+
+      if (interceptingClient.lastResponseBody != null) {
+        try {
+          final decoded = jsonDecode(interceptingClient.lastResponseBody!)
+              as Map<String, dynamic>;
+          final candidates = decoded['candidates'] as List<dynamic>?;
+          if (candidates != null && candidates.isNotEmpty) {
+            final firstCandidate = candidates.first as Map<String, dynamic>;
+            final content = firstCandidate['content'] as Map<String, dynamic>?;
+            final parts = content?['parts'] as List<dynamic>?;
+            if (parts != null) {
+              final visibleBuffer = StringBuffer();
+              final reasoningBuffer = StringBuffer();
+
+              for (final part in parts) {
+                if (part is Map<String, dynamic>) {
+                  final isThought = part['thought'] == true;
+                  final text = part['text'] as String?;
+                  if (text != null && text.isNotEmpty) {
+                    if (isThought) {
+                      reasoningBuffer.write(text);
+                    } else {
+                      visibleBuffer.write(text);
+                    }
+                  }
+
+                  if (extractedThoughtSignature == null) {
+                    final sig = part['thoughtSignature'] ??
+                        part['thought_signature'] ??
+                        (part['functionCall'] is Map
+                            ? (part['functionCall'] as Map)['thoughtSignature'] ??
+                                (part['functionCall'] as Map)['thought_signature']
+                            : null);
+                    if (sig != null && sig is String && sig.isNotEmpty) {
+                      extractedThoughtSignature = sig;
+                    }
+                  }
+                }
+              }
+
+              if (visibleBuffer.isNotEmpty) {
+                extractedVisibleText = visibleBuffer.toString();
+              }
+              if (reasoningBuffer.isNotEmpty) {
+                extractedReasoningContent = reasoningBuffer.toString();
+              }
+            }
+          }
+        } catch (e) {
+          _log.fine('Could not inspect raw response body: $e');
+        }
+      }
+
+      final text = extractedVisibleText ?? response.text ?? '';
+      final toolCalls = <ToolCall>[];
+
+      // Handle function calls
+      final functionCalls = response.functionCalls.toList();
+      for (int idx = 0; idx < functionCalls.length; idx++) {
+        final call = functionCalls[idx];
+        // Per Gemini multi-turn spec: only the first functionCall receives the thought signature
+        final sig = idx == 0 ? extractedThoughtSignature : null;
+        toolCalls.add(ToolCall(
+          id: 'gemini-${DateTime.now().microsecondsSinceEpoch}-$idx',
+          name: call.name,
+          arguments: call.args,
+          thoughtSignature: sig,
+        ));
+      }
+
+      if (onPartialResponse != null && text.isNotEmpty) {
+        onPartialResponse(text);
+      }
+
+      return AIResponse(
+        content: text,
+        reasoningContent: extractedReasoningContent,
+        toolCalls: toolCalls,
+        usage: TokenUsage(
+          inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
+          outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+        ),
+      );
+    } finally {
+      interceptingClient.close();
     }
-
-    return AIResponse(
-      content: text,
-      toolCalls: toolCalls,
-      usage: TokenUsage(
-        inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-        outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
-      ),
-    );
   }
 
   @override
@@ -177,19 +258,27 @@ class GeminiProvider extends AIModelProvider {
   }
 
   List<Content> _convertToGeminiHistory(List<Message> messages) {
-    return messages.map((m) {
+    final history = <Content>[];
+
+    int i = 0;
+    while (i < messages.length) {
+      final m = messages[i];
+
       if (m.role == 'user') {
         if (m.attachments.isEmpty) {
-          return Content.text(m.content);
+          history.add(Content.text(m.content));
+        } else {
+          final parts = <Part>[];
+          if (m.content.isNotEmpty) {
+            parts.add(TextPart(m.content));
+          }
+          for (final a in m.attachments) {
+            parts.add(DataPart(a.mimeType, base64Decode(a.data)));
+          }
+          if (parts.isEmpty) parts.add(TextPart(''));
+          history.add(Content('user', parts));
         }
-        final parts = <Part>[];
-        if (m.content.isNotEmpty) {
-          parts.add(TextPart(m.content));
-        }
-        for (final a in m.attachments) {
-          parts.add(DataPart(a.mimeType, base64Decode(a.data)));
-        }
-        return Content('user', parts);
+        i++;
       } else if (m.role == 'assistant') {
         final parts = <Part>[];
         if (m.content.isNotEmpty) {
@@ -198,11 +287,29 @@ class GeminiProvider extends AIModelProvider {
 
         final toolCalls = m.metadata['tool_calls'] as List<dynamic>?;
         if (toolCalls != null) {
-          for (final call in toolCalls) {
-            final map = call as Map<String, dynamic>;
-            parts.add(FunctionCall(
-              map['name'] as String,
-              map['arguments'] as Map<String, dynamic>,
+          for (int callIdx = 0; callIdx < toolCalls.length; callIdx++) {
+            final call = toolCalls[callIdx];
+            final map = call is Map<String, dynamic>
+                ? call
+                : (call as Map).cast<String, dynamic>();
+
+            final rawSig = map['thought_signature'] as String? ??
+                map['thoughtSignature'] as String?;
+            final sig = callIdx == 0
+                ? (rawSig != null && rawSig.isNotEmpty
+                    ? rawSig
+                    : 'skip_thought_signature_validator')
+                : null;
+
+            final argsRaw = map['arguments'];
+            final args = argsRaw is Map
+                ? Map<String, dynamic>.from(argsRaw)
+                : <String, dynamic>{};
+
+            parts.add(_GeminiFunctionCallPart(
+              name: map['name'] as String,
+              args: args,
+              thoughtSignature: sig,
             ));
           }
         }
@@ -210,15 +317,44 @@ class GeminiProvider extends AIModelProvider {
         // Gemini requires at least one part. If both are empty, add empty text.
         if (parts.isEmpty) parts.add(TextPart(''));
 
-        return Content.model(parts);
+        history.add(Content.model(parts));
+        i++;
       } else if (m.role == 'tool') {
-        return Content.functionResponse(
-          m.metadata['tool_name'] as String? ?? 'unknown',
-          {'result': m.content},
-        );
+        // Collect ALL consecutive tool messages into a single user turn with FunctionResponses.
+        // Google Gemini does not support role: 'function', tool results must be provided
+        // as FunctionResponse parts under role: 'user'.
+        final responses = <FunctionResponse>[];
+        while (i < messages.length && messages[i].role == 'tool') {
+          final toolMsg = messages[i];
+          final toolName =
+              toolMsg.metadata['tool_name'] as String? ?? 'unknown';
+
+          Map<String, Object?> responseMap;
+          try {
+            final decoded = jsonDecode(toolMsg.content);
+            if (decoded is Map<String, dynamic>) {
+              responseMap = decoded;
+            } else {
+              responseMap = {'result': decoded};
+            }
+          } catch (_) {
+            responseMap = {'result': toolMsg.content};
+          }
+
+          responses.add(FunctionResponse(toolName, responseMap));
+          i++;
+        }
+
+        history.add(Content('user', responses));
+      } else {
+        if (m.content.isNotEmpty) {
+          history.add(Content.text(m.content));
+        }
+        i++;
       }
-      return Content.text(m.content);
-    }).toList();
+    }
+
+    return history;
   }
 
   Tool _buildTools(List<ToolDefinition> toolDefinitions) {
@@ -233,23 +369,30 @@ class GeminiProvider extends AIModelProvider {
     return Tool(functionDeclarations: functionDeclarations);
   }
 
-  Schema _convertToGeminiSchema(Map<String, dynamic> schema) {
-    final type = schema['type'] as String?;
-    final description = schema['description'] as String?;
-    final properties = schema['properties'] as Map<String, dynamic>?;
-    final required = schema['required'] as List<dynamic>?;
+  Schema _convertToGeminiSchema(Map<dynamic, dynamic> schema) {
+    final type = schema['type']?.toString();
+    final description = schema['description']?.toString();
+    final rawProperties = schema['properties'];
+    final properties = rawProperties is Map ? rawProperties : null;
+    final rawRequired = schema['required'];
+    final required = rawRequired is List
+        ? rawRequired.map((e) => e.toString()).toList()
+        : null;
 
     if (type == 'object') {
       final geminiProps = <String, Schema>{};
       if (properties != null) {
         properties.forEach((key, value) {
-          geminiProps[key] =
-              _convertToGeminiSchema(value as Map<String, dynamic>);
+          if (value is Map) {
+            geminiProps[key.toString()] = _convertToGeminiSchema(value);
+          } else {
+            geminiProps[key.toString()] = Schema.string();
+          }
         });
       }
       return Schema.object(
         properties: geminiProps,
-        requiredProperties: required?.cast<String>(),
+        requiredProperties: required,
         description: description,
       );
     } else if (type == 'string') {
@@ -259,12 +402,86 @@ class GeminiProvider extends AIModelProvider {
     } else if (type == 'boolean') {
       return Schema.boolean(description: description);
     } else if (type == 'array') {
+      final rawItems = schema['items'];
+      final itemsSchema = rawItems is Map
+          ? _convertToGeminiSchema(rawItems)
+          : Schema.string();
       return Schema.array(
-        items: _convertToGeminiSchema(schema['items'] as Map<String, dynamic>),
+        items: itemsSchema,
         description: description,
       );
     }
 
     return Schema.string(description: description);
+  }
+}
+
+/// Custom implementation of [Part] for Gemini function calls.
+/// 
+/// The `google_generative_ai` package's built-in `FunctionCall` only serializes
+/// `name` and `args`, dropping `thought_signature`. Gemini 2.5 / 3 models strictly
+/// validate that multi-turn function calls include `thought_signature` (or the official
+/// fallback `skip_thought_signature_validator`), otherwise rejecting the turn with HTTP 400.
+class _GeminiFunctionCallPart implements Part {
+  final String name;
+  final Map<String, dynamic> args;
+  final String? thoughtSignature;
+
+  _GeminiFunctionCallPart({
+    required this.name,
+    required this.args,
+    this.thoughtSignature,
+  });
+
+  @override
+  Object toJson() {
+    final json = <String, Object?>{
+      'functionCall': {
+        'name': name,
+        'args': args,
+      },
+    };
+    if (thoughtSignature != null && thoughtSignature!.isNotEmpty) {
+      json['thoughtSignature'] = thoughtSignature;
+      json['thought_signature'] = thoughtSignature;
+    }
+    return json;
+  }
+}
+
+/// Custom HTTP client that taps the raw response stream so we can extract
+/// model-internal metadata (thought_signature, separate reasoning parts)
+/// that `google_generative_ai: 0.4.7` discards during its internal parsing.
+class _InterceptingHttpClient extends http.BaseClient {
+  _InterceptingHttpClient(this._inner);
+
+  final http.Client _inner;
+  String? lastResponseBody;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final streamedResponse = await _inner.send(request);
+    final bytes = await streamedResponse.stream.toBytes();
+    try {
+      lastResponseBody = utf8.decode(bytes);
+    } catch (_) {
+      lastResponseBody = null;
+    }
+    return http.StreamedResponse(
+      Stream.value(bytes),
+      streamedResponse.statusCode,
+      contentLength: bytes.length,
+      request: streamedResponse.request,
+      headers: streamedResponse.headers,
+      isRedirect: streamedResponse.isRedirect,
+      persistentConnection: streamedResponse.persistentConnection,
+      reasonPhrase: streamedResponse.reasonPhrase,
+    );
+  }
+
+  @override
+  void close() {
+    _inner.close();
+    super.close();
   }
 }
