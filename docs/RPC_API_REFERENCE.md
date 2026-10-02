@@ -122,6 +122,8 @@ Sends a message to an agent.
 - `content`: (String) The message text.
 - `agentId`: (String, optional) The target agent profile ID.
 - `sessionId`: (String, optional) Target an existing session.
+- `workspaceDir`: (String, optional) Dynamic workspace directory for filesystem tools and terminal commands (e.g. VS Code project path).
+- `channelType`: (String, optional) Channel type identifier (e.g. "gateway", "vscode").
 
 **Response:**
 - `sessionId`: (String)

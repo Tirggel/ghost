@@ -68,6 +68,29 @@ This ensures that all autonomous actions are fully tracked on the Kanban board, 
 
 ---
 
+## 📋 Structured Planning & Roadmap Generation (`/plan`)
+
+Ghost also supports a dedicated planning mode triggered via the `/plan` chat command. When tasks are complex and require deep codebase analysis or architectural roadmaps before modifying any code:
+
+### How it Works
+
+1. **Trigger & Initialization**:
+   When a user sends a message starting with `/plan <your plan description>`, the system creates a Kanban task:
+   - **Task Title**: `📋 <plan text>` (truncated to 60 characters).
+   - **Task Description**: The full prompt containing the planning request.
+   - **Initial Status**: Set immediately to `in_progress`.
+   - **Assignee**: Assigned to the current agent handling the session.
+
+2. **Read-Only Inspection Loop**:
+   The agent is instructed to explore the project using read-only tools (`read_file`, `list_dir`, `web_search`, inspect commands). It does **NOT** modify codebase files or execute destructive actions during this stage.
+
+3. **Plan Formulation & Review**:
+   The agent formulates a comprehensive roadmap (Objective, Current State, Architecture, Phased Steps, Risks, Verification, and optional Kanban pipeline).
+   - Once completed, the Kanban task is automatically transitioned to `review` status with the plan summary attached as a comment.
+   - The user can review the proposed plan, discuss adjustments, or execute it autonomously by invoking `/goal`.
+
+---
+
 ## Examples
 
 ### Example 1: Creating a Sequential Pipeline

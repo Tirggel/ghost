@@ -95,6 +95,8 @@ Sendet eine Nachricht an einen Agenten.
 - `content`: (String) Der Nachrichtentext.
 - `agentId`: (String, optional) Die Profil-ID des Zielagenten.
 - `sessionId`: (String, optional) Zielt auf eine bestehende Sitzung ab.
+- `workspaceDir`: (String, optional) Dynamisches Arbeitsverzeichnis für Dateisystem-Werkzeuge und Terminal-Befehle (z. B. VS Code Projektpfad).
+- `channelType`: (String, optional) Art des Kanals (z. B. "gateway", "vscode").
 
 **Antwort:**
 ```json

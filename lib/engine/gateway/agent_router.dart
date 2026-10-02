@@ -1,6 +1,7 @@
 // Ghost — Agent RPC Router.
 
 import 'dart:async';
+import 'dart:io';
 import 'package:logging/logging.dart';
 
 import '../infra/errors.dart';
@@ -50,6 +51,7 @@ class AgentRouter {
         final model = params?['model'] as String?;
         final provider = params?['provider'] as String?;
         final targetAgentId = params?['agentId'] as String?;
+        final workspaceDir = params?['workspaceDir'] as String?;
 
         // Resolve session
         final reqSessionId = params?['sessionId'] as String?;
@@ -103,7 +105,7 @@ class AgentRouter {
 
         // Trigger agent processing in the background
         unawaited(_processInAgent(session.id, content, targetAgentId,
-            attachments: attachments));
+            attachments: attachments, workspaceDir: workspaceDir));
 
         return {
           'sessionId': session.id,
@@ -247,9 +249,11 @@ class AgentRouter {
 
   Future<void> _processInAgent(
       String sessionId, String content, String? agentId,
-      {List<MessageAttachment> attachments = const []}) async {
-    // --- /goal Kanban tracking ---
+      {List<MessageAttachment> attachments = const [],
+      String? workspaceDir}) async {
+    // --- /goal and /plan Kanban tracking ---
     final isGoal = content.trim().startsWith('/goal');
+    final isPlan = content.trim().startsWith('/plan');
     final taskManager = agentManager.taskManager;
     KanbanTask? kanbanTask;
 
@@ -275,11 +279,40 @@ class AgentRouter {
       await taskManager.updateTask(withSession);
       kanbanTask = withSession;
       _log.info('/goal task created: ${kanbanTask.id}');
+    } else if (isPlan && taskManager != null) {
+      final planText = content.trim().substring(5).trim();
+      final shortTitle = planText.length > 60
+          ? '📋 ${planText.substring(0, 60)}...'
+          : '📋 $planText';
+      kanbanTask = await taskManager.createTask(
+        title: shortTitle,
+        description: content.trim(),
+        status: TaskStatus.inProgress,
+        assignedAgentId: agentId ?? 'default-agent',
+        assignedAgentName: agentId != null
+            ? agentManager.config.customAgents
+                    .where((a) => a.id == agentId)
+                    .firstOrNull
+                    ?.name ??
+                agentId
+            : agentManager.config.identity.name,
+      );
+      final withSession = kanbanTask.copyWith(sessionId: sessionId);
+      await taskManager.updateTask(withSession);
+      kanbanTask = withSession;
+      _log.info('/plan task created: ${kanbanTask.id}');
     }
 
     try {
       final session = sessionManager.getSession(sessionId);
       final agent = agentManager.getAgent(agentId ?? session?.agentId);
+
+      if (workspaceDir != null &&
+          workspaceDir.trim().isNotEmpty &&
+          Directory(workspaceDir.trim()).existsSync()) {
+        agent.workspaceDir = workspaceDir.trim();
+        _log.info('Dynamic workspace applied for agent ${agent.id}: ${agent.workspaceDir}');
+      }
 
       session?.agentName = agent.id == 'default-agent'
           ? agentManager.config.identity.name
@@ -339,6 +372,24 @@ class AgentRouter {
         );
         _log.info('/goal task ${kanbanTask.id} marked as done.');
       }
+
+      // --- /plan abgeschlossen → Task auf "review" (wartet auf User-Feedback) ---
+      if (isPlan && kanbanTask != null && taskManager != null) {
+        await taskManager.moveTask(kanbanTask.id, TaskStatus.review);
+        final session = sessionManager.getSession(sessionId);
+        String summary = '';
+        if (session != null && session.history.isNotEmpty) {
+          summary = session.history.last.content;
+          if (summary.length > 500) summary = '${summary.substring(0, 500)}...';
+        }
+        await taskManager.addComment(
+          kanbanTask.id,
+          authorId: agentId ?? 'default-agent',
+          authorName: agentManager.config.identity.name,
+          content: 'Plan ausgearbeitet 📋 (Bereit zum Review)\n\nZusammenfassung:\n$summary',
+        );
+        _log.info('/plan task ${kanbanTask.id} marked as review.');
+      }
     } catch (e) {
       _log.severe('Agent routing error: $e');
       gateway.broadcast('agent.error', {
@@ -346,8 +397,8 @@ class AgentRouter {
         'error': e.toString(),
       });
 
-      // --- /goal Fehler → Task auf "review" ---
-      if (isGoal && kanbanTask != null && taskManager != null) {
+      // --- /goal oder /plan Fehler → Task auf "review" ---
+      if ((isGoal || isPlan) && kanbanTask != null && taskManager != null) {
         await taskManager.moveTask(kanbanTask.id, TaskStatus.review);
         await taskManager.addComment(
           kanbanTask.id,
@@ -355,7 +406,7 @@ class AgentRouter {
           authorName: 'Ghost System',
           content: 'Fehler bei der Ausführung: $e',
         );
-        _log.info('/goal task ${kanbanTask.id} moved to review due to error.');
+        _log.info('/${isGoal ? "goal" : "plan"} task ${kanbanTask.id} moved to review due to error.');
       }
     }
   }

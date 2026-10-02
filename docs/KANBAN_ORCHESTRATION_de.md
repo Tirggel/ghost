@@ -68,6 +68,29 @@ Dadurch sind alle autonomen Aktionen auf dem Kanban-Board lückenlos nachvollzie
 
 ---
 
+## 📋 Strukturierte Planung & Roadmap-Erstellung (`/plan`)
+
+Ghost unterstützt zusätzlich einen strukturierten Planungsmodus, der über den Chat-Befehl `/plan` aufgerufen wird. Dies ist ideal für komplexe Vorhaben, die vor der eigentlichen Code-Modifikation eine gründliche Codebase-Analyse, Architekturentscheidungen und eine phasenbasierte Roadmap erfordern:
+
+### Funktionsweise
+
+1. **Trigger & Initialisierung**:
+   Wenn ein Benutzer eine Nachricht sendet, die mit `/plan <Vorhabensbeschreibung>` beginnt, erstellt das System automatisch eine neue Kanban-Aufgabe:
+   - **Task-Titel**: `📋 <Plan-Text>` (auf die ersten 60 Zeichen gekürzt).
+   - **Task-Beschreibung**: Der vollständige Planungsauftrag.
+   - **Anfangsstatus**: Sofort auf `in_progress` gesetzt, während der Agent die Analyse durchführt.
+   - **Zuweisung**: Dem aktuellen Agenten zugewiesen und mit der `sessionId` verknüpft.
+
+2. **Schreibgeschützte Analyse (Read-Only)**:
+   Der Agent nutzt ausschließlich schreibgeschützte Werkzeuge (`read_file`, `list_dir`, `web_search`, lesende Terminal-Befehle), um die tatsächliche Struktur und Abhängigkeiten des Projekts zu verstehen. Im Planungsmodus nimmt der Agent **keine** Dateimodifikationen vor.
+
+3. **Roadmap-Erstellung & Review**:
+   Der Agent erstellt eine detaillierte Roadmap (Ziel, Ist-Analyse, Architektur, nummerierte Schritte mit Dateipfaden, Risiken, Verifikation und optionale Kanban-Pipeline).
+   - Nach Fertigstellung wird der Kanban-Task automatisch auf `review` (Überprüfung) gesetzt und die Zusammenfassung als Kommentar angehängt.
+   - Der Benutzer kann den Plan begutachten, Rückfragen stellen oder die Umsetzung direkt über `/goal` starten.
+
+---
+
 ## Beispiele
 
 ### Beispiel 1: Erstellen einer sequenziellen Pipeline

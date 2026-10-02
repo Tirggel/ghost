@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ghost Chat</title>
+  <style>
+    :root {
+      --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: var(--vscode-sideBar-background, #1e1e1e);
+      color: var(--vscode-foreground, #cccccc);
+      font-family: var(--font-family);
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Top bar */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--vscode-sideBarSectionHeader-background, #252526);
+      border-bottom: 1px solid var(--vscode-sideBar-border, #333333);
+      gap: 8px;
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #888888;
+    }
+    .status-dot.connected { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
+    .status-dot.connecting { background: #ff9800; }
+    .status-dot.error, .status-dot.disconnected { background: #f44336; }
+
+    .session-select {
+      flex: 1;
+      background: var(--vscode-dropdown-background, #3c3c3c);
+      color: var(--vscode-dropdown-foreground, #f0f0f0);
+      border: 1px solid var(--vscode-dropdown-border, #555555);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      outline: none;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .icon-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--vscode-icon-foreground, #c5c5c5);
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    .icon-btn:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1));
+    }
+
+    /* Messages container */
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      max-width: 95%;
+      border-radius: 8px;
+      padding: 10px 12px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .message.user {
+      align-self: flex-end;
+      background: var(--vscode-button-background, #007acc);
+      color: var(--vscode-button-foreground, #ffffff);
+      border-bottom-right-radius: 2px;
+    }
+    .message.assistant {
+      align-self: flex-start;
+      background: var(--vscode-editor-background, #2d2d2d);
+      border: 1px solid var(--vscode-widget-border, #3a3a3a);
+      color: var(--vscode-foreground, #e0e0e0);
+      border-bottom-left-radius: 2px;
+    }
+
+    .msg-header {
+      font-size: 10px;
+      font-weight: 700;
+      opacity: 0.7;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Markdown styling */
+    .msg-body pre {
+      background: rgba(0, 0, 0, 0.35);
+      padding: 8px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 8px 0;
+      font-family: var(--vscode-editor-font-family, monospace);
+      font-size: 12px;
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .code-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .code-actions button {
+      background: var(--vscode-button-secondaryBackground, #3a3d41);
+      color: var(--vscode-button-secondaryForeground, #ffffff);
+      border: none;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .code-actions button:hover {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+
+    /* Activity indicator */
+    .activity-bar {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      font-size: 11px;
+      color: var(--vscode-textPreformat-foreground, #ffcc00);
+      background: rgba(255, 204, 0, 0.08);
+      border-left: 3px solid #ffcc00;
+    }
+    .activity-bar.active {
+      display: flex;
+    }
+    .spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid #ffcc00;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Quick actions */
+    .quick-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 6px 12px;
+      border-top: 1px solid var(--vscode-sideBar-border, #333333);
+      background: var(--vscode-sideBarSectionHeader-background, #252526);
+    }
+    .pill {
+      background: var(--vscode-badge-background, #4d4d4d);
+      color: var(--vscode-badge-foreground, #ffffff);
+      border: none;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .pill:hover {
+      background: var(--vscode-button-background, #007acc);
+    }
+
+    /* Input area */
+    .input-section {
+      padding: 8px 12px 12px;
+      background: var(--vscode-sideBarSectionHeader-background, #252526);
+      border-top: 1px solid var(--vscode-sideBar-border, #333333);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .context-pill {
+      font-size: 10px;
+      opacity: 0.8;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--vscode-textLink-foreground, #3794ff);
+    }
+    .input-box {
+      display: flex;
+      gap: 6px;
+    }
+    textarea {
+      flex: 1;
+      background: var(--vscode-input-background, #3c3c3c);
+      color: var(--vscode-input-foreground, #cccccc);
+      border: 1px solid var(--vscode-input-border, #555555);
+      border-radius: 4px;
+      padding: 8px;
+      font-family: inherit;
+      font-size: 12px;
+      resize: none;
+      min-height: 48px;
+      max-height: 120px;
+      outline: none;
+    }
+    textarea:focus {
+      border-color: var(--vscode-focusBorder, #007acc);
+    }
+    .send-btn {
+      background: var(--vscode-button-background, #007acc);
+      color: var(--vscode-button-foreground, #ffffff);
+      border: none;
+      border-radius: 4px;
+      padding: 0 12px;
+      cursor: pointer;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .send-btn:hover {
+      background: var(--vscode-button-hoverBackground, #0062a3);
+    }
+    .send-btn.stop {
+      background: var(--vscode-errorForeground, #f44336);
+    }
+
+    /* Streaming cursor */
+    .cursor {
+      display: inline-block;
+      width: 6px;
+      height: 12px;
+      background: var(--vscode-foreground, #fff);
+      animation: blink 0.8s infinite;
+      vertical-align: middle;
+      margin-left: 2px;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="status-badge" id="statusBadge" title="Klicken zum Verbinden">
+      <div class="status-dot disconnected" id="statusDot"></div>
+      <span id="statusText">Getrennt</span>
+    </div>
+    <select class="session-select" id="sessionSelect">
+      <option value="">(Keine Sitzungen)</option>
+    </select>
+    <button class="icon-btn" id="newSessionBtn" title="Neue Sitzung starten">＋</button>
+  </div>
+
+  <!-- Messages List -->
+  <div class="messages-container" id="messagesContainer">
+    <div class="message assistant">
+      <div class="msg-header">👻 Ghost</div>
+      <div class="msg-body">
+        Hallo! Ich bin <strong>Ghost</strong>, dein persönlicher KI-Assistent.<br><br>
+        Stelle mir Fragen zu deinem Code, lass mich Tests schreiben oder nutze <code>/plan</code> und <code>/goal</code> für komplexe Workflows.
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Bar -->
+  <div class="activity-bar" id="activityBar">
+    <div class="spinner"></div>
+    <span id="activityText">Ghost verarbeitet...</span>
+  </div>
+
+  <!-- Quick Action Pills -->
+  <div class="quick-actions">
+    <button class="pill" onclick="sendQuickPrompt('/explain')">/explain</button>
+    <button class="pill" onclick="sendQuickPrompt('/refactor')">/refactor</button>
+    <button class="pill" onclick="sendQuickPrompt('/tests')">/tests</button>
+    <button class="pill" onclick="sendQuickPrompt('/plan ')">/plan</button>
+    <button class="pill" onclick="sendQuickPrompt('/goal ')">/goal</button>
+  </div>
+
+  <!-- Input Section -->
+  <div class="input-section">
+    <div class="context-pill" id="contextPill">
+      <span>📄 Kein aktiver Editor</span>
+    </div>
+    <div class="input-box">
+      <textarea id="promptInput" placeholder="Frage an Ghost... (Enter zum Senden, Shift+Enter für neue Zeile)"></textarea>
+      <button class="send-btn" id="sendBtn">➤</button>
+    </div>
+  </div>
+
+  <script>
+    const vscode = acquireVsCodeApi();
+
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const statusBadge = document.getElementById('statusBadge');
+    const sessionSelect = document.getElementById('sessionSelect');
+    const newSessionBtn = document.getElementById('newSessionBtn');
+    const messagesContainer = document.getElementById('messagesContainer');
+    const activityBar = document.getElementById('activityBar');
+    const activityText = document.getElementById('activityText');
+    const promptInput = document.getElementById('promptInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const contextPill = document.getElementById('contextPill');
+
+    let isGenerating = false;
+    let currentStreamEl = null;
+
+    // Ready signal
+    vscode.postMessage({ type: 'ready' });
+
+    statusBadge.addEventListener('click', () => {
+      vscode.postMessage({ type: 'connect' });
+    });
+
+    newSessionBtn.addEventListener('click', () => {
+      vscode.postMessage({ type: 'newSession' });
+    });
+
+    sessionSelect.addEventListener('change', () => {
+      const sessionId = sessionSelect.value;
+      if (sessionId) {
+        vscode.postMessage({ type: 'switchSession', sessionId });
+      }
+    });
+
+    sendBtn.addEventListener('click', () => {
+      if (isGenerating) {
+        vscode.postMessage({ type: 'stop' });
+      } else {
+        submitPrompt();
+      }
+    });
+
+    promptInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        submitPrompt();
+      }
+    });
+
+    function submitPrompt() {
+      const text = promptInput.value.trim();
+      if (!text) return;
+      promptInput.value = '';
+      vscode.postMessage({ type: 'sendMessage', text });
+    }
+
+    function sendQuickPrompt(cmd) {
+      promptInput.value = cmd + (promptInput.value ? ' ' + promptInput.value : '');
+      promptInput.focus();
+    }
+
+    function formatMarkdown(text) {
+      if (!text) return '';
+      let escaped = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      // Code blocks
+      escaped = escaped.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+        const cleanCode = code.trim();
+        const encoded = encodeURIComponent(cleanCode);
+        return '<pre><code>' + cleanCode + '</code><div class="code-actions">' +
+          '<button onclick="insertCode(\'' + encoded + '\')">In Editor einfügen</button>' +
+          '<button onclick="copyCode(\'' + encoded + '\')">Kopieren</button>' +
+          '</div></pre>';
+      });
+
+      // Inline code
+      escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+      // Bold & Italic
+      escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      escaped = escaped.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+      // Line breaks
+      escaped = escaped.replace(/\n/g, '<br>');
+
+      return escaped;
+    }
+
+    function insertCode(encoded) {
+      vscode.postMessage({ type: 'insertCode', code: decodeURIComponent(encoded) });
+    }
+
+    function copyCode(encoded) {
+      vscode.postMessage({ type: 'copyCode', code: decodeURIComponent(encoded) });
+    }
+
+    function appendMessage(role, content) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message ' + (role === 'user' ? 'user' : 'assistant');
+
+      const header = document.createElement('div');
+      header.className = 'msg-header';
+      header.textContent = role === 'user' ? 'Du' : '👻 Ghost';
+
+      const body = document.createElement('div');
+      body.className = 'msg-body';
+      body.innerHTML = formatMarkdown(content);
+
+      msgDiv.appendChild(header);
+      msgDiv.appendChild(body);
+      messagesContainer.appendChild(msgDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      return body;
+    }
+
+    window.addEventListener('message', (event) => {
+      const msg = event.data;
+      switch (msg.type) {
+        case 'connectionState':
+          statusDot.className = 'status-dot ' + msg.state;
+          statusText.textContent = msg.state === 'connected' ? 'Verbunden' : msg.state === 'connecting' ? 'Verbinde...' : 'Getrennt';
+          break;
+
+        case 'sessionsList':
+          sessionSelect.innerHTML = '';
+          if (msg.sessions && msg.sessions.length > 0) {
+            msg.sessions.forEach(s => {
+              const opt = document.createElement('option');
+              opt.value = s.id;
+              opt.textContent = s.title || ('Session ' + s.id.substring(0, 8));
+              if (s.id === msg.currentSessionId) opt.selected = true;
+              sessionSelect.appendChild(opt);
+            });
+          } else {
+            const opt = document.createElement('option');
+            opt.value = msg.currentSessionId || 'default';
+            opt.textContent = 'Aktuelle Sitzung';
+            sessionSelect.appendChild(opt);
+          }
+          break;
+
+        case 'sessionSwitched':
+          messagesContainer.innerHTML = '';
+          currentStreamEl = null;
+          if (msg.messages && msg.messages.length > 0) {
+            msg.messages.forEach(m => appendMessage(m.role, m.content));
+          } else {
+            appendMessage('assistant', 'Neue Sitzung gestartet. Wie kann ich dir helfen?');
+          }
+          break;
+
+        case 'userMessageAdded':
+          appendMessage('user', msg.text);
+          isGenerating = true;
+          sendBtn.textContent = '■';
+          sendBtn.classList.add('stop');
+          activityBar.classList.remove('active');
+          const assistantDiv = document.createElement('div');
+          assistantDiv.className = 'message assistant';
+          assistantDiv.innerHTML = '<div class="msg-header">👻 Ghost</div><div class="msg-body"><span class="cursor"></span></div>';
+          messagesContainer.appendChild(assistantDiv);
+          currentStreamEl = assistantDiv.querySelector('.msg-body');
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          break;
+
+        case 'activity':
+          if (msg.activity) {
+            activityBar.classList.add('active');
+            activityText.textContent = msg.activity;
+          } else {
+            activityBar.classList.remove('active');
+          }
+          break;
+
+        case 'streamChunk':
+          if (currentStreamEl) {
+            currentStreamEl.innerHTML = formatMarkdown(msg.fullStream) + '<span class="cursor"></span>';
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          }
+          break;
+
+        case 'responseComplete':
+          isGenerating = false;
+          sendBtn.textContent = '➤';
+          sendBtn.classList.remove('stop');
+          activityBar.classList.remove('active');
+          if (currentStreamEl && msg.message) {
+            currentStreamEl.innerHTML = formatMarkdown(msg.message.content);
+            currentStreamEl = null;
+          }
+          break;
+
+        case 'error':
+          isGenerating = false;
+          sendBtn.textContent = '➤';
+          sendBtn.classList.remove('stop');
+          activityBar.classList.remove('active');
+          if (currentStreamEl) {
+            currentStreamEl.innerHTML += '<br><strong style="color:var(--vscode-errorForeground)">⚠️ Fehler: ' + msg.error + '</strong>';
+            currentStreamEl = null;
+          } else {
+            appendMessage('assistant', '⚠️ Fehler: ' + msg.error);
+          }
+          break;
+
+        case 'generationStopped':
+          isGenerating = false;
+          sendBtn.textContent = '➤';
+          sendBtn.classList.remove('stop');
+          activityBar.classList.remove('active');
+          if (currentStreamEl) {
+            const cursor = currentStreamEl.querySelector('.cursor');
+            if (cursor) cursor.remove();
+            currentStreamEl = null;
+          }
+          break;
+
+        case 'editorContext':
+          if (msg.context) {
+            const ws = msg.context.workspaceName ? '📁 <strong>' + msg.context.workspaceName + '</strong> ' : '';
+            if (msg.context.fileName) {
+              const selInfo = msg.context.hasSelection ? ' (' + msg.context.selectionLength + ' Zeichen)' : '';
+              contextPill.innerHTML = '<span>' + ws + '· 📄 ' + msg.context.fileName + ':' + msg.context.line + selInfo + '</span>';
+            } else {
+              contextPill.innerHTML = '<span>' + ws + '</span>';
+            }
+          } else {
+            contextPill.innerHTML = '<span>📁 Kein aktiver Workspace</span>';
+          }
+          break;
+      }
+    });
+  </script>
+</body>
+</html>

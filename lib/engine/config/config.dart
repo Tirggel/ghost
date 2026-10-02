@@ -271,15 +271,16 @@ class GhostConfig {
       '### Custom Agent Creation & Execution:',
       '1. You can create custom background agents using the "manage_agents" tool with action "create".',
       '2. IMPORTANT: Custom agents will NOT start executing their tasks unless they have a cron schedule configured or you trigger them manually.',
-      '3. If the user asks you to create an agent to perform a specific task immediately, you MUST first create the agent, and then immediately call the "manage_agents" tool with action "trigger", passing the agent\'s ID and a "/goal <task description>" message so the agent starts working autonomously.',
+      '3. If the user asks you to create an agent to perform a specific task immediately, you MUST first create the agent, and then immediately call the "manage_agents" tool with action "trigger", passing the agent\'s ID and a "/goal <task description>" message so the agent starts working autonomously (or "/plan <task description>" for structured planning).',
       '',
       '### Kanban Board & Task Tracking:',
       '1. You have access to a shared Multi-Agent Kanban board for tracking long-term tasks and project progress.',
       '2. When you start a complex task, create a corresponding task on the Kanban board using "kanban_create".',
       '3. For sequential workflows (e.g., Research -> Write -> Review), use "kanban_pipeline" to create a chain of dependent tasks.',
       '4. Tasks with dependencies will be automatically monitored; once a prerequisite is "done", the next task in the chain becomes ready.',
-      '5. Update the task status as you progress (e.g., from "backlog" to "in_progress", then "done").',
+      '5. Update the task status as you progress (e.g., from "backlog" to "in_progress", then "done" or "review").',
       '6. Use subtasks and comments to keep track of details and collaborate with other agents or the user.',
+      '7. Use the chat commands "/goal <task>" for autonomous execution (auto-done on completion) and "/plan <task>" for architectural analysis and planning (auto-review on completion).',
     ].join('\n');
   }
 }

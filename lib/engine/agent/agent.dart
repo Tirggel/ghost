@@ -97,21 +97,41 @@ class Agent {
       // which are not intended for the LLM.
       final fullHistory = history.where((m) => m.role != 'system').toList();
 
-      final isGoalMode = content.trim().startsWith('/goal') ||
-          fullHistory.any((m) => m.role == 'user' && m.content.trim().startsWith('/goal'));
+      final trimmedContent = content.trim();
+      final startsWithGoal = trimmedContent.startsWith('/goal');
+      final startsWithPlan = trimmedContent.startsWith('/plan');
 
+      // Check the latest slash command in conversation history to maintain active mode
+      final lastCommandMsg = fullHistory.reversed.firstWhere(
+        (m) {
+          final c = m.content.trim();
+          return m.role == 'user' && (c.startsWith('/goal') || c.startsWith('/plan'));
+        },
+        orElse: () => Message(role: '', content: '', timestamp: DateTime.now()),
+      );
+      final lastCommandContent = lastCommandMsg.content.trim();
+
+      bool isGoalMode = false;
+      bool isPlanMode = false;
       String activeGoal = '';
-      if (isGoalMode) {
-        if (content.trim().startsWith('/goal')) {
-          activeGoal = content.trim().substring(5).trim();
-        } else {
-          final firstGoalMsg = fullHistory.firstWhere(
-            (m) => m.role == 'user' && m.content.trim().startsWith('/goal'),
-            orElse: () => Message(role: 'user', content: content, timestamp: DateTime.now()),
-          );
-          final text = firstGoalMsg.content.trim();
-          activeGoal = text.startsWith('/goal') ? text.substring(5).trim() : text;
-        }
+      String activePlan = '';
+
+      if (startsWithGoal) {
+        isGoalMode = true;
+        activeGoal = trimmedContent.substring(5).trim();
+      } else if (startsWithPlan) {
+        isPlanMode = true;
+        activePlan = trimmedContent.substring(5).trim();
+      } else if (lastCommandContent.startsWith('/goal')) {
+        isGoalMode = true;
+        activeGoal = lastCommandContent.startsWith('/goal')
+            ? lastCommandContent.substring(5).trim()
+            : lastCommandContent;
+      } else if (lastCommandContent.startsWith('/plan')) {
+        isPlanMode = true;
+        activePlan = lastCommandContent.startsWith('/plan')
+            ? lastCommandContent.substring(5).trim()
+            : lastCommandContent;
       }
 
       final messages = shouldSendChatHistory
@@ -330,8 +350,29 @@ class Agent {
                 '6. Only produce your final response when the goal is fully achieved. Highlight what you did and show verification/testing results.'
             : '';
 
+        final planInstruction = isPlanMode
+            ? '\n[STRUCTURED PLANNING MODE ACTIVE (Google Antigravity 2.0)]\n'
+                '1. The user initiated this request with `/plan`. Your target for planning is: "$activePlan"\n'
+                '2. Your goal is to formulate a comprehensive, high-quality, step-by-step implementation plan and architectural roadmap BEFORE any code or files are modified.\n'
+                '3. YOU SHOULD INSPECT the project using read-only tools (read_file, list_dir, web_search, terminal/bash read-only commands) to ensure your plan reflects the real codebase, configurations, and dependencies.\n'
+                '4. STRICT READ-ONLY SAFETY: Do NOT modify any existing files, write new source files, run destructive terminal commands, or commit changes during planning mode.\n'
+                '5. Structure your plan clearly:\n'
+                '   - 🎯 **Objective & Scope**: Definition of done and key requirements.\n'
+                '   - 🔍 **Current State Analysis**: Existing architecture, affected files, and dependencies.\n'
+                '   - 🏗️ **Architecture & Design Decisions**: Approaches, trade-offs, and design patterns.\n'
+                '   - 📋 **Phased Implementation Roadmap**: Concrete numbered steps with exact file paths.\n'
+                '   - ⚠️ **Risks & Edge Cases**: What could go wrong and how to mitigate it.\n'
+                '   - 🧪 **Verification & Testing Strategy**: Specific tests and validation steps for each phase.\n'
+                '   - 📊 **Kanban Breakdown**: You may optionally use `kanban_pipeline` or `kanban_create`/`kanban_subtask` to register these tasks directly on the Kanban board.\n'
+                '6. Conclude by inviting the user to review the plan, suggest adjustments, or approve execution (e.g. by replying with `/goal`).'
+            : '';
+
+        final workspaceInstruction =
+            '\n[ACTIVE WORKSPACE DIRECTORY]: $workspaceDir\n'
+            'All local file operations (read_file, write_file, list_dir) and terminal/bash commands are executed within this directory.\n';
+
         final dynamicSystemPrompt =
-            '$systemPrompt\n\n[SYSTEM: The current date and time is $timeStr]$contextString$memoryInstruction$vaultInstruction$focusInstruction$toolUseInstruction$goalInstruction\n';
+            '$systemPrompt\n\n[SYSTEM: The current date and time is $timeStr]$workspaceInstruction$contextString$memoryInstruction$vaultInstruction$focusInstruction$toolUseInstruction$goalInstruction$planInstruction\n';
 
         // For local providers (Ollama, vLLM, LM Studio), limit the tool set
         // to core tools only. Small models (2–4B) cannot reliably select from
@@ -369,8 +410,8 @@ class Agent {
             .where((t) => t.name.isNotEmpty)
             .toList();
 
-        // For pure greetings outside goal mode, skip tools entirely so the model responds instantly
-        final activeTools = (isShortGreeting && !isGoalMode)
+        // For pure greetings outside goal and plan modes, skip tools entirely so the model responds instantly
+        final activeTools = (isShortGreeting && !isGoalMode && !isPlanMode)
             ? <ToolDefinition>[]
             : (isLocalProvider
                 ? allTools.where((t) => _localCoreTools.contains(t.name)).toList()
@@ -396,8 +437,10 @@ class Agent {
                 )
                 .trim();
 
-            // Strip `/goal` prefix if present
+            // Strip `/goal` or `/plan` prefix if present
             if (cleanContent.startsWith('/goal')) {
+              cleanContent = cleanContent.substring(5).trim();
+            } else if (cleanContent.startsWith('/plan')) {
               cleanContent = cleanContent.substring(5).trim();
             }
 

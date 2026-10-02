@@ -82,6 +82,7 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
 - **[STT & TTS Setup](docs/STT_TTS_SETUP_DE.md)**: Konfiguriere lokale Spracherkennung und -synthese.
 - **[Multi-Channel Setup](docs/CHANNELS_DE.md)**: Detaillierte Anleitung für Telegram, Discord, WhatsApp & Co.
 - **[RPC API Referenz](docs/RPC_API_REFERENCE_DE.md)**: Dokumentation der JSON-RPC 2.0 Schnittstelle.
+- **[VS Code Extension](docs/VSCODE_EXTENSION_DE.md)**: Offizielle Erweiterung für Visual Studio Code mit Seitenleisten-Chat und Editor-Aktionen.
 - **[Kanban & Task-Orchestrierung](docs/KANBAN_ORCHESTRATION_de.md)**: Funktionsweise des Multi-Agenten-Kanban und automatisierter Workflows.
 - **[Design-System-Richtlinien](DESIGN.md)**: Spezifikationen und Anpassungshandbuch für das visuelle Theme („The Monolith“).
 
@@ -99,6 +100,7 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
     - **Abhängigkeiten**: Aufgaben können von anderen Aufgaben abhängen (`dependsOnIds`), was komplexe Projekt-Workflows ermöglicht.
     - **Automatisierte Ausführung**: Der Hintergrund-`TaskOrchestrator` verschiebt Aufgaben automatisch vom "Backlog" nach "To Do", sobald die Voraussetzungen erfüllt sind.
     - **Zielorientierte Ausführung (`/goal`)**: Nachrichten, die mit `/goal` beginnen, erstellen automatisch eine Kanban-Aufgabe. Der Agent startet eine autonome Schleife mit mehreren Schritten zur Erreichung des Ziels und aktualisiert den Status sowie die Kommentare. Nach erfolgreichem Abschluss wird die Aufgabe auf `done` (erledigt) gesetzt, bei Fehlern auf `review` (Überprüfung) mit detaillierten Fehlerspuren.
+    - **Strukturierter Planungsmodus (`/plan`)**: Nachrichten, die mit `/plan` beginnen, erstellen eine Kanban-Aufgabe und weisen den Agenten an, eine schreibgeschützte Architekturanalyse und eine schrittweise Roadmap zu erstellen, ohne den Codebestand vorab zu verändern. Nach Fertigstellung wechselt die Aufgabe in den Status `review` (Überprüfung) zur Begutachtung durch den Nutzer oder zur `/goal`-Ausführung.
 - **Memory Engine (RAG & Standard)**: Erweitere das Wissen deines Agenten durch lokale Vektor- und Stichwortspeicher.
     - **Standard Memory**: Stichwortbasiertes, verschlüsseltes lokales Gedächtnis (Hive). Informationen werden sicher gespeichert und über exakte Treffer abgerufen.
     - **RAG Memory (ObjectBox)**: Retrieval-Augmented Generation mit semantischer Vektorsuche, betrieben durch eine hochleistungsfähige lokale ObjectBox-Datenbank.
@@ -115,6 +117,11 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
     - **Outlook Mail**: E-Mails lesen, suchen und **senden** via Microsoft Graph.
     - **Outlook Kalender**: Termine auflisten und **neue Events hinzufügen**.
     - **OneDrive**: Dateien in deinem Cloud-Speicher suchen und auflisten.
+- **Visual Studio Code Integration**:
+    - **Rechte Seitenleiste**: Nahtlose Einbettung als eigener Tab in der Auxiliary Bar neben Antigravity und Chat.
+    - **Dynamischer Workspace**: Ghost arbeitet direkt im geöffneten VS Code Projektverzeichnis (`workspaceDir`) und kann Projektdateien lesen, erstellen und ausführen.
+    - **Editor-Aktionen**: Rechtsklick-Menü (`👻 Ghost AI`) für Code-Erklärung, Refactoring, Unit-Test-Generierung und automatische Linter-Fehlerbehebung.
+    - **Echtzeit-Streaming**: Live-Token-Streaming (`agent.stream`) und Aktivitätsanzeigen für Tool-Ausführungen (`agent.activity`).
 - **E-Mail-Integration**:
     - **IMAP/SMTP-Support**: Konfiguriere mehrere Standard-E-Mail-Konten direkt in den Einstellungen (verschlüsselte Speicherung der Zugangsdaten).
     - **Hintergrund-Synchronisierung**: Der Hintergrund-`EmailPoller` synchronisiert Postfächer automatisch und speichert E-Mails lokal zwischen.

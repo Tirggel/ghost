@@ -26,6 +26,75 @@ class ChatInputField extends ConsumerStatefulWidget {
 
 class _ChatInputFieldState extends ConsumerState<ChatInputField> {
   final List<PlatformFile> _attachments = [];
+  bool _showSlashMenu = false;
+  String _slashFilter = '';
+
+  static const _slashCommands = [
+    (
+      command: '/goal',
+      title: '/goal <Ziel>',
+      desc: 'Autonome Zielerreichung mit automatischem Kanban-Task (Done bei Erfolg)',
+      icon: Icons.track_changes_rounded,
+      color: Colors.amber,
+    ),
+    (
+      command: '/plan',
+      title: '/plan <Vorhaben>',
+      desc: 'Strukturierte Analyse & Implementierungs-Roadmap (Review im Kanban)',
+      icon: Icons.playlist_add_check_rounded,
+      color: Colors.lightBlueAccent,
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant ChatInputField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onTextChanged);
+      widget.controller.addListener(_onTextChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    final text = widget.controller.text;
+    if (text.startsWith('/') && !text.contains(' ')) {
+      if (!_showSlashMenu || _slashFilter != text) {
+        setState(() {
+          _showSlashMenu = true;
+          _slashFilter = text.toLowerCase();
+        });
+      }
+    } else {
+      if (_showSlashMenu) {
+        setState(() {
+          _showSlashMenu = false;
+          _slashFilter = '';
+        });
+      }
+    }
+  }
+
+  void _selectSlashCommand(String cmd) {
+    widget.controller.text = '$cmd ';
+    widget.controller.selection = TextSelection.fromPosition(
+      TextPosition(offset: widget.controller.text.length),
+    );
+    setState(() {
+      _showSlashMenu = false;
+    });
+  }
 
   void _toggleListening() {
     final sttState = ref.read(sttProvider);
@@ -94,6 +163,12 @@ class _ChatInputFieldState extends ConsumerState<ChatInputField> {
     final caps = capsAsync.value ?? ModelCapabilities.textOnly();
     final sttState = ref.watch(sttProvider);
 
+    final filteredCommands = _slashCommands.where((cmd) {
+      return _slashFilter.isEmpty ||
+          cmd.command.toLowerCase().startsWith(_slashFilter) ||
+          _slashFilter == '/';
+    }).toList();
+
     return Container(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -152,6 +227,75 @@ class _ChatInputFieldState extends ConsumerState<ChatInputField> {
                     ),
                   );
                 },
+              ),
+            ),
+          if (_showSlashMenu && filteredCommands.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: filteredCommands.map((cmd) {
+                    return InkWell(
+                      onTap: () => _selectSlashCommand(cmd.command),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: cmd.color.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(cmd.icon, size: 18, color: cmd.color),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    cmd.title,
+                                    style: const TextStyle(
+                                      color: AppColors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    cmd.desc,
+                                    style: const TextStyle(
+                                      color: AppColors.textDim,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
             ),
           Container(

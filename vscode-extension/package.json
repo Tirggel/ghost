@@ -1,0 +1,190 @@
+{
+  "name": "ghost-vscode",
+  "displayName": "Ghost AI Assistant",
+  "description": "Integration des persönlichen KI-Assistenten Ghost in Visual Studio Code mit Live-Streaming, Chat und Code-Aktionen.",
+  "version": "0.1.0",
+  "publisher": "ghost-ai",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tirggel/ghost"
+  },
+  "icon": "resources/ghost.png",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "ghost",
+    "ai",
+    "copilot",
+    "assistant",
+    "agent",
+    "llm",
+    "kanban"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "auxiliarybar": [
+        {
+          "id": "ghost-sidebar-view",
+          "title": "Ghost",
+          "icon": "resources/ghost-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "ghost-sidebar-view": [
+        {
+          "type": "webview",
+          "id": "ghost.chatView",
+          "name": "Ghost Chat",
+          "visibility": "visible"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "ghost.connect",
+        "title": "Ghost: Mit Gateway verbinden",
+        "category": "Ghost",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "ghost.disconnect",
+        "title": "Ghost: Verbindung trennen",
+        "category": "Ghost",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "ghost.openChat",
+        "title": "Ghost: Chat öffnen",
+        "category": "Ghost"
+      },
+      {
+        "command": "ghost.newSession",
+        "title": "Ghost: Neue Sitzung starten",
+        "category": "Ghost",
+        "icon": "$(add)"
+      },
+      {
+        "command": "ghost.explainSelection",
+        "title": "Ghost: Code erklären",
+        "category": "Ghost"
+      },
+      {
+        "command": "ghost.refactorSelection",
+        "title": "Ghost: Code refaktorisieren",
+        "category": "Ghost"
+      },
+      {
+        "command": "ghost.generateTests",
+        "title": "Ghost: Unit-Tests generieren",
+        "category": "Ghost"
+      },
+      {
+        "command": "ghost.fixErrors",
+        "title": "Ghost: Linter-/Compiler-Fehler beheben",
+        "category": "Ghost"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "ghost.newSession",
+          "when": "view == ghost.chatView",
+          "group": "navigation"
+        },
+        {
+          "command": "ghost.connect",
+          "when": "view == ghost.chatView"
+        },
+        {
+          "command": "ghost.disconnect",
+          "when": "view == ghost.chatView"
+        }
+      ],
+      "editor/context": [
+        {
+          "submenu": "ghost.contextSubmenu",
+          "group": "1_modification"
+        }
+      ],
+      "ghost.contextSubmenu": [
+        {
+          "command": "ghost.explainSelection",
+          "group": "1_code"
+        },
+        {
+          "command": "ghost.refactorSelection",
+          "group": "2_code"
+        },
+        {
+          "command": "ghost.generateTests",
+          "group": "3_code"
+        },
+        {
+          "command": "ghost.fixErrors",
+          "group": "4_code"
+        }
+      ]
+    },
+    "submenus": [
+      {
+        "id": "ghost.contextSubmenu",
+        "label": "👻 Ghost AI"
+      }
+    ],
+    "configuration": {
+      "title": "Ghost AI Assistant",
+      "properties": {
+        "ghost.gatewayUrl": {
+          "type": "string",
+          "default": "ws://localhost:3000",
+          "description": "WebSocket-URL des Ghost Gateways."
+        },
+        "ghost.authToken": {
+          "type": "string",
+          "default": "",
+          "description": "Optionaler Authentifizierungs-Token für das Gateway. Falls leer, versucht Ghost die Verbindung ohne Token oder liest den lokalen Client-Token aus."
+        },
+        "ghost.autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatisch beim Start von VS Code mit dem Ghost Gateway verbinden."
+        },
+        "ghost.syncWithActiveEditor": {
+          "type": "boolean",
+          "default": true,
+          "description": "Aktiven Dateipfad und Cursor-Kontext automatisch für Chat-Prompts bereitstellen."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "build": "node esbuild.js --production",
+    "bundle": "node esbuild.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.90.0",
+    "@types/ws": "^8.5.10",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

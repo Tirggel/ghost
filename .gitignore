@@ -82,6 +82,8 @@ app.*.map.json
 dist/
 download/
 ghost-releases/
+node_modules/
+out/
 
 # Large assets and models
 scripts/models/
