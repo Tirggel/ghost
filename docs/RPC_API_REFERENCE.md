@@ -392,3 +392,25 @@ Broadcasted when a background error occurs (e.g., channel connection failure).
 ```json
 { "message": "...", "channelType": "..." }
 ```
+
+---
+
+## 🤖 Agent Client Protocol (ACP) & Antigravity
+
+Ghost supports the standard **Agent Client Protocol (ACP)** for AI coding environments (Google Antigravity, Zed, VS Code).
+
+### Endpoints
+* **WebSocket**: `ws://<host>:<port>/acp`
+* **STDIO**: `dart bin/ghost_acp.dart --workspace <dir>`
+
+### Core ACP Methods
+* `initialize`: Protocol capability negotiation and client/agent handshake.
+* `authenticate`: Session token verification (if enabled).
+* `session/new` / `session/load`: Manage coding sessions.
+* `session/prompt`: Prompt the coding agent with live edit streaming.
+* `session/cancel`: Abort current generation.
+* `session/review_response`: Submit user decision (`accept` or `reject`) for Guarded Autopilot.
+* `session/set_autopilot_mode`: Switch between `reviewMode` and `autoAccept`.
+* `context/providers` & `context/query`: Query Workspace-RAG context.
+
+For detailed request/response schemas and examples, see the **[Google Antigravity & ACP Guide](ANTIGRAVITY_ACP_EN.md)**.

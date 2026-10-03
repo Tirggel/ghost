@@ -14,7 +14,24 @@ Integrates Ghost directly into your developer environment — as a secondary sid
 - **Dynamic Workspace Detection**: Automatically identifies the open VS Code workspace folder (`workspaceDir`) and sets it for filesystem tools (`read_file`, `write_file`, `list_dir`) and terminal commands (`bash`).
 - **Codeblock Actions**: Every generated code block provides 1-click buttons for **"Insert into Editor"** and **"Copy"**.
 - **Session Management**: Manage unlimited chats, switch between sessions seamlessly, and view full history.
+- **Google Antigravity IDE Compatibility**: Fully optimized for Google Antigravity IDE (VS Code Fork).
+- **Guarded Autopilot**: Interactive diff inspection (`reviewMode`) before applying file patches or terminal executions with approval dialogs (`Accept` / `Reject`).
+- **Workspace & Kanban Synchronization**: Automatically syncs saved files and Antigravity plan steps with the Ghost backend.
 - **Auto-Token Discovery**: Automatically discovers the local Gateway on `ws://localhost:3000` and retrieves the authorization token via the client-token endpoint.
+
+---
+
+## 🛡️ Guarded Autopilot & Antigravity
+
+The extension supports the safety levels of the Google Antigravity platform:
+* **`reviewMode` (Default):** Modifications to workspace files (`apply_patch`, `edit_file`) and terminal commands are intercepted and displayed as an in-editor diff review. The user must explicitly approve or reject the change.
+* **`autoAccept`:** Autonomous mode where changes are applied directly.
+
+Commands:
+* `Ctrl+Shift+P` → **`Ghost: Toggle Autopilot Mode (reviewMode / autoAccept)`**
+* `Ctrl+Shift+P` → **`Ghost: Force Sync Workspace with Ghost State`**
+
+For complete architecture and CLI details, see **[Google Antigravity & ACP Guide](ANTIGRAVITY_ACP_EN.md)**.
 
 ---
 
@@ -67,3 +84,7 @@ Then reload the VS Code window (`Ctrl+Shift+P` → **"Developer: Reload Window"*
 | `ghost.authToken` | `""` | Optional token (auto-discovered if empty). |
 | `ghost.autoConnect` | `true` | Automatically connect on VS Code startup. |
 | `ghost.syncWithActiveEditor` | `true` | Provide active filename and cursor context to prompts. |
+| `ghost.antigravity.enabled` | `true` | Enable Google Antigravity & ACP integration. |
+| `ghost.antigravity.autopilotMode` | `"reviewMode"` | Autopilot safety mode (`reviewMode` or `autoAccept`). |
+| `ghost.antigravity.syncKanban` | `true` | Sync Antigravity tasks with Ghost Kanban board. |
+| `ghost.antigravity.syncWorkspace` | `true` | Sync file edits and saves live with Ghost state. |

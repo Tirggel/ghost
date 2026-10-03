@@ -12,7 +12,8 @@ import 'package:flat_buffers/flat_buffers.dart' as fb;
 import 'package:objectbox/internal.dart'
     as obx_int; // generated code can access "internal" functionality
 import 'package:objectbox/objectbox.dart' as obx;
-import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
+import 'engine/infra/objectbox_flutter_libs_stub.dart'
+    if (dart.library.ui) 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
 import 'engine/agent/rag_memory.dart';
 

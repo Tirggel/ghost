@@ -302,6 +302,12 @@ export class GhostGatewayClient extends EventEmitter {
       case "gateway.log":
         this.emit("log", params);
         break;
+      case "session/update":
+        if (params?.type === "review_request") {
+          this.emit("review_request", params.data);
+        }
+        this.emit("sessionUpdate", params);
+        break;
     }
   }
 

@@ -30,6 +30,8 @@ class FileSystemTools {
     registry.register(WriteFileTool());
     registry.register(ListDirTool());
     registry.register(DownloadTool());
+    registry.register(ApplyPatchTool());
+    registry.register(EditFileTool());
   }
 }
 
@@ -237,6 +239,216 @@ class ListDirTool extends Tool {
       return ToolResult(output: items.isEmpty ? '(empty)' : items);
     } catch (e) {
       return ToolResult.error('Failed to list directory: $e');
+    }
+  }
+}
+
+/// Tool to apply a search/replace diff patch or unified patch to a file.
+class ApplyPatchTool extends Tool {
+  @override
+  String get name => 'apply_patch';
+
+  @override
+  String get description =>
+      'Apply a patch or search/replace block to a file. '
+      'Can be in unified diff format or using SEARCH/REPLACE block markers:\n'
+      '<<<<<<< SEARCH\n'
+      'old content\n'
+      '=======\n'
+      'new content\n'
+      '>>>>>>> REPLACE';
+
+  @override
+  Map<String, dynamic> get inputSchema => {
+        'type': 'object',
+        'properties': {
+          'path': {
+            'type': 'string',
+            'description': 'The relative path to the file to patch.',
+          },
+          'patch': {
+            'type': 'string',
+            'description': 'The patch or search/replace block.',
+          },
+        },
+        'required': ['path', 'patch'],
+      };
+
+  @override
+  String getLogSummary(Map<String, dynamic> input) => input['path'] as String;
+
+  @override
+  Future<ToolResult> execute(
+      Map<String, dynamic> input, ToolContext context) async {
+    final relPath = input['path'] as String;
+    final patch = input['patch'] as String;
+    final safePath =
+        FileSystemTools.resolveSafePath(context.workspaceDir, relPath);
+    if (safePath == null) {
+      return ToolResult.error(
+          'Access denied: Path "$relPath" is outside workspace directory.');
+    }
+
+    final file = File(safePath);
+    if (!await file.exists()) {
+      return ToolResult.error('File not found: $relPath');
+    }
+
+    try {
+      final originalContent = await file.readAsString();
+
+      // Check for SEARCH/REPLACE block format
+      final searchReplacePattern = RegExp(
+        r'<<<<<<<\s*SEARCH\r?\n([\s\S]*?)\r?\n=======\r?\n([\s\S]*?)\r?\n>>>>>>>\s*REPLACE',
+        multiLine: true,
+      );
+
+      final matches = searchReplacePattern.allMatches(patch).toList();
+      if (matches.isNotEmpty) {
+        String updated = originalContent;
+        int appliedCount = 0;
+
+        for (final match in matches) {
+          final searchBlock = match.group(1)!;
+          final replaceBlock = match.group(2)!;
+
+          if (!updated.contains(searchBlock)) {
+            return ToolResult.error(
+                'Patch failed: Could not find target SEARCH block in $relPath.');
+          }
+
+          updated = updated.replaceFirst(searchBlock, replaceBlock);
+          appliedCount++;
+        }
+
+        await file.writeAsString(updated);
+        return ToolResult(
+          output: 'Successfully applied $appliedCount patch block(s) to $relPath.',
+          metadata: {'blocksApplied': appliedCount, 'path': relPath},
+        );
+      }
+
+      // Simple unified diff parsing (fallback)
+      final lines = patch.split('\n');
+      final searchLines = <String>[];
+      final replaceLines = <String>[];
+
+      for (final line in lines) {
+        if (line.startsWith('-') && !line.startsWith('---')) {
+          searchLines.add(line.substring(1));
+        } else if (line.startsWith('+') && !line.startsWith('+++')) {
+          replaceLines.add(line.substring(1));
+        } else if (line.startsWith(' ')) {
+          searchLines.add(line.substring(1));
+          replaceLines.add(line.substring(1));
+        }
+      }
+
+      if (searchLines.isNotEmpty) {
+        final searchBlock = searchLines.join('\n');
+        final replaceBlock = replaceLines.join('\n');
+
+        if (originalContent.contains(searchBlock)) {
+          final updated =
+              originalContent.replaceFirst(searchBlock, replaceBlock);
+          await file.writeAsString(updated);
+          return ToolResult(
+            output: 'Successfully applied unified diff to $relPath.',
+            metadata: {'path': relPath},
+          );
+        }
+      }
+
+      return ToolResult.error(
+          'Could not parse or match patch for $relPath. Ensure SEARCH block matches exact lines.');
+    } catch (e) {
+      return ToolResult.error('Failed to apply patch: $e');
+    }
+  }
+}
+
+/// Tool to perform an exact contiguous string or block replacement in a file.
+class EditFileTool extends Tool {
+  @override
+  String get name => 'edit_file';
+
+  @override
+  String get description =>
+      'Edit a file by replacing a contiguous target string with replacement text.';
+
+  @override
+  Map<String, dynamic> get inputSchema => {
+        'type': 'object',
+        'properties': {
+          'path': {
+            'type': 'string',
+            'description': 'The relative path to the file to edit.',
+          },
+          'target_content': {
+            'type': 'string',
+            'description': 'The exact character sequence to be replaced.',
+          },
+          'replacement_content': {
+            'type': 'string',
+            'description': 'The replacement string.',
+          },
+          'allow_multiple': {
+            'type': 'boolean',
+            'description':
+                'Whether to replace multiple occurrences (default: false).',
+          },
+        },
+        'required': ['path', 'target_content', 'replacement_content'],
+      };
+
+  @override
+  String getLogSummary(Map<String, dynamic> input) => input['path'] as String;
+
+  @override
+  Future<ToolResult> execute(
+      Map<String, dynamic> input, ToolContext context) async {
+    final relPath = input['path'] as String;
+    final targetContent = input['target_content'] as String;
+    final replacementContent = input['replacement_content'] as String;
+    final allowMultiple = input['allow_multiple'] as bool? ?? false;
+
+    final safePath =
+        FileSystemTools.resolveSafePath(context.workspaceDir, relPath);
+    if (safePath == null) {
+      return ToolResult.error(
+          'Access denied: Path "$relPath" is outside workspace directory.');
+    }
+
+    final file = File(safePath);
+    if (!await file.exists()) {
+      return ToolResult.error('File not found: $relPath');
+    }
+
+    try {
+      final content = await file.readAsString();
+      if (!content.contains(targetContent)) {
+        return ToolResult.error(
+            'Target content not found in $relPath. Please verify the exact lines.');
+      }
+
+      final occurrences = targetContent.allMatches(content).length;
+      if (occurrences > 1 && !allowMultiple) {
+        return ToolResult.error(
+            'Found $occurrences occurrences of target content in $relPath, but allow_multiple was false.');
+      }
+
+      final updated = allowMultiple
+          ? content.replaceAll(targetContent, replacementContent)
+          : content.replaceFirst(targetContent, replacementContent);
+
+      await file.writeAsString(updated);
+      return ToolResult(
+        output:
+            'Successfully edited $relPath (replaced $occurrences occurrence(s)).',
+        metadata: {'path': relPath, 'occurrences': occurrences},
+      );
+    } catch (e) {
+      return ToolResult.error('Failed to edit file: $e');
     }
   }
 }

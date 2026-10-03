@@ -118,6 +118,18 @@
         "command": "ghost.fixErrors",
         "title": "Ghost: Linter-/Compiler-Fehler beheben",
         "category": "Ghost"
+      },
+      {
+        "command": "ghost.toggleAutopilotMode",
+        "title": "Ghost: Autopilot-Modus umschalten (Review vs. Auto-Accept)",
+        "category": "Ghost",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "ghost.syncWorkspace",
+        "title": "Ghost: Workspace-RAG synchronisieren",
+        "category": "Ghost",
+        "icon": "$(sync)"
       }
     ],
     "menus": {
@@ -189,6 +201,27 @@
           "type": "boolean",
           "default": true,
           "description": "Aktiven Dateipfad und Cursor-Kontext automatisch für Chat-Prompts bereitstellen."
+        },
+        "ghost.antigravity.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Google Antigravity & ACP-Integration aktivieren."
+        },
+        "ghost.antigravity.autopilotMode": {
+          "type": "string",
+          "enum": ["reviewMode", "autoAccept"],
+          "default": "reviewMode",
+          "description": "Guarded Autopilot Modus: 'reviewMode' pausiert bei Datei- und Terminaländerungen für ein Nutzer-Review. 'autoAccept' führt Aktionen vollautonom aus."
+        },
+        "ghost.antigravity.syncKanban": {
+          "type": "boolean",
+          "default": true,
+          "description": "Bidirektionale Synchronisation von Agent-Aufgaben mit dem Ghost-Kanban-Board aktivieren."
+        },
+        "ghost.antigravity.syncWorkspace": {
+          "type": "boolean",
+          "default": true,
+          "description": "Workspace-Dateien beim Speichern automatisch mit dem Ghost Workspace-RAG synchronisieren."
         }
       }
     }

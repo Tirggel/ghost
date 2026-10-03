@@ -25,6 +25,7 @@ Ghost bietet eine moderne, integrierte Architektur:
 - **Kanban & Task-Orchestrierung**: Integriertes Multi-Agenten-Kanban-System für automatisiertes Aufgabenmanagement, Abhängigkeitsverfolgung (`dependsOnIds`) und autonome Workflow-Übergänge.
 - **Design Systems**: Zentrale Theme-Verwaltung mit individuellem Branding, Markdown-basiertem Styling ("The Monolith") und einheitlicher Token-Verteilung.
 - **Memory Engine**: Dual-Modus-Speicher mit Hive (Standard) und ObjectBox (RAG) für sicheres, lokales Wissen.
+- **Google Antigravity & ACP**: Nativer Agent Client Protocol (ACP) Adapter über STDIO und WebSocket, der Ghost als autonomen Coding-Agenten mit Antigravity CLI (`agy`), der Antigravity IDE und Zed verbindet.
 
 ---
 
@@ -85,6 +86,7 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
 - **[VS Code Extension](docs/VSCODE_EXTENSION_DE.md)**: Offizielle Erweiterung für Visual Studio Code mit Seitenleisten-Chat und Editor-Aktionen.
 - **[Chrome Extension](docs/CHROME_EXTENSION_DE.md)**: Offizielle Erweiterung für Google Chrome mit Side Panel Chat, Web-Kontext und Kontextmenü-Aktionen.
 - **[Kanban & Task-Orchestrierung](docs/KANBAN_ORCHESTRATION_de.md)**: Funktionsweise des Multi-Agenten-Kanban und automatisierter Workflows.
+- **[Google Antigravity & ACP Anleitung](docs/ANTIGRAVITY_ACP_DE.md)**: Ghost mit Google Antigravity CLI (`agy`), Zed und Antigravity IDE mit Guarded Autopilot verbinden.
 - **[Design-System-Richtlinien](DESIGN.md)**: Spezifikationen und Anpassungshandbuch für das visuelle Theme („The Monolith“).
 
 
@@ -118,9 +120,17 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
     - **Outlook Mail**: E-Mails lesen, suchen und **senden** via Microsoft Graph.
     - **Outlook Kalender**: Termine auflisten und **neue Events hinzufügen**.
     - **OneDrive**: Dateien in deinem Cloud-Speicher suchen und auflisten.
-- **Visual Studio Code Integration**:
+- **Google Antigravity & ACP (Agent Client Protocol)**:
+    - **Standalone ACP Server (`bin/ghost_acp.dart`)**: Headless STDIO- und WebSocket-JSON-RPC 2.0 Server, der direkt von Google Antigravity CLI (`agy`), Zed und Editoren gestartet werden kann.
+    - **Guarded Autopilot**: Antigravity-konforme Bestätigungsstufen (`reviewMode` vs. `autoAccept`) für Datei-Patches und Terminalausführungen.
+    - **Workspace-RAG Context Provider**: ObjectBox Vektorsuche als ACP Context-Provider (`ghost-rag`) registriert, um Codebasis-Kontext direkt in Prompts einzuspeisen.
+    - **Kanban-to-Task Bridge**: Übersetzt Antigravity-Mehrschritt-Pläne nahtlos in verknüpfte Ghost-Kanban-Pipelines mit bidirektionaler Statussynchronisation.
+    - **Registrierte Tools**: Exportiert Ghost-Fähigkeiten (`ghost_apply_patch`, `ghost_workspace_rag`, `ghost_kanban_pipeline`, `ghost_vault_keys`, `ghost_exec`, `ghost_web_search`) als native Antigravity-Tools.
+- **Visual Studio Code & Google Antigravity IDE Integration**:
     - **Rechte Seitenleiste**: Nahtlose Einbettung als eigener Tab in der Auxiliary Bar neben Antigravity und Chat.
-    - **Dynamischer Workspace**: Ghost arbeitet direkt im geöffneten VS Code Projektverzeichnis (`workspaceDir`) und kann Projektdateien lesen, erstellen und ausführen.
+    - **Antigravity IDE Kompatibilität**: Vollständig kompatibel mit der Google Antigravity IDE (VS Code Fork) und Standard VS Code.
+    - **Guarded Autopilot Integration**: Review-Modus-Dialoge mit integriertem Diff-Viewer und Bestätigungs-Gating vor Dateiänderungen.
+    - **Dynamischer Workspace Sync**: Verzögerungsfreie Dateisynchronisation und Statusabgleich mit Ghosts internem State.
     - **Editor-Aktionen**: Rechtsklick-Menü (`👻 Ghost AI`) für Code-Erklärung, Refactoring, Unit-Test-Generierung und automatische Linter-Fehlerbehebung.
     - **Echtzeit-Streaming**: Live-Token-Streaming (`agent.stream`) und Aktivitätsanzeigen für Tool-Ausführungen (`agent.activity`).
 - **E-Mail-Integration**:

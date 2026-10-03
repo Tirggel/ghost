@@ -14,7 +14,24 @@ Sie integriert Ghost direkt in deine Entwicklungsumgebung – als Seitenleisten-
 - **Dynamische Workspace-Erkennung**: Erkennt automatisch den aktuell in VS Code geöffneten Projektordner (`workspaceDir`) und setzt ihn für Dateisystem-Tools (`read_file`, `write_file`, `list_dir`) und Terminal-Befehle (`bash`).
 - **Codeblock-Aktionen**: Jeder generierte Codeblock bietet 1-Klick-Buttons für **"In Editor einfügen"** und **"Kopieren"**.
 - **Sitzungsverwaltung**: Beliebig viele Chats verwalten, nahtlos zwischen Sitzungen wechseln und Historie abrufen.
+- **Google Antigravity IDE Kompatibilität**: Vollständig optimiert für die Google Antigravity IDE (VS Code Fork).
+- **Guarded Autopilot**: Interaktive Diff-Prüfung (`reviewMode`) vor dem Ausführen von Datei-Patches und Terminalbefehlen mit Genehmigungs-Dialog (`Accept` / `Reject`).
+- **Workspace- & Kanban-Synchronisation**: Automatische Synchronisation gespeicherter Projektdateien und Antigravity-Plan-Schritte mit dem Ghost-Backend.
 - **Auto-Token-Discovery**: Erkennt automatisch das lokale Gateway auf `ws://localhost:3000` und liest bei Bedarf den Autorisierungs-Token über den lokalen Endpunkt aus.
+
+---
+
+## 🛡️ Guarded Autopilot & Antigravity
+
+Die Erweiterung unterstützt die Sicherheitsstufen der Google Antigravity Plattform:
+* **`reviewMode` (Standard):** Änderungen an Workspace-Dateien (`apply_patch`, `edit_file`) sowie Terminal-Befehle werden abgefangen und als Diff-Review im Editor angezeigt. Der Benutzer muss die Änderung bestätigen.
+* **`autoAccept`:** Autonomer Modus, der Aktionen sofort ausführt.
+
+Befehl zum Umschalten:
+* `Ctrl+Shift+P` → **`Ghost: Toggle Autopilot Mode (reviewMode / autoAccept)`**
+* `Ctrl+Shift+P` → **`Ghost: Force Sync Workspace with Ghost State`**
+
+Ausführliche Informationen siehe **[Google Antigravity & ACP Anleitung](ANTIGRAVITY_ACP_DE.md)**.
 
 ---
 
@@ -68,6 +85,10 @@ Danach in VS Code das Fenster kurz neu laden (`Ctrl+Shift+P` → **"Developer: R
 | `ghost.authToken` | `""` | Optionaler Token (wird standardmäßig automatisch ermittelt). |
 | `ghost.autoConnect` | `true` | Automatisch beim Start von VS Code verbinden. |
 | `ghost.syncWithActiveEditor` | `true` | Aktiven Dateinamen und Cursor-Kontext an Prompts übergeben. |
+| `ghost.antigravity.enabled` | `true` | Google Antigravity & ACP Integration aktivieren. |
+| `ghost.antigravity.autopilotMode` | `"reviewMode"` | Autopilot-Sicherheitsmodus (`reviewMode` oder `autoAccept`). |
+| `ghost.antigravity.syncKanban` | `true` | Antigravity-Tasks mit Ghost Kanban-Board synchronisieren. |
+| `ghost.antigravity.syncWorkspace` | `true` | Dateiänderungen live an Ghost melden. |
 
 ---
 

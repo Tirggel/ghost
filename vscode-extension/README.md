@@ -21,12 +21,18 @@ Markiere Code in einer beliebigen Datei und wähle im Kontextmenü **👻 Ghost 
 - **Unit-Tests generieren**: Schreibt vollständige Tests inklusive Randfälle und Fehlerbehandlung.
 - **Linter-/Compiler-Fehler beheben**: Liest automatisch die VS Code Diagnostics (Fehlermeldungen) des Bereichs aus und weist Ghost an, diese zu beheben.
 
-### 3. 🎯 Slash-Commands
+### 3. 🛡️ Google Antigravity & Guarded Autopilot
+- **Antigravity IDE Kompatibilität**: Vollständig optimiert für die Google Antigravity IDE (VS Code Fork) und Standard-VS-Code.
+- **Review-Mode (Guarded Autopilot)**: Bei Dateiänderungen (`apply_patch`, `edit_file`) oder Terminalbefehlen erscheint ein interaktiver Genehmigungsdialog mit Diff-Ansicht (`Accept` / `Reject`).
+- **Autopilot-Modus umschalten**: Schnelles Umschalten zwischen `reviewMode` und `autoAccept` über den Befehl `Ghost: Toggle Autopilot Mode`.
+- **Bidirektionaler Workspace & Kanban Sync**: Datei-Speicherungen und Task-Fortschritte werden live mit dem integrierten Ghost-Kanban synchronisiert.
+
+### 4. 🎯 Slash-Commands
 - `/plan <Ziel>`: Erstellt eine strukturierte Architekturanalyse und legt eine Kanban-Aufgabe im Ghost-Backend an.
 - `/goal <Ziel>`: Startet eine autonome Mehrschritt-Aktion zur Erreichung eines Ziels.
 - `/explain`, `/refactor`, `/tests`: Schnelle Vorlagen für gängige Coding-Aufgaben.
 
-### 4. 📊 Statusleiste & Auto-Discovery
+### 5. 📊 Statusleiste & Auto-Discovery
 - Live-Status in der VS Code Fußleiste:
   - `$(pass-filled) Ghost`: Bereit und verbunden.
   - `$(loading~spin) Ghost: Denkt...`: Führt Berechnungen oder Tools aus.
@@ -69,3 +75,7 @@ Die erzeugte `.vsix`-Datei kann anschließend direkt in VS Code via:
 | `ghost.authToken` | `""` | Optionaler Auth-Token (wird bei leerem Wert automatisch ermittelt) |
 | `ghost.autoConnect` | `true` | Automatisch beim Start von VS Code mit Ghost verbinden |
 | `ghost.syncWithActiveEditor` | `true` | Aktiven Dateinamen und Cursor-Kontext an Prompts übergeben |
+| `ghost.antigravity.enabled` | `true` | Google Antigravity & ACP Integration aktivieren |
+| `ghost.antigravity.autopilotMode` | `"reviewMode"` | Autopilot-Sicherheitsstufe (`reviewMode` oder `autoAccept`) |
+| `ghost.antigravity.syncKanban` | `true` | Antigravity-Tasks mit Ghost Kanban-Board synchronisieren |
+| `ghost.antigravity.syncWorkspace` | `true` | Dateiänderungen live an Ghost melden |

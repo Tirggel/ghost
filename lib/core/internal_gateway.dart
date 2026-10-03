@@ -239,19 +239,7 @@ class InternalGatewayManager {
       final taskManager = TaskManager(store: taskStore);
       await taskManager.initialize();
 
-      // 5. Initialize Server & Manager
-      _server = GatewayServer(
-        config: config.gateway,
-        stateDir: stateDir,
-        storage: storage,
-        onRestart: () async {
-          _log.info('Full system restart triggered via Gateway RPC...');
-          await stop();
-          await Future<void>.delayed(const Duration(milliseconds: 1000));
-          await start();
-        },
-      );
-
+      // 5. Initialize Agent Manager & Workspace
       final wsDir = config.agent.workspace;
       final resolvedWorkspaceDir = (wsDir == null || wsDir.isEmpty || wsDir == '.')
           ? Env.defaultWorkspaceDir
@@ -268,6 +256,30 @@ class InternalGatewayManager {
         taskManager: taskManager,
       );
 
+      // Setup ACP (Agent Client Protocol) for Antigravity & Zed
+      final contextProvider = AcpContextProvider(
+        ragEngine: _agentManager!.memorySystem.rag,
+      );
+      final acpServer = AcpServer(
+        agentManager: _agentManager!,
+        taskManager: taskManager,
+        contextProvider: contextProvider,
+      );
+
+      // 6. Initialize Server
+      _server = GatewayServer(
+        config: config.gateway,
+        stateDir: stateDir,
+        storage: storage,
+        acpServer: acpServer,
+        onRestart: () async {
+          _log.info('Full system restart triggered via Gateway RPC...');
+          await stop();
+          await Future<void>.delayed(const Duration(milliseconds: 1000));
+          await start();
+        },
+      );
+
       MemoryTools.registerAll(toolRegistry, _agentManager!.memorySystem);
       SkillsTools.registerAll(toolRegistry, _agentManager!.skillManager);
       AgentsTools.registerAll(toolRegistry, _agentManager!);
@@ -275,7 +287,7 @@ class InternalGatewayManager {
       BlockchainTools.registerAll(toolRegistry, storage, _agentManager!);
       BinanceTools.registerAll(toolRegistry, storage);
 
-      // Orchestrator (Phase 3)
+      // Orchestrator & Antigravity Kanban Bridge (Phase 3)
       _orchestrator = TaskOrchestrator(
         taskManager: taskManager,
         agentManager: _agentManager!,
@@ -283,6 +295,11 @@ class InternalGatewayManager {
       _orchestrator!.initialize();
 
       KanbanTools.registerAll(toolRegistry, taskManager, orchestrator: _orchestrator);
+
+      AntigravityKanbanBridge(
+        taskManager: taskManager,
+        orchestrator: _orchestrator!,
+      );
 
       // 6. Wire up events
       _agentManager!.onSessionUpdated = (sessionId, message) {

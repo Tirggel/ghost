@@ -3,21 +3,31 @@ import { GhostGatewayClient } from "./gateway/client";
 import { GhostStatusBar } from "./ui/statusBar";
 import { GhostChatViewProvider } from "./views/chatViewProvider";
 import { registerEditorCommands } from "./commands/editorCommands";
+import { AntigravitySync } from "./antigravity/sync";
+import { AntigravityGuardrails } from "./antigravity/guardrails";
 
 let client: GhostGatewayClient | null = null;
 let statusBar: GhostStatusBar | null = null;
+let antigravitySync: AntigravitySync | null = null;
+let antigravityGuardrails: AntigravityGuardrails | null = null;
 
 export async function activate(context: vscode.ExtensionContext) {
-  console.log("Activating Ghost AI Assistant extension...");
+  console.log("Activating Ghost AI Assistant extension with Antigravity & ACP support...");
 
   // 1. Initialize Gateway Client
   client = new GhostGatewayClient();
 
-  // 2. Initialize Status Bar
+  // 2. Initialize Antigravity & ACP Sync / Guardrails
+  antigravitySync = new AntigravitySync(client);
+  antigravityGuardrails = new AntigravityGuardrails(client);
+  context.subscriptions.push(antigravitySync);
+  context.subscriptions.push(antigravityGuardrails);
+
+  // 3. Initialize Status Bar
   statusBar = new GhostStatusBar(client);
   context.subscriptions.push(statusBar);
 
-  // 3. Initialize Sidebar Webview Provider
+  // 4. Initialize Sidebar Webview Provider
   const chatProvider = new GhostChatViewProvider(context.extensionUri, client);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -31,7 +41,7 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  // 4. Register Editor Context Commands
+  // 5. Register Editor Context Commands
   registerEditorCommands(context, chatProvider);
 
   // 5. Register Base Commands
@@ -94,6 +104,18 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand("ghost.statusBarClick", () => {
       statusBar?.showQuickPick();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("ghost.toggleAutopilotMode", async () => {
+      await antigravityGuardrails?.toggleMode();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("ghost.syncWorkspace", async () => {
+      await antigravitySync?.syncCurrentWorkspace();
     })
   );
 

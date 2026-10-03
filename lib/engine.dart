@@ -78,3 +78,14 @@ export 'engine/gateway/email_router.dart';
 export 'engine/email/email_models.dart';
 export 'engine/email/email_manager.dart';
 export 'engine/email/email_poller.dart';
+
+// Agent Client Protocol (ACP)
+export 'engine/acp/protocol.dart';
+export 'engine/acp/acp_server.dart';
+export 'engine/acp/acp_stdio_transport.dart';
+export 'engine/acp/acp_ws_transport.dart';
+export 'engine/acp/acp_context_provider.dart';
+
+// Antigravity Services
+export 'services/antigravity/kanban_bridge.dart';
+export 'services/antigravity/antigravity_tools.dart';

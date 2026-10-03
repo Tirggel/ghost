@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:logging/logging.dart';
 import 'package:http/http.dart' as http;
-import 'package:reown_appkit/reown_appkit.dart';
+import 'package:wallet/wallet.dart';
+import 'package:web3dart/web3dart.dart';
 
 import '../config/secure_storage.dart';
 import '../config/io.dart';

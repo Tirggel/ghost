@@ -527,3 +527,25 @@ Wird gesendet, wenn E-Mails aktualisiert, gelöscht oder synchronisiert wurden.
 ```json
 { "accountId": "...", "emailId": "..." }
 ```
+
+---
+
+## 🤖 Agent Client Protocol (ACP) & Antigravity
+
+Ghost unterstützt das standardisierte **Agent Client Protocol (ACP)** für KI-Entwicklungsumgebungen (Google Antigravity, Zed, VS Code).
+
+### Endpunkte
+* **WebSocket**: `ws://<host>:<port>/acp`
+* **STDIO**: `dart bin/ghost_acp.dart --workspace <dir>`
+
+### Zentrale ACP-Methoden
+* `initialize`: Protokoll-Fähigkeiten verhandeln und Handshake durchführen.
+* `authenticate`: Sitzungs-Token prüfen (falls Authentifizierung aktiv).
+* `session/new` / `session/load`: Programmiersitzungen erstellen und laden.
+* `session/prompt`: Coding-Agent anweisen mit Live-Deltas.
+* `session/cancel`: Laufende Generierung abbrechen.
+* `session/review_response`: Benutzerentscheidung (`accept` oder `reject`) für Guarded Autopilot übermitteln.
+* `session/set_autopilot_mode`: Zwischen `reviewMode` und `autoAccept` umschalten.
+* `context/providers` & `context/query`: Workspace-RAG Kontext abfragen.
+
+Detaillierte Schemata und Beispiele siehe **[Google Antigravity & ACP Anleitung](ANTIGRAVITY_ACP_DE.md)**.

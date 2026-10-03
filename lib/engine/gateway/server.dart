@@ -18,6 +18,8 @@ import '../config/secure_storage.dart';
 import '../infra/errors.dart';
 import 'auth.dart';
 import 'protocol.dart';
+import '../acp/acp_server.dart';
+import '../acp/acp_ws_transport.dart';
 
 final _log = Logger('Ghost.Gateway');
 
@@ -49,6 +51,7 @@ class GatewayServer {
     this.storage,
     RpcRegistry? rpcRegistry,
     this.onRestart,
+    this.acpServer,
   }) : rpcRegistry = rpcRegistry ?? RpcRegistry() {
     _auth = GatewayAuth(config: config.auth);
     _registerBuiltinMethods();
@@ -59,6 +62,7 @@ class GatewayServer {
   final SecureStorage? storage;
   final RpcRegistry rpcRegistry;
   final Future<void> Function()? onRestart;
+  final AcpServer? acpServer;
   late GatewayAuth _auth;
 
   HttpServer? _server;
@@ -174,6 +178,18 @@ class GatewayServer {
         // File upload endpoint (for avatars on web)
         if (request.url.path == 'upload') {
           return _handleUpload(request, corsHeaders);
+        }
+
+        // ACP endpoint: upgrade to WebSocket
+        if (request.url.path == 'acp' && acpServer != null) {
+          final acpHandler = webSocketHandler((ws) {
+            AcpWebSocketClient(
+              server: acpServer!,
+              channel: ws,
+              clientId: 'ws_acp_${_uuid.v4()}',
+            );
+          });
+          return acpHandler(request);
         }
 
         // Default: upgrade to WebSocket
@@ -530,6 +546,33 @@ class GatewayServer {
 
       return {'status': 'restarting', 'port': port};
     });
+
+    // ACP method delegation if acpServer is attached
+    if (acpServer != null) {
+      for (final method in acpServer!.rpcRegistry.methods) {
+        rpcRegistry.register('acp.$method', (params, context) async {
+          final raw = jsonEncode({
+            'jsonrpc': '2.0',
+            'method': method,
+            if (params != null) 'params': params,
+            'id': 1,
+          });
+          final res = await acpServer!.handleRawMessage(raw);
+          if (res != null) {
+            final parsed = jsonDecode(res) as Map<String, dynamic>;
+            if (parsed.containsKey('error')) {
+              final err = parsed['error'] as Map<String, dynamic>;
+              throw ProtocolError(
+                err['message'] as String? ?? 'ACP error',
+                rpcCode: err['code'] as int?,
+              );
+            }
+            return parsed['result'];
+          }
+          return null;
+        });
+      }
+    }
   }
 
   String _getStatusJson() {

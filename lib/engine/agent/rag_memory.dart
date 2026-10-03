@@ -9,7 +9,7 @@ import 'package:objectbox/objectbox.dart';
 import 'dart:math' as math;
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as p;
-import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'pdf/pdf_extractor.dart';
 
 import 'providers/factory.dart';
 import '../config/config.dart';
@@ -442,11 +442,7 @@ class RAGMemoryEngine {
     if (ext == '.pdf') {
       try {
         final bytes = await file.readAsBytes();
-        final document = PdfDocument(inputBytes: bytes);
-        final extractor = PdfTextExtractor(document);
-        final text = extractor.extractText();
-        document.dispose();
-        return text;
+        return await GhostPdfExtractor.instance.extractText(bytes);
       } catch (e) {
         _log.warning('Failed to extract PDF text from ${file.path}: $e');
         return '';
