@@ -83,6 +83,7 @@ Ghost verfügt über einen dedizierten **Wartungs-Tab** in den Einstellungen, de
 - **[Multi-Channel Setup](docs/CHANNELS_DE.md)**: Detaillierte Anleitung für Telegram, Discord, WhatsApp & Co.
 - **[RPC API Referenz](docs/RPC_API_REFERENCE_DE.md)**: Dokumentation der JSON-RPC 2.0 Schnittstelle.
 - **[VS Code Extension](docs/VSCODE_EXTENSION_DE.md)**: Offizielle Erweiterung für Visual Studio Code mit Seitenleisten-Chat und Editor-Aktionen.
+- **[Chrome Extension](docs/CHROME_EXTENSION_DE.md)**: Offizielle Erweiterung für Google Chrome mit Side Panel Chat, Web-Kontext und Kontextmenü-Aktionen.
 - **[Kanban & Task-Orchestrierung](docs/KANBAN_ORCHESTRATION_de.md)**: Funktionsweise des Multi-Agenten-Kanban und automatisierter Workflows.
 - **[Design-System-Richtlinien](DESIGN.md)**: Spezifikationen und Anpassungshandbuch für das visuelle Theme („The Monolith“).
 

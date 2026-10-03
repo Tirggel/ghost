@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ghost Side Panel</title>
+  <style>
+    :root {
+      --bg-primary: #0f1117;
+      --bg-secondary: #161924;
+      --bg-tertiary: #1f2433;
+      --border-color: #2b3245;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.2);
+      --accent-hover: #0284c7;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-family);
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      user-select: text;
+    }
+
+    /* Top bar */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      gap: 8px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    .brand-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 3px 6px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .status-badge:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+    .status-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .status-dot.connecting { background: var(--warning); }
+    .status-dot.error, .status-dot.disconnected { background: var(--danger); }
+
+    .session-select {
+      flex: 1;
+      max-width: 140px;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      padding: 4px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      outline: none;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: all 0.15s;
+    }
+    .icon-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    /* Model & Provider bar */
+    .model-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 12px;
+      background: #12151e;
+      border-bottom: 1px solid var(--border-color);
+      gap: 6px;
+    }
+    .model-selectors {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      overflow: hidden;
+    }
+    .model-label {
+      font-size: 11px;
+      color: var(--accent);
+    }
+    .model-select {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      padding: 3px 5px;
+      border-radius: 4px;
+      font-size: 11px;
+      outline: none;
+      flex: 1;
+      min-width: 0;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .icon-btn-sm {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    .icon-btn-sm:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    /* Modal dialog */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      padding: 16px;
+    }
+    .modal-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      width: 100%;
+      max-width: 320px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .modal-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .modal-card p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .modal-actions button {
+      padding: 7px 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+    .btn-danger-outline {
+      background: transparent;
+      border: 1px solid var(--danger) !important;
+      color: var(--danger);
+    }
+    .btn-danger-outline:hover {
+      background: rgba(239, 68, 68, 0.15);
+    }
+    .btn-cancel {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+    }
+    .btn-cancel:hover {
+      color: var(--text-primary);
+      background: #2a3245;
+    }
+
+    /* Context tab bar */
+    .context-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .context-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      color: var(--text-primary);
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .context-chip.active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Messages container */
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      max-width: 95%;
+      border-radius: 8px;
+      padding: 10px 12px;
+      line-height: 1.5;
+      font-size: 13px;
+      word-break: break-word;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: #1e3a5f;
+      color: #f8fafc;
+      border: 1px solid #2563eb;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .message.system {
+      align-self: center;
+      background: transparent;
+      border: 1px dashed var(--border-color);
+      color: var(--text-secondary);
+      font-size: 11px;
+      padding: 4px 10px;
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      text-align: center;
+      color: var(--text-secondary);
+      gap: 16px;
+      padding: 20px;
+    }
+
+    .empty-logo {
+      width: 48px;
+      height: 48px;
+      opacity: 0.8;
+    }
+
+    .prompt-suggestions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      max-width: 260px;
+    }
+
+    .suggestion-btn {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .suggestion-btn:hover {
+      border-color: var(--accent);
+      background: var(--bg-tertiary);
+    }
+
+    /* Tool activity banner */
+    .tool-activity {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: rgba(56, 189, 248, 0.1);
+      border-top: 1px solid rgba(56, 189, 248, 0.2);
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    .spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(56, 189, 248, 0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Code blocks */
+    pre {
+      background: #0b0d13;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px;
+      margin: 8px 0;
+      overflow-x: auto;
+      position: relative;
+    }
+
+    pre code {
+      font-family: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: #7dd3fc;
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 4px;
+    }
+
+    .copy-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .copy-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--accent);
+    }
+
+    /* Input area */
+    .input-area {
+      padding: 10px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 6px;
+      align-items: flex-end;
+    }
+
+    textarea {
+      flex: 1;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-family: inherit;
+      font-size: 13px;
+      resize: none;
+      min-height: 38px;
+      max-height: 120px;
+      outline: none;
+      line-height: 1.4;
+      transition: border-color 0.2s;
+    }
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent-glow);
+    }
+
+    .send-btn {
+      background: var(--accent);
+      color: #0b0d13;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .send-btn:hover {
+      background: var(--accent-hover);
+    }
+    .send-btn.stop {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .input-hints {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding: 0 4px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="brand">
+      <img src="../icons/icon-48.png" alt="Ghost" class="brand-icon">
+      <span>Ghost</span>
+    </div>
+
+    <div class="status-badge" id="statusBadge" title="Status: Klicke zum Neuverbinden">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span id="statusText">Getrennt</span>
+    </div>
+
+    <select class="session-select" id="sessionSelect" title="Sitzung auswählen">
+      <option value="">(Aktuelle Sitzung)</option>
+    </select>
+
+    <button class="icon-btn" id="newSessionBtn" title="Neue Sitzung starten">➕</button>
+    <button class="icon-btn" id="deleteSessionBtn" title="Sitzung löschen">🗑️</button>
+    <button class="icon-btn" id="optionsBtn" title="Einstellungen öffnen">⚙️</button>
+  </div>
+
+  <!-- Model & Provider Bar -->
+  <div class="model-bar">
+    <div class="model-selectors">
+      <span class="model-label">⚡</span>
+      <select class="model-select" id="providerSelect" title="AI Provider auswählen">
+        <option value="google">Google Gemini</option>
+        <option value="anthropic">Anthropic Claude</option>
+        <option value="openai">OpenAI</option>
+        <option value="deepseek">DeepSeek</option>
+        <option value="mistral">Mistral AI</option>
+        <option value="groq">Groq</option>
+        <option value="openrouter">OpenRouter</option>
+        <option value="ollama">Ollama (Lokal)</option>
+        <option value="lmstudio">LM Studio (Lokal)</option>
+        <option value="vllm">vLLM (Lokal)</option>
+      </select>
+      <select class="model-select" id="modelSelect" title="Modell auswählen">
+        <option value="">(Modelle werden geladen...)</option>
+      </select>
+    </div>
+    <button class="icon-btn-sm" id="manageKeysBtn" title="API-Keys & Provider verwalten">🔑</button>
+  </div>
+
+  <!-- Context Tab bar -->
+  <div class="context-bar">
+    <span id="tabContextLabel">Web-Kontext:</span>
+    <button class="context-chip" id="attachTabBtn" title="Aktive Seite als Kontext anhängen">
+      <span>🌐 Aktiven Tab anhängen</span>
+    </button>
+  </div>
+
+  <!-- Messages -->
+  <div class="messages-container" id="messagesContainer">
+    <div class="empty-state" id="emptyState">
+      <img src="../icons/icon-128.png" alt="Ghost Logo" class="empty-logo">
+      <p>Ghost Browser Companion ist bereit.</p>
+      <div class="prompt-suggestions">
+        <button class="suggestion-btn" data-prompt="Erkläre mir diese Seite kurz und prägnant.">📄 Diese Seite zusammenfassen</button>
+        <button class="suggestion-btn" data-prompt="Was sind die wichtigsten Erkenntnisse und Best Practices auf dieser Seite?">💡 Best Practices & Highlights</button>
+        <button class="suggestion-btn" data-prompt="/plan Erstelle einen Kanban-Task für: ">🎯 /plan Task erstellen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tool activity banner -->
+  <div class="tool-activity" id="toolActivity">
+    <div class="spinner"></div>
+    <span id="activityText">Ghost denkt nach...</span>
+  </div>
+
+  <!-- Input area -->
+  <div class="input-area">
+    <div class="input-wrapper">
+      <textarea id="promptInput" placeholder="Frage an Ghost stellen... (Enter zum Senden)" rows="1"></textarea>
+      <button class="send-btn" id="sendBtn" title="Senden">➤</button>
+    </div>
+    <div class="input-hints">
+      <span>Tipp: <b>/plan</b> für Kanban-Aufgaben</span>
+      <span>Shift+Enter für Zeilenumbruch</span>
+    </div>
+  <!-- Delete Session Confirmation Modal -->
+  <div class="modal-overlay" id="deleteModal" style="display: none;">
+    <div class="modal-card">
+      <h3 id="deleteModalTitle">Sitzung löschen</h3>
+      <p id="deleteModalText">Möchtest du die aktive Sitzung löschen oder alle bisherigen Sitzungen unwiderruflich leeren?</p>
+      <div class="modal-actions">
+        <button class="btn-danger" id="confirmDeleteCurrentBtn">Aktuelle Sitzung löschen</button>
+        <button class="btn-danger-outline" id="confirmDeleteAllBtn">Alle Sitzungen löschen</button>
+        <button class="btn-cancel" id="cancelDeleteBtn">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

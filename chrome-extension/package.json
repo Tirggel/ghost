@@ -1,0 +1,16 @@
+{
+  "name": "ghost-chrome-extension",
+  "displayName": "Ghost AI Assistant (Chrome Extension)",
+  "version": "0.1.0",
+  "description": "Offizieller persönlicher KI-Assistent Ghost für Google Chrome: Side Panel Chat, Kontextmenü-Aktionen und Live-Streaming über WebSocket.",
+  "scripts": {
+    "build": "node esbuild.js --production",
+    "watch": "node esbuild.js --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.280",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.4.5"
+  }
+}

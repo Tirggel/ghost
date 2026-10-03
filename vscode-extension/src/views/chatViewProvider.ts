@@ -9,9 +9,19 @@ export class GhostChatViewProvider implements vscode.WebviewViewProvider {
   private currentSessionId: string | null = null;
   private isGenerating = false;
   private streamingContent = "";
+  private currentProvider = "google";
+  private currentModel = "";
 
   public get generating(): boolean {
     return this.isGenerating;
+  }
+
+  public getProvider(): string {
+    return this.currentProvider;
+  }
+
+  public getModel(): string {
+    return this.currentModel;
   }
 
   constructor(
@@ -52,6 +62,21 @@ export class GhostChatViewProvider implements vscode.WebviewViewProvider {
           break;
         case "newSession":
           await this.startNewSession();
+          break;
+        case "deleteCurrentSession":
+          await this.deleteCurrentSession();
+          break;
+        case "deleteAllSessions":
+          await this.deleteAllSessions();
+          break;
+        case "changeProvider":
+          await this.handleProviderChange(data.provider);
+          break;
+        case "changeModel":
+          await this.handleModelChange(data.provider, data.model);
+          break;
+        case "manageApiKeys":
+          vscode.commands.executeCommand("ghost.manageApiKeys");
           break;
         case "switchSession":
           await this.loadSession(data.sessionId);
@@ -141,6 +166,18 @@ export class GhostChatViewProvider implements vscode.WebviewViewProvider {
       });
       this.refreshSessions();
     });
+
+    this.client.on("sessionDeleted", (payload: any) => {
+      if (payload?.sessionId === this.currentSessionId) {
+        this.startNewSession();
+      }
+      this.refreshSessions();
+    });
+
+    this.client.on("sessionsCleared", () => {
+      this.startNewSession();
+      this.refreshSessions();
+    });
   }
 
   public async startNewSession() {
@@ -228,6 +265,8 @@ export class GhostChatViewProvider implements vscode.WebviewViewProvider {
       await this.client.chat(text, {
         sessionId: this.currentSessionId,
         workspaceDir: activeWorkspaceDir,
+        provider: this.currentProvider || undefined,
+        model: this.currentModel || undefined,
       });
     } catch (e: any) {
       this.isGenerating = false;
@@ -264,9 +303,68 @@ export class GhostChatViewProvider implements vscode.WebviewViewProvider {
         sessions,
         currentSessionId: this.currentSessionId,
       });
+      await this.syncModelConfig();
     }
 
     this.sendEditorContext();
+  }
+
+  public async deleteCurrentSession() {
+    if (this.currentSessionId) {
+      await this.client.deleteSession(this.currentSessionId);
+      await this.startNewSession();
+      await this.refreshSessions();
+      vscode.window.showInformationMessage("Sitzung gelöscht.");
+    }
+  }
+
+  public async deleteAllSessions() {
+    await this.client.deleteAllSessions();
+    await this.startNewSession();
+    await this.refreshSessions();
+    vscode.window.showInformationMessage("Alle Sitzungen wurden gelöscht.");
+  }
+
+  public async syncModelConfig() {
+    try {
+      const config = await this.client.getConfig();
+      if (config && config.agent) {
+        if (config.agent.provider) this.currentProvider = config.agent.provider;
+        if (config.agent.model) this.currentModel = config.agent.model;
+      }
+      const models = await this.client.listModels(this.currentProvider);
+      this.postMessage({
+        type: "modelConfig",
+        provider: this.currentProvider,
+        model: this.currentModel,
+        models,
+      });
+    } catch {}
+  }
+
+  public async handleProviderChange(provider: string) {
+    this.currentProvider = provider;
+    try {
+      const models = await this.client.listModels(provider);
+      this.currentModel = models && models.length > 0 ? models[0] : "";
+      this.postMessage({
+        type: "modelConfig",
+        provider: this.currentProvider,
+        model: this.currentModel,
+        models,
+      });
+      if (this.currentSessionId && this.currentModel) {
+        await this.client.setSessionModel(this.currentSessionId, this.currentModel, this.currentProvider);
+      }
+    } catch {}
+  }
+
+  public async handleModelChange(provider: string, model: string) {
+    this.currentProvider = provider;
+    this.currentModel = model;
+    if (this.currentSessionId && this.currentModel) {
+      await this.client.setSessionModel(this.currentSessionId, this.currentModel, this.currentProvider);
+    }
   }
 
   private sendEditorContext() {

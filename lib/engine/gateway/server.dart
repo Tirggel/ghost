@@ -126,12 +126,16 @@ class GatewayServer {
         final origin = request.headers['origin'];
         if (isWebSocketUpgrade && origin != null && origin != 'null') {
           final uri = Uri.tryParse(origin);
+          final scheme = uri?.scheme.toLowerCase();
           final host = uri?.host.toLowerCase();
-          final isAllowedHost = host == 'localhost' ||
+          final isAllowedOrigin = scheme == 'chrome-extension' ||
+              scheme == 'moz-extension' ||
+              scheme == 'vscode-webview' ||
+              host == 'localhost' ||
               host == '127.0.0.1' ||
               host == '0.0.0.0' ||
               host == Platform.localHostname.toLowerCase();
-          if (!isAllowedHost) {
+          if (!isAllowedOrigin) {
             _log.warning('Blocked untrusted cross-origin WebSocket from $origin');
             return shelf.Response.forbidden(
               'Cross-origin WebSocket connections from $origin are not allowed.',

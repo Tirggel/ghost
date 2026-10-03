@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ghost Assistant — Einstellungen</title>
+  <style>
+    :root {
+      --bg-primary: #0f1117;
+      --bg-secondary: #161924;
+      --bg-tertiary: #1f2433;
+      --border-color: #2b3245;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --success: #10b981;
+      --danger: #ef4444;
+      --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-family);
+      font-size: 14px;
+      line-height: 1.5;
+      display: flex;
+      justify-content: center;
+      padding: 30px 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 620px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 16px;
+    }
+
+    .header img {
+      width: 36px;
+      height: 36px;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    /* Tabs */
+    .tabs-nav {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-secondary);
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+      border-radius: 6px 6px 0 0;
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input[type="text"], input[type="password"], select {
+      width: 100%;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus, input[type="password"]:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      margin-bottom: 14px;
+    }
+
+    .checkbox-group input {
+      cursor: pointer;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    button.btn {
+      padding: 9px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0b0d13;
+    }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+    }
+    .btn-secondary:hover {
+      background: #283042;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn-danger-outline {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+    .btn-danger-outline:hover {
+      background: rgba(239, 68, 68, 0.15);
+    }
+
+    .status-msg {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      display: none;
+    }
+    .status-msg.success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--success);
+      color: #34d399;
+      display: block;
+    }
+    .status-msg.error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid var(--danger);
+      color: #f87171;
+      display: block;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+    .badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+    .badge-muted { background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); }
+
+    /* Session list in options */
+    .session-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .session-title {
+      font-weight: 500;
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 400px;
+    }
+    .session-meta {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="../icons/icon-48.png" alt="Ghost Logo">
+      <div>
+        <h1>Ghost AI — Einstellungen</h1>
+        <p class="help-text">Verbindung, Provider, Modelle & Sitzungsverwaltung</p>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" data-tab="tab-gateway">🔌 Verbindung</button>
+      <button class="tab-btn" data-tab="tab-model">🤖 Provider & Modell</button>
+      <button class="tab-btn" data-tab="tab-keys">🔑 API-Keys</button>
+      <button class="tab-btn" data-tab="tab-sessions">💬 Sitzungen</button>
+    </div>
+
+    <!-- 1. Gateway Tab -->
+    <div class="tab-content active" id="tab-gateway">
+      <form id="settingsForm">
+        <div class="form-group">
+          <label for="gatewayUrl">Gateway WebSocket-URL</label>
+          <input type="text" id="gatewayUrl" placeholder="ws://localhost:3000" required>
+          <div class="help-text">Standard: ws://localhost:3000 (lokale Ghost-Instanz)</div>
+        </div>
+
+        <div class="form-group">
+          <label for="authToken">Authentifizierungs-Token (Optional)</label>
+          <input type="password" id="authToken" placeholder="Token leer lassen für Auto-Discovery">
+          <div class="help-text">Wird bei leerem Feld automatisch von <code>http://localhost:3000/client-token</code> bezogen.</div>
+        </div>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="autoConnect" checked>
+          <label for="autoConnect" style="margin:0; text-transform:none; font-weight:normal; color:var(--text-primary); cursor:pointer;">
+            Automatisch beim Öffnen verbinden
+          </label>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-secondary" id="testBtn">Verbindung testen</button>
+          <button type="submit" class="btn btn-primary" id="saveBtn">Speichern</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 2. Provider & Model Tab -->
+    <div class="tab-content" id="tab-model">
+      <div class="form-group">
+        <label for="defaultProviderSelect">Standard-Provider</label>
+        <select id="defaultProviderSelect">
+          <option value="google">Google Gemini</option>
+          <option value="anthropic">Anthropic Claude</option>
+          <option value="openai">OpenAI</option>
+          <option value="deepseek">DeepSeek</option>
+          <option value="mistral">Mistral AI</option>
+          <option value="groq">Groq</option>
+          <option value="openrouter">OpenRouter</option>
+          <option value="ollama">Ollama (Lokal)</option>
+          <option value="lmstudio">LM Studio (Lokal)</option>
+          <option value="vllm">vLLM (Lokal)</option>
+        </select>
+        <div class="help-text">Wähle den bevorzugten Haupt-Provider für Ghost.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="defaultModelSelect">Standard-Modell</label>
+        <select id="defaultModelSelect">
+          <option value="">(Wähle Provider...)</option>
+        </select>
+        <div class="help-text">Wird dynamisch vom Gateway für den ausgewählten Provider abgefragt.</div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="saveModelBtn">Standard-Modell speichern</button>
+      </div>
+    </div>
+
+    <!-- 3. API-Keys Tab -->
+    <div class="tab-content" id="tab-keys">
+      <div class="form-group">
+        <label for="apiKeyProviderSelect">Provider auswählen <span id="keyStatusBadge" class="badge badge-muted">Ungeprüft</span></label>
+        <select id="apiKeyProviderSelect">
+          <option value="google">Google Gemini</option>
+          <option value="anthropic">Anthropic Claude</option>
+          <option value="openai">OpenAI</option>
+          <option value="deepseek">DeepSeek</option>
+          <option value="mistral">Mistral AI</option>
+          <option value="groq">Groq</option>
+          <option value="openrouter">OpenRouter</option>
+          <option value="xai">xAI (Grok)</option>
+          <option value="perplexity">Perplexity</option>
+          <option value="ollama">Ollama (Lokale Base-URL)</option>
+          <option value="lmstudio">LM Studio (Lokale Base-URL)</option>
+          <option value="vllm">vLLM (Lokale Base-URL)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="apiKeyValue" id="apiKeyLabel">API-Key</label>
+        <div class="input-row">
+          <input type="password" id="apiKeyValue" placeholder="sk-... oder Token">
+          <button type="button" class="btn btn-secondary" id="toggleKeyVisibilityBtn" title="Anzeigen/Verbergen">👁️</button>
+        </div>
+        <div class="help-text" id="apiKeyHelpText">Key wird sicher im verschlüsselten Ghost Vault gespeichert.</div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-danger-outline" id="removeKeyBtn">Key entfernen</button>
+        <button type="button" class="btn btn-primary" id="saveKeyBtn">Key speichern</button>
+      </div>
+    </div>
+
+    <!-- 4. Sessions Tab -->
+    <div class="tab-content" id="tab-sessions">
+      <div class="form-group" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <label style="margin:0;">Gespeicherte Sitzungen</label>
+          <div class="help-text">Sitzungsverläufe können einzeln oder vollständig gelöscht werden.</div>
+        </div>
+        <button type="button" class="btn btn-danger" id="deleteAllSessionsBtn">🗑️ Alle Sitzungen löschen</button>
+      </div>
+
+      <div id="sessionsListContainer" style="max-height: 320px; overflow-y: auto; margin-top: 14px;">
+        <p style="color:var(--text-secondary); font-size:12px;">Lade Sitzungen...</p>
+      </div>
+    </div>
+
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

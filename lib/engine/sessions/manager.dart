@@ -283,6 +283,13 @@ class SessionManager {
     _log.info('Deleted ${sessionIds.length} sessions');
   }
 
+  /// Delete all sessions: clear cache and delete all transcripts.
+  Future<void> deleteAllSessions() async {
+    _sessions.clear();
+    await store.deleteAllTranscripts();
+    _log.info('Deleted all sessions');
+  }
+
   /// Clear all cached sessions.
   void clearCache() {
     _sessions.clear();

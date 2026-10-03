@@ -1,6 +1,8 @@
-import WebSocket from "ws";
-import { EventEmitter } from "events";
-import * as http from "http";
+/**
+ * Ghost Gateway Client for Browser environments (Chrome Extension)
+ * Communicates with Ghost Gateway over WebSocket JSON-RPC 2.0.
+ */
+
 import {
   RpcRequest,
   Message,
@@ -14,26 +16,54 @@ import {
 
 export type ConnectionState = "disconnected" | "connecting" | "connected" | "error";
 
-export class GhostGatewayClient extends EventEmitter {
+type EventCallback = (...args: any[]) => void;
+
+export class GhostBrowserClient {
   private ws: WebSocket | null = null;
   private state: ConnectionState = "disconnected";
+  private listeners: Map<string, Set<EventCallback>> = new Map();
   private pendingRequests: Map<
     string | number,
     {
       resolve: (value: any) => void;
       reject: (reason: any) => void;
-      timer: NodeJS.Timeout;
+      timer: number;
     }
   > = new Map();
   private nextId = 1;
-  private reconnectTimer: NodeJS.Timeout | null = null;
+  private reconnectTimer: number | null = null;
+  private pingTimer: number | null = null;
   private currentUrl = "ws://localhost:3000";
   private currentToken = "";
   private autoReconnect = true;
-  private pingTimer: NodeJS.Timeout | null = null;
 
-  constructor() {
-    super();
+  constructor() {}
+
+  public on(event: string, callback: EventCallback): void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)!.add(callback);
+  }
+
+  public off(event: string, callback: EventCallback): void {
+    const set = this.listeners.get(event);
+    if (set) {
+      set.delete(callback);
+    }
+  }
+
+  private emit(event: string, ...args: any[]): void {
+    const set = this.listeners.get(event);
+    if (set) {
+      for (const cb of set) {
+        try {
+          cb(...args);
+        } catch (e) {
+          console.error(`[GhostBrowserClient] Error in listener for ${event}:`, e);
+        }
+      }
+    }
   }
 
   public getState(): ConnectionState {
@@ -54,38 +84,19 @@ export class GhostGatewayClient extends EventEmitter {
   /**
    * Attempt to fetch the client token from the local Ghost HTTP endpoint.
    */
-  public async autoDiscoverToken(httpUrl: string): Promise<string | null> {
-    return new Promise((resolve) => {
-      try {
-        const url = new URL("/client-token", httpUrl);
-        const req = http.get(url, { timeout: 1500 }, (res) => {
-          if (res.statusCode !== 200) {
-            return resolve(null);
-          }
-          let data = "";
-          res.on("data", (chunk) => (data += chunk));
-          res.on("end", () => {
-            try {
-              const json = JSON.parse(data);
-              if (json && json.token) {
-                resolve(json.token);
-              } else {
-                resolve(null);
-              }
-            } catch {
-              resolve(null);
-            }
-          });
-        });
-        req.on("error", () => resolve(null));
-        req.on("timeout", () => {
-          req.destroy();
-          resolve(null);
-        });
-      } catch {
-        resolve(null);
-      }
-    });
+  public async autoDiscoverToken(httpBaseUrl: string): Promise<string | null> {
+    try {
+      const url = new URL("/client-token", httpBaseUrl);
+      const res = await fetch(url.toString(), {
+        signal: AbortSignal.timeout(1500),
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.token || null;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -107,12 +118,12 @@ export class GhostGatewayClient extends EventEmitter {
 
     this.setState("connecting");
 
-    // If no token was provided, try auto-discovery via HTTP if connecting to localhost
+    // Try auto-discovery if connecting to localhost and no token provided
     if (!this.currentToken && (url.includes("localhost") || url.includes("127.0.0.1"))) {
       const httpBase = url.replace("ws://", "http://").replace("wss://", "https://");
-      const discoveredToken = await this.autoDiscoverToken(httpBase);
-      if (discoveredToken) {
-        this.currentToken = discoveredToken;
+      const discovered = await this.autoDiscoverToken(httpBase);
+      if (discovered) {
+        this.currentToken = discovered;
       }
     }
 
@@ -122,9 +133,9 @@ export class GhostGatewayClient extends EventEmitter {
       try {
         this.ws = new WebSocket(this.currentUrl);
 
-        this.ws.on("open", async () => {
+        this.ws.onopen = async () => {
           this.startHeartbeat();
-          // Authenticate if token is available
+
           try {
             if (this.currentToken) {
               await this.sendRpc<{ authenticated: boolean }>("auth.login", {
@@ -152,16 +163,16 @@ export class GhostGatewayClient extends EventEmitter {
               }
             }
           }
-        });
+        };
 
-        this.ws.on("message", (data: WebSocket.Data) => {
-          this.handleMessage(data.toString());
-        });
+        this.ws.onmessage = (event: MessageEvent) => {
+          this.handleMessage(String(event.data));
+        };
 
-        this.ws.on("close", (code, reason) => {
+        this.ws.onclose = (event: CloseEvent) => {
           this.stopHeartbeat();
           this.rejectAllPending("Connection closed");
-          this.setState("disconnected", `Closed (${code}): ${reason}`);
+          this.setState("disconnected", `Closed (${event.code}): ${event.reason}`);
           if (!resolved) {
             resolved = true;
             resolve(false);
@@ -169,15 +180,15 @@ export class GhostGatewayClient extends EventEmitter {
           if (this.autoReconnect) {
             this.scheduleReconnect();
           }
-        });
+        };
 
-        this.ws.on("error", (err) => {
-          this.setState("error", err.message);
+        this.ws.onerror = () => {
+          this.setState("error", "WebSocket-Verbindungsfehler");
           if (!resolved) {
             resolved = true;
             resolve(false);
           }
-        });
+        };
       } catch (err: any) {
         this.setState("error", err.message);
         if (!resolved) {
@@ -188,7 +199,7 @@ export class GhostGatewayClient extends EventEmitter {
     });
   }
 
-  public disconnect() {
+  public disconnect(): void {
     this.autoReconnect = false;
     this.stopHeartbeat();
     if (this.reconnectTimer) {
@@ -197,7 +208,7 @@ export class GhostGatewayClient extends EventEmitter {
     }
     if (this.ws) {
       try {
-        this.ws.terminate();
+        this.ws.close();
       } catch {}
       this.ws = null;
     }
@@ -205,9 +216,9 @@ export class GhostGatewayClient extends EventEmitter {
     this.setState("disconnected");
   }
 
-  private scheduleReconnect() {
+  private scheduleReconnect(): void {
     if (this.reconnectTimer || !this.autoReconnect) return;
-    this.reconnectTimer = setTimeout(() => {
+    this.reconnectTimer = window.setTimeout(() => {
       this.reconnectTimer = null;
       if (this.state === "disconnected" || this.state === "error") {
         this.connect(this.currentUrl, this.currentToken);
@@ -215,23 +226,23 @@ export class GhostGatewayClient extends EventEmitter {
     }, 4000);
   }
 
-  private startHeartbeat() {
+  private startHeartbeat(): void {
     this.stopHeartbeat();
-    this.pingTimer = setInterval(() => {
+    this.pingTimer = window.setInterval(() => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.sendRpc("gateway.health", {}).catch(() => {});
       }
     }, 25000);
   }
 
-  private stopHeartbeat() {
+  private stopHeartbeat(): void {
     if (this.pingTimer) {
       clearInterval(this.pingTimer);
       this.pingTimer = null;
     }
   }
 
-  private rejectAllPending(reason: string) {
+  private rejectAllPending(reason: string): void {
     for (const [, req] of this.pendingRequests.entries()) {
       clearTimeout(req.timer);
       req.reject(new Error(reason));
@@ -239,7 +250,7 @@ export class GhostGatewayClient extends EventEmitter {
     this.pendingRequests.clear();
   }
 
-  private handleMessage(raw: string) {
+  private handleMessage(raw: string): void {
     try {
       const msg = JSON.parse(raw);
 
@@ -258,16 +269,16 @@ export class GhostGatewayClient extends EventEmitter {
         return;
       }
 
-      // Check if it's a notification / event (no id, but method)
+      // Notification / Server event (no id, but method)
       if (msg.method) {
         this.handleNotification(msg.method, msg.params);
       }
     } catch (e) {
-      console.error("[GhostGatewayClient] Failed to parse message:", e, raw);
+      console.error("[GhostBrowserClient] Failed to parse message:", e, raw);
     }
   }
 
-  private handleNotification(method: string, params: any) {
+  private handleNotification(method: string, params: any): void {
     switch (method) {
       case "agent.stream":
         this.emit("stream", params as AgentStreamPayload);
@@ -322,7 +333,7 @@ export class GhostGatewayClient extends EventEmitter {
     };
 
     return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => {
+      const timer = window.setTimeout(() => {
         this.pendingRequests.delete(id);
         reject(new Error(`Timeout bei RPC-Aufruf '${method}' nach ${timeoutMs}ms.`));
       }, timeoutMs);
@@ -354,7 +365,7 @@ export class GhostGatewayClient extends EventEmitter {
   ): Promise<{ sessionId: string; status: string }> {
     return this.sendRpc<{ sessionId: string; status: string }>("agent.chat", {
       content,
-      channelType: "vscode",
+      channelType: "chrome",
       sessionId: options.sessionId,
       model: options.model,
       provider: options.provider,

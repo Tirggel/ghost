@@ -93,9 +93,24 @@ export class GhostStatusBar {
           detail: "new_session",
         },
         {
-          label: "$(symbol-color) Modell wechseln",
+          label: "$(symbol-color) Modell & Provider wechseln",
           description: "Aktives KI-Modell für Ghost auswählen",
           detail: "change_model",
+        },
+        {
+          label: "$(key) API-Schlüssel & Provider verwalten",
+          description: "API-Keys und Provider-Endpunkte konfigurieren",
+          detail: "manage_keys",
+        },
+        {
+          label: "$(trash) Aktuelle Sitzung löschen",
+          description: "Löscht den Verlauf der aktiven Sitzung",
+          detail: "delete_session",
+        },
+        {
+          label: "$(clear-all) Alle Sitzungen löschen",
+          description: "Löscht sämtliche Chat-Sitzungen im Gateway",
+          detail: "delete_all_sessions",
         },
         {
           label: "$(refresh) Gateway neu verbinden",
@@ -137,7 +152,16 @@ export class GhostStatusBar {
         vscode.commands.executeCommand("ghost.newSession");
         break;
       case "change_model":
-        this.showModelPicker();
+        vscode.commands.executeCommand("ghost.changeModel");
+        break;
+      case "manage_keys":
+        vscode.commands.executeCommand("ghost.manageApiKeys");
+        break;
+      case "delete_session":
+        vscode.commands.executeCommand("ghost.deleteCurrentSession");
+        break;
+      case "delete_all_sessions":
+        vscode.commands.executeCommand("ghost.deleteAllSessions");
         break;
       case "connect":
       case "reconnect":
@@ -152,27 +176,6 @@ export class GhostStatusBar {
           "ghost"
         );
         break;
-    }
-  }
-
-  private async showModelPicker() {
-    try {
-      const models = await this.client.listModels();
-      if (!models || models.length === 0) {
-        vscode.window.showInformationMessage("Keine zusätzlichen Modelle vom Gateway gemeldet.");
-        return;
-      }
-
-      const selected = await vscode.window.showQuickPick(
-        models.map((m) => ({ label: m })),
-        { placeHolder: "Wähle das Modell für Ghost:" }
-      );
-
-      if (selected) {
-        vscode.window.showInformationMessage(`Ghost Modell gewählt: ${selected.label}`);
-      }
-    } catch (e: any) {
-      vscode.window.showErrorMessage(`Fehler beim Abrufen der Modelle: ${e.message}`);
     }
   }
 

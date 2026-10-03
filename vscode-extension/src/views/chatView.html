@@ -83,6 +83,128 @@
       background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1));
     }
 
+    /* Model & Provider bar */
+    .model-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 10px;
+      background: var(--vscode-sideBar-background, #1e1e1e);
+      border-bottom: 1px solid var(--vscode-sideBar-border, #333333);
+      gap: 6px;
+    }
+    .model-selectors {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      overflow: hidden;
+    }
+    .model-label {
+      font-size: 11px;
+      color: var(--vscode-textLink-foreground, #3794ff);
+    }
+    .model-select {
+      background: var(--vscode-dropdown-background, #3c3c3c);
+      color: var(--vscode-dropdown-foreground, #f0f0f0);
+      border: 1px solid var(--vscode-dropdown-border, #555555);
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-size: 11px;
+      outline: none;
+      flex: 1;
+      min-width: 0;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .icon-btn-sm {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--vscode-icon-foreground, #c5c5c5);
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .icon-btn-sm:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1));
+    }
+
+    /* Modal dialog */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      padding: 14px;
+    }
+    .modal-card {
+      background: var(--vscode-sideBarSectionHeader-background, #252526);
+      border: 1px solid var(--vscode-sideBar-border, #454545);
+      border-radius: 6px;
+      padding: 14px;
+      width: 100%;
+      max-width: 280px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .modal-card h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--vscode-foreground, #fff);
+    }
+    .modal-card p {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground, #aaa);
+      line-height: 1.4;
+    }
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .modal-actions button {
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-danger {
+      background: var(--vscode-errorForeground, #f44336);
+      color: #fff;
+    }
+    .btn-danger:hover {
+      opacity: 0.9;
+    }
+    .btn-danger-outline {
+      background: transparent;
+      border: 1px solid var(--vscode-errorForeground, #f44336) !important;
+      color: var(--vscode-errorForeground, #f44336);
+    }
+    .btn-danger-outline:hover {
+      background: rgba(244, 67, 54, 0.15);
+    }
+    .btn-cancel {
+      background: var(--vscode-button-secondaryBackground, #3a3d41);
+      color: var(--vscode-button-secondaryForeground, #fff);
+    }
+    .btn-cancel:hover {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+
     /* Messages container */
     .messages-container {
       flex: 1;
@@ -289,6 +411,31 @@
       <option value="">(Keine Sitzungen)</option>
     </select>
     <button class="icon-btn" id="newSessionBtn" title="Neue Sitzung starten">＋</button>
+    <button class="icon-btn" id="deleteSessionBtn" title="Sitzung löschen">🗑️</button>
+    <button class="icon-btn" id="settingsBtn" title="API-Keys & Einstellungen">⚙️</button>
+  </div>
+
+  <!-- Model & Provider Bar -->
+  <div class="model-bar">
+    <div class="model-selectors">
+      <span class="model-label">⚡</span>
+      <select class="model-select" id="providerSelect" title="AI Provider auswählen">
+        <option value="google">Google Gemini</option>
+        <option value="anthropic">Anthropic Claude</option>
+        <option value="openai">OpenAI</option>
+        <option value="deepseek">DeepSeek</option>
+        <option value="mistral">Mistral AI</option>
+        <option value="groq">Groq</option>
+        <option value="openrouter">OpenRouter</option>
+        <option value="ollama">Ollama (Lokal)</option>
+        <option value="lmstudio">LM Studio (Lokal)</option>
+        <option value="vllm">vLLM (Lokal)</option>
+      </select>
+      <select class="model-select" id="modelSelect" title="Modell auswählen">
+        <option value="">(Lade Modelle...)</option>
+      </select>
+    </div>
+    <button class="icon-btn-sm" id="manageKeysBtn" title="API-Keys verwalten">🔑</button>
   </div>
 
   <!-- Messages List -->
@@ -328,6 +475,19 @@
     </div>
   </div>
 
+  <!-- Delete Session Confirmation Modal -->
+  <div class="modal-overlay" id="deleteModal" style="display: none;">
+    <div class="modal-card">
+      <h3 id="deleteModalTitle">Sitzung löschen</h3>
+      <p id="deleteModalText">Möchtest du die aktive Sitzung löschen oder alle bisherigen Sitzungen unwiderruflich leeren?</p>
+      <div class="modal-actions">
+        <button class="btn-danger" id="confirmDeleteCurrentBtn">Aktuelle Sitzung löschen</button>
+        <button class="btn-danger-outline" id="confirmDeleteAllBtn">Alle Sitzungen löschen</button>
+        <button class="btn-cancel" id="cancelDeleteBtn">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const vscode = acquireVsCodeApi();
 
@@ -336,6 +496,15 @@
     const statusBadge = document.getElementById('statusBadge');
     const sessionSelect = document.getElementById('sessionSelect');
     const newSessionBtn = document.getElementById('newSessionBtn');
+    const deleteSessionBtn = document.getElementById('deleteSessionBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const providerSelect = document.getElementById('providerSelect');
+    const modelSelect = document.getElementById('modelSelect');
+    const manageKeysBtn = document.getElementById('manageKeysBtn');
+    const deleteModal = document.getElementById('deleteModal');
+    const confirmDeleteCurrentBtn = document.getElementById('confirmDeleteCurrentBtn');
+    const confirmDeleteAllBtn = document.getElementById('confirmDeleteAllBtn');
+    const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
     const messagesContainer = document.getElementById('messagesContainer');
     const activityBar = document.getElementById('activityBar');
     const activityText = document.getElementById('activityText');
@@ -355,6 +524,46 @@
 
     newSessionBtn.addEventListener('click', () => {
       vscode.postMessage({ type: 'newSession' });
+    });
+
+    deleteSessionBtn.addEventListener('click', () => {
+      const currentSessionId = sessionSelect.value;
+      if (!currentSessionId || currentSessionId === 'default') {
+        confirmDeleteCurrentBtn.style.display = 'none';
+      } else {
+        confirmDeleteCurrentBtn.style.display = 'block';
+      }
+      deleteModal.style.display = 'flex';
+    });
+
+    confirmDeleteCurrentBtn.addEventListener('click', () => {
+      deleteModal.style.display = 'none';
+      vscode.postMessage({ type: 'deleteCurrentSession' });
+    });
+
+    confirmDeleteAllBtn.addEventListener('click', () => {
+      deleteModal.style.display = 'none';
+      vscode.postMessage({ type: 'deleteAllSessions' });
+    });
+
+    cancelDeleteBtn.addEventListener('click', () => {
+      deleteModal.style.display = 'none';
+    });
+
+    settingsBtn.addEventListener('click', () => {
+      vscode.postMessage({ type: 'manageApiKeys' });
+    });
+
+    manageKeysBtn.addEventListener('click', () => {
+      vscode.postMessage({ type: 'manageApiKeys' });
+    });
+
+    providerSelect.addEventListener('change', () => {
+      vscode.postMessage({ type: 'changeProvider', provider: providerSelect.value });
+    });
+
+    modelSelect.addEventListener('change', () => {
+      vscode.postMessage({ type: 'changeModel', provider: providerSelect.value, model: modelSelect.value });
     });
 
     sessionSelect.addEventListener('change', () => {
@@ -454,6 +663,29 @@
         case 'connectionState':
           statusDot.className = 'status-dot ' + msg.state;
           statusText.textContent = msg.state === 'connected' ? 'Verbunden' : msg.state === 'connecting' ? 'Verbinde...' : 'Getrennt';
+          break;
+
+        case 'modelConfig':
+          if (msg.provider) providerSelect.value = msg.provider;
+          modelSelect.innerHTML = '';
+          if (msg.models && msg.models.length > 0) {
+            msg.models.forEach(m => {
+              const opt = document.createElement('option');
+              opt.value = m;
+              opt.textContent = m;
+              if (m === msg.model) opt.selected = true;
+              modelSelect.appendChild(opt);
+            });
+            if (!modelSelect.value && msg.models.length > 0) {
+              modelSelect.value = msg.models[0];
+            }
+          } else {
+            const opt = document.createElement('option');
+            opt.value = msg.model || 'default';
+            opt.textContent = msg.model || 'Standard';
+            opt.selected = true;
+            modelSelect.appendChild(opt);
+          }
           break;
 
         case 'sessionsList':

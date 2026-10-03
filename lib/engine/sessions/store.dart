@@ -92,6 +92,14 @@ class SessionStore {
     _log.info('Deleted ${sessionIds.length} transcripts');
   }
 
+  /// Delete all session transcripts.
+  Future<void> deleteAllTranscripts() async {
+    await _ensureOpen();
+    final count = _box.length;
+    await _box.clear();
+    _log.info('Deleted all $count transcripts');
+  }
+
   /// List all session IDs that have transcripts.
   Future<List<String>> listSessionIds() async {
     await _ensureOpen();

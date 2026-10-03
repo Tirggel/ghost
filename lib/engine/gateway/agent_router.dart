@@ -134,23 +134,40 @@ class AgentRouter {
       return {'sessions': sessionManager.listSessions()};
     });
 
-    // 4. Delete a session (single or batch)
+    // 4. Delete a session (single, batch, or all)
     gateway.rpcRegistry.register('agent.deleteSession',
         (params, context) async {
+      final all = params?['all'] as bool? ?? false;
       final sessionId = params?['sessionId'] as String?;
       final sessionIds = (params?['sessionIds'] as List<dynamic>?)
           ?.map((e) => e.toString())
           .toList();
 
-      if (sessionIds != null && sessionIds.isNotEmpty) {
+      if (all) {
+        await sessionManager.deleteAllSessions();
+        gateway.broadcast('agent.sessions_cleared', {});
+        return {'status': 'ok', 'all': true};
+      } else if (sessionIds != null && sessionIds.isNotEmpty) {
         await sessionManager.deleteSessions(sessionIds);
+        for (final id in sessionIds) {
+          gateway.broadcast('agent.session_deleted', {'sessionId': id});
+        }
         return {'status': 'ok', 'count': sessionIds.length};
       } else if (sessionId != null) {
         await sessionManager.deleteSession(sessionId);
+        gateway.broadcast('agent.session_deleted', {'sessionId': sessionId});
         return {'status': 'ok', 'sessionId': sessionId};
       } else {
-        throw ProtocolError('Missing required parameter: sessionId or sessionIds');
+        throw ProtocolError(
+            'Missing required parameter: sessionId, sessionIds, or all: true');
       }
+    });
+
+    gateway.rpcRegistry.register('agent.deleteAllSessions',
+        (params, context) async {
+      await sessionManager.deleteAllSessions();
+      gateway.broadcast('agent.sessions_cleared', {});
+      return {'status': 'ok', 'all': true};
     });
 
     // 5. Set model for a specific session

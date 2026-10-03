@@ -660,6 +660,23 @@ class Agent {
             if (hitlWasTriggered) 'hitl_pending': true,
           },
         );
+      } else if (executedToolSummaries.isNotEmpty) {
+        final fallbackMsg = iterations >= effectiveMaxIterations
+            ? 'Das maximale Aktionslimit ($effectiveMaxIterations) wurde erreicht, bevor eine Antwort formuliert werden konnte.'
+            : 'Aktionen wurden ausgeführt, aber keine Textantwort generiert.';
+        onPartialResponse?.call(fallbackMsg);
+        await sessionManager.addMessage(
+          sessionId: sessionId,
+          role: 'assistant',
+          content: fallbackMsg,
+          metadata: {
+            ...metadata,
+            'agentId': id,
+            'provider': activeProvider.providerId,
+            'model': activeProvider.modelId,
+            'tool_calls': executedToolSummaries,
+          },
+        );
       }
     } catch (e) {
       _log.severe('Agent processing failed: $e');

@@ -76,6 +76,30 @@
         "icon": "$(add)"
       },
       {
+        "command": "ghost.deleteCurrentSession",
+        "title": "Ghost: Aktuelle Sitzung löschen",
+        "category": "Ghost",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "ghost.deleteAllSessions",
+        "title": "Ghost: Alle Sitzungen löschen",
+        "category": "Ghost",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "ghost.changeModel",
+        "title": "Ghost: Modell & Provider wechseln",
+        "category": "Ghost",
+        "icon": "$(symbol-color)"
+      },
+      {
+        "command": "ghost.manageApiKeys",
+        "title": "Ghost: API-Keys verwalten",
+        "category": "Ghost",
+        "icon": "$(key)"
+      },
+      {
         "command": "ghost.explainSelection",
         "title": "Ghost: Code erklären",
         "category": "Ghost"
