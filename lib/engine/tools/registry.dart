@@ -103,7 +103,7 @@ class ToolGroups {
       'memory_add',
       'memory_query'
     ],
-    'group:web': ['web_search', 'web_fetch', 'download_file'],
+    'group:web': ['web_search', 'web_fetch', 'download_file', 'browser'],
     'group:ui': ['browser', 'canvas'],
     'group:github': ['github'],
     'group:vault': ['store_api_key'],

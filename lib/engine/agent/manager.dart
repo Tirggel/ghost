@@ -817,7 +817,7 @@ class AgentManager {
       // Strip metadata from history to avoid passing incompatible tool_calls
       // back to the provider (which causes 400 Bad Request on some APIs).
       final messages = session.history
-          .where((m) => m.role != 'system')
+          .where((m) => m.role != 'system' && m.content.trim().isNotEmpty)
           .take(4) // Only consider first 4 messages for titling
           .map((m) => Message(
                 role: m.role,

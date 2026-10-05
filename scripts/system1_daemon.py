@@ -82,65 +82,69 @@ def infer_choice(premise: str, options: list, temperature: float = 0.15) -> dict
     }
 
 # Signal readiness to parent process
-sys.stderr.write("SYSTEM1_READY\n")
-sys.stderr.flush()
+def run_daemon():
+    sys.stderr.write("SYSTEM1_READY\n")
+    sys.stderr.flush()
 
-# ---------------------------------------------------------------------------
-# 2. STDIO JSON-LINES EVENT LOOP (MIT ZOMBIE-SCHUTZ)
-# ---------------------------------------------------------------------------
-while True:
-    try:
-        line = sys.stdin.readline()
-        # Zombie-Schutz: Wenn stdin geschlossen wird (EOF), sofort sauber beenden!
-        if not line:
-            break
-        
-        line = line.strip()
-        if not line:
-            continue
-        
-        req = json.loads(line)
-        req_id = req.get("id")
-        method = req.get("method")
-        start_time = time.perf_counter()
+    # ---------------------------------------------------------------------------
+    # 2. STDIO JSON-LINES EVENT LOOP (MIT ZOMBIE-SCHUTZ)
+    # ---------------------------------------------------------------------------
+    while True:
+        try:
+            line = sys.stdin.readline()
+            # Zombie-Schutz: Wenn stdin geschlossen wird (EOF), sofort sauber beenden!
+            if not line:
+                break
+            
+            line = line.strip()
+            if not line:
+                continue
+            
+            req = json.loads(line)
+            req_id = req.get("id")
+            method = req.get("method")
+            start_time = time.perf_counter()
 
-        if method == "ping":
-            resp = {"id": req_id, "status": "pong"}
-        elif method in ("noul", "score"):
-            premise = req.get("premise", "")
-            hypothesis = req.get("hypothesis", "")
-            score_val = infer_score(premise, hypothesis)
-            resp = {
-                "id": req_id,
-                "status": "ok",
-                "score": score_val,
-                "elapsed_ms": (time.perf_counter() - start_time) * 1000
-            }
-        elif method == "choice":
-            premise = req.get("premise", "")
-            options = req.get("options", [])
-            temp = float(req.get("temperature", 0.15))
-            choice_data = infer_choice(premise, options, temperature=temp)
-            resp = {
-                "id": req_id,
-                "status": "ok",
-                "winner": choice_data["winner"],
-                "confidence": choice_data["confidence"],
-                "raw_scores": choice_data["raw_scores"],
-                "elapsed_ms": (time.perf_counter() - start_time) * 1000
-            }
-        else:
-            resp = {"id": req_id, "status": "error", "error": f"Unknown method: {method}"}
+            if method == "ping":
+                resp = {"id": req_id, "status": "pong"}
+            elif method in ("noul", "score"):
+                premise = req.get("premise", "")
+                hypothesis = req.get("hypothesis", "")
+                score_val = infer_score(premise, hypothesis)
+                resp = {
+                    "id": req_id,
+                    "status": "ok",
+                    "score": score_val,
+                    "elapsed_ms": (time.perf_counter() - start_time) * 1000
+                }
+            elif method == "choice":
+                premise = req.get("premise", "")
+                options = req.get("options", [])
+                temp = float(req.get("temperature", 0.15))
+                choice_data = infer_choice(premise, options, temperature=temp)
+                resp = {
+                    "id": req_id,
+                    "status": "ok",
+                    "winner": choice_data["winner"],
+                    "confidence": choice_data["confidence"],
+                    "raw_scores": choice_data["raw_scores"],
+                    "elapsed_ms": (time.perf_counter() - start_time) * 1000
+                }
+            else:
+                resp = {"id": req_id, "status": "error", "error": f"Unknown method: {method}"}
 
-        sys.stdout.write(json.dumps(resp, ensure_ascii=False) + "\n")
-        sys.stdout.flush()
+            sys.stdout.write(json.dumps(resp, ensure_ascii=False) + "\n")
+            sys.stdout.flush()
 
-    except json.JSONDecodeError as je:
-        sys.stdout.write(json.dumps({"id": None, "status": "error", "error": f"Invalid JSON: {je}"}) + "\n")
-        sys.stdout.flush()
-    except Exception as e:
-        sys.stdout.write(json.dumps({"id": None, "status": "error", "error": str(e)}) + "\n")
-        sys.stdout.flush()
+        except json.JSONDecodeError as je:
+            sys.stdout.write(json.dumps({"id": None, "status": "error", "error": f"Invalid JSON: {je}"}) + "\n")
+            sys.stdout.flush()
+        except Exception as e:
+            sys.stdout.write(json.dumps({"id": None, "status": "error", "error": str(e)}) + "\n")
+            sys.stdout.flush()
 
-# Sauberes Beenden bei EOF
-sys.exit(0)
+    # Sauberes Beenden bei EOF
+    sys.exit(0)
+
+if __name__ == "__main__":
+    run_daemon()

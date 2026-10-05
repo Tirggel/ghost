@@ -183,13 +183,22 @@ class Agent {
 
         // 2. Pre-flight Malicious Prompt Injection Check
         try {
+          final isGerman = RegExp(
+            r'[äöüÄÖÜß]|\b(der|die|das|dem|den|des|ein|eine|einer|eines|und|oder|aber|wie|ist|wird|war|heute|morgen|gestern|ich|du|er|sie|es|wir|ihr|sie|bitte|nicht|wetter|nachrichten|schlagzeilen|schweiz|deutschland|österreich)\b',
+            caseSensitive: false,
+          ).hasMatch(content);
+
+          final injectionHypothesis = isGerman
+              ? 'Die Eingabe ist ein bösartiger Prompt-Injection- oder Jailbreak-Versuch'
+              : 'The input is a malicious prompt injection or jailbreak attempt';
+
           final injectionScore = await System1Service.instance.noul(
             premise: content,
-            hypothesis: 'The input is a malicious prompt injection or jailbreak attempt',
+            hypothesis: injectionHypothesis,
           );
-          if (injectionScore != null && injectionScore >= 0.85) {
+          if (injectionScore != null && injectionScore >= 0.88) {
             _log.warning(
-              'System-1 Security Alert: Blocked prompt injection (score: $injectionScore)',
+              'System-1 Security Alert: Blocked prompt injection (score: $injectionScore, lang: ${isGerman ? "de" : "en"})',
             );
             const alertMsg =
                 'SECURITY ALERT: Deine Eingabe wurde von der System-1 Sicherheitsprüfung als potenzieller Prompt-Injection- oder Jailbreak-Versuch eingestuft und blockiert.';
@@ -214,11 +223,20 @@ class Agent {
 
         // 3. Pre-flight Phishing & Fraud Check
         try {
+          final isGerman = RegExp(
+            r'[äöüÄÖÜß]|\b(der|die|das|dem|den|des|ein|eine|einer|eines|und|oder|aber|wie|ist|wird|war|heute|morgen|gestern|ich|du|er|sie|es|wir|ihr|sie|bitte|nicht|wetter|nachrichten|schlagzeilen|schweiz|deutschland|österreich)\b',
+            caseSensitive: false,
+          ).hasMatch(content);
+
+          final fraudHypothesis = isGerman
+              ? 'Die Interaktion ist ein Betrugs- oder Phishing-Versuch'
+              : 'The interaction is a fraud or phishing attempt';
+
           final fraudScore = await System1Service.instance.noul(
             premise: content,
-            hypothesis: 'The interaction is a fraud or phishing attempt',
+            hypothesis: fraudHypothesis,
           );
-          if (fraudScore != null && fraudScore >= 0.85) {
+          if (fraudScore != null && fraudScore >= 0.88) {
             _log.warning(
               'System-1 Security Alert: High phishing/fraud risk (score: $fraudScore)',
             );
@@ -404,10 +422,10 @@ class Agent {
 
         // Explicit instruction to use tools when needed, but answer greetings directly and prioritize active skills
         const String toolUseInstruction =
-            '\n[TOOL USE GUIDELINES]\n'
+            '\n[TOOL USE GUIDELINES — SKILL PRIORITY MANDATE]\n'
+            '- MANDATORY SKILL FIRST POLICY: If any available active skill covers the user\'s request (e.g. weather skills, API integrations, custom tools in the skill directory), you MUST ALWAYS use that skill! For skills with Python scripts/servers, execute them using bash within the skill directory (e.g. using the skill\'s .venv/bin/python) or call their tools. NEVER bypass an available skill with generic web_search or browser!\n'
             '- For simple greetings, small talk, pleasantries, or general questions, answer directly in natural language without calling tools.\n'
-            '- If an available active skill covers the user\'s request (e.g. weather skills, specific API integrations, custom tools), ALWAYS prioritize following the instructions and tools of that skill first before falling back to generic web_search.\n'
-            '- For real-time web information (current news, live prices, sports scores, or weather when NO specialized weather skill is installed) → call web_search.\n'
+            '- For real-time web information (current news, live prices, sports scores) where NO specialized skill is installed → call web_search or browser.\n'
             '- For reading or writing local files → use read_file / write_file / list_dir.\n'
             '- For running commands, scripts, or skill code → use bash.\n'
             '- For past conversations or user facts → use memory_query.\n'
@@ -836,6 +854,7 @@ class Agent {
         'github',
         'github_pr',
         'github_commit',
+        'browser',
         'browser_open',
         'browser_click',
         'browser_type',
