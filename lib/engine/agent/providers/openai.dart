@@ -84,7 +84,11 @@ class OpenAIProvider implements AIModelProvider {
 
     final skippedToolCallIds = <String>{};
 
-    for (final m in messages) {
+    for (int idx = 0; idx < messages.length; idx++) {
+      final m = messages[idx];
+      final hasToolFollowUp =
+          idx + 1 < messages.length && messages[idx + 1].role == 'tool';
+
       // Reasoning models (deepseek-reasoner) require `reasoning_content` in
       // assistant messages that have tool_calls.
       if (isReasoningModel &&
@@ -140,14 +144,18 @@ class OpenAIProvider implements AIModelProvider {
         msg['tool_call_id'] = m.metadata['tool_call_id'];
       }
 
-      // Add tool_calls for assistant messages
-      if (m.role == 'assistant' && m.metadata.containsKey('tool_calls')) {
+      // Add tool_calls for assistant messages ONLY if followed by tool response messages.
+      // Completed turns loaded from storage only contain tool_calls for UI summaries.
+      if (hasToolFollowUp &&
+          m.role == 'assistant' &&
+          m.metadata.containsKey('tool_calls')) {
         final calls = m.metadata['tool_calls'] as List<dynamic>;
         if (calls.isNotEmpty) {
           msg['tool_calls'] = calls.map((c) {
             final call = c as Map<String, dynamic>;
+            final id = call['id'] ?? 'call_${calls.indexOf(c)}';
             return {
-              'id': call['id'],
+              'id': id,
               'type': 'function',
               'function': {
                 'name': call['name'],

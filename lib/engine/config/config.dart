@@ -1142,6 +1142,7 @@ class SecurityConfig {
     this.promptHardening = false,
     this.restrictNetwork = false,
     this.promptAnalyzers = false,
+    this.system1Middleware = true,
   });
 
   factory SecurityConfig.fromJson(Map<String, dynamic> json) {
@@ -1154,6 +1155,7 @@ class SecurityConfig {
       promptHardening: json['promptHardening'] as bool? ?? false,
       restrictNetwork: json['restrictNetwork'] as bool? ?? false,
       promptAnalyzers: json['promptAnalyzers'] as bool? ?? false,
+      system1Middleware: json['system1Middleware'] as bool? ?? true,
     );
   }
 
@@ -1162,6 +1164,7 @@ class SecurityConfig {
   final bool promptHardening;
   final bool restrictNetwork;
   final bool promptAnalyzers;
+  final bool system1Middleware;
 
   Map<String, dynamic> toJson() => {
         'level': level.name,
@@ -1169,6 +1172,7 @@ class SecurityConfig {
         'promptHardening': promptHardening,
         'restrictNetwork': restrictNetwork,
         'promptAnalyzers': promptAnalyzers,
+        'system1Middleware': system1Middleware,
       };
 
   SecurityConfig copyWith({
@@ -1177,6 +1181,7 @@ class SecurityConfig {
     bool? promptHardening,
     bool? restrictNetwork,
     bool? promptAnalyzers,
+    bool? system1Middleware,
   }) {
     return SecurityConfig(
       level: level ?? this.level,
@@ -1184,6 +1189,7 @@ class SecurityConfig {
       promptHardening: promptHardening ?? this.promptHardening,
       restrictNetwork: restrictNetwork ?? this.restrictNetwork,
       promptAnalyzers: promptAnalyzers ?? this.promptAnalyzers,
+      system1Middleware: system1Middleware ?? this.system1Middleware,
     );
   }
 }

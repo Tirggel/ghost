@@ -82,6 +82,19 @@ Aktualisiert die autonome Abrechnungs- und Zahlungskonfiguration.
 - `status`: "ok"
 - `billing`: (Object) Die aktualisierten Details der Abrechnungskonfiguration.
 
+### `config.updateSecurity`
+Aktualisiert Sicherheitsrichtlinien, inklusive Human-In-The-Loop und der System-1 Entscheidungs-Middleware.
+**Parameter:**
+- `level`: (String, optional) Sicherheitslevel-Voreinstellung (`"none"`, `"low"`, `"medium"`, `"high"`).
+- `humanInTheLoop`: (Boolean, optional) Verlangt explizite Nutzerbestätigung vor sensiblen Datei-, Terminal- oder Finanzaktionen.
+- `promptHardening`: (Boolean, optional) System-Prompt-Schutzmaßnahmen gegen Prompt-Injections und Jailbreaks.
+- `restrictNetwork`: (Boolean, optional) Isoliert ausgehende Netzwerkzugriffe.
+- `promptAnalyzers`: (Boolean, optional) Vorab-Analyse eingehender Prompts.
+- `system1Middleware`: (Boolean, optional) Aktiviert die lokale ModernBERT-INT8-ONNX-Entscheidungs-Middleware für Sub-15ms Pre-Flight-Sicherheitsprüfungen, Choice-Routing und smarte HITL-Freigabe.
+
+**Antwort:**
+- `status`: "ok"
+
 ### `config.getGoogleCredentials`
 Ruft die Google OAuth Client-IDs und Secrets aus dem Tresor ab.
 

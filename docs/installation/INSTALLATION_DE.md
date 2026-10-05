@@ -77,8 +77,24 @@ Ghost enthält eine lokale Vektorsuchmaschine (RAG), die auf **ObjectBox** basie
 
 ---
 
+### 6. System-1 Entscheidungs-Middleware Einrichtung (Optional)
+Ghost unterstützt eine lokale, nicht-autoregressive Entscheidungs-Middleware basierend auf ModernBERT INT8 ONNX:
+1. **Python-Abhängigkeiten**:
+   Installiere die benötigten Inferenz-Pakete:
+   ```bash
+   pip install -r docs/installation/requirements.txt
+   ```
+   (Erfordert `onnxruntime`, `transformers` und `numpy`).
+2. **Modell-Datei**:
+   Stelle sicher, dass `ghost_system1_int8.onnx` im Verzeichnis `scripts/models/ghost_system1_int8.onnx` liegt.
+3. **Aktivierung**:
+   Navigiere in der Ghost-App zu **Einstellungen > Sicherheit** und aktiviere die **System-1 Entscheidungs-Middleware**.
+
+---
+
 ## 📚 Spezialisierte Anleitungen
-Check out our specialized documentation for advanced configuration and development:
+Entdecke unsere spezialisierte Dokumentation für erweiterte Konfiguration und Entwicklung:
+- **[System-1 Entscheidungs-Middleware](../SYSTEM1_MIDDLEWARE_DE.md)**: Detaillierte Architektur der lokalen ModernBERT-INT8-Entscheidungs-Engine.
 - **[Skills Development Guide](../SKILLS_GUIDE_DE.md)**: Erstelle deine eigenen KI-Funktionen.
 - **[STT & TTS Setup](../STT_TTS_SETUP_DE.md)**: Lokale Hochleistungs-Spracherkennung/-synthese.
 - **[RPC API Referenz](../RPC_API_REFERENCE_DE.md)**: Dokumentation der JSON-RPC 2.0 Schnittstelle.

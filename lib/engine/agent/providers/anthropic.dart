@@ -70,75 +70,85 @@ class AnthropicProvider implements AIModelProvider {
 
     final body = {
       'model': model,
-      'messages': messages
-          .map((m) {
-            final role = m.role == 'assistant' ? 'assistant' : 'user';
+      'messages': () {
+        final result = <Map<String, dynamic>>[];
+        for (int idx = 0; idx < messages.length; idx++) {
+          final m = messages[idx];
+          final role = m.role == 'assistant' ? 'assistant' : 'user';
 
-            final parts = <Map<String, dynamic>>[];
+          final parts = <Map<String, dynamic>>[];
 
-            // Handle images/attachments for user messages
-            if (m.role == 'user' && m.attachments.isNotEmpty) {
-              for (final a in m.attachments) {
-                if (a.mimeType.startsWith('image/')) {
-                  parts.add({
-                    'type': 'image',
-                    'source': {
-                      'type': 'base64',
-                      'media_type': a.mimeType,
-                      'data': a.data,
-                    },
-                  });
-                }
-              }
-            }
-
-            // Handle text content
-            if (m.content.isNotEmpty) {
-              parts.add({'type': 'text', 'text': m.content});
-            }
-
-            // Handle tool calls in assistant messages
-            if (m.role == 'assistant' && m.metadata.containsKey('tool_calls')) {
-              final calls = m.metadata['tool_calls'] as List<dynamic>;
-              for (final call in calls) {
-                final c = call as Map<String, dynamic>;
+          // Handle images/attachments for user messages
+          if (m.role == 'user' && m.attachments.isNotEmpty) {
+            for (final a in m.attachments) {
+              if (a.mimeType.startsWith('image/')) {
                 parts.add({
-                  'type': 'tool_use',
-                  'id': c['id'],
-                  'name': c['name'],
-                  'input': c['arguments'],
+                  'type': 'image',
+                  'source': {
+                    'type': 'base64',
+                    'media_type': a.mimeType,
+                    'data': a.data,
+                  },
                 });
               }
             }
+          }
 
-            // Handle tool outputs as tool_result content (Anthropic requirement)
-            if (m.role == 'tool') {
-              return {
-                'role': 'user',
-                'content': [
-                  {
-                    'type': 'tool_result',
-                    'tool_use_id': m.metadata['tool_call_id'],
-                    'content': m.content,
-                    'is_error': m.metadata['is_error'] ?? false,
-                  }
-                ]
-              };
+          // Handle text content
+          if (m.content.isNotEmpty) {
+            parts.add({'type': 'text', 'text': m.content});
+          }
+
+          // Handle tool calls in assistant messages ONLY if followed by tool response.
+          // Completed turns loaded from storage only contain tool_calls for UI summaries.
+          final hasToolFollowUp =
+              idx + 1 < messages.length && messages[idx + 1].role == 'tool';
+          if (hasToolFollowUp &&
+              m.role == 'assistant' &&
+              m.metadata.containsKey('tool_calls')) {
+            final calls = m.metadata['tool_calls'] as List<dynamic>;
+            for (final call in calls) {
+              final c = call as Map<String, dynamic>;
+              final id = c['id'] ?? 'call_${calls.indexOf(call)}';
+              parts.add({
+                'type': 'tool_use',
+                'id': id,
+                'name': c['name'],
+                'input': c['arguments'],
+              });
             }
+          }
 
-            // If we have no parts (e.g. empty assistant message), ensure at least one part exists
-            if (parts.isEmpty && m.role == 'assistant') {
-              parts.add({'type': 'text', 'text': ''});
-            }
+          // Handle tool outputs as tool_result content (Anthropic requirement)
+          if (m.role == 'tool') {
+            result.add({
+              'role': 'user',
+              'content': [
+                {
+                  'type': 'tool_result',
+                  'tool_use_id': m.metadata['tool_call_id'] ?? 'unknown',
+                  'content': m.content,
+                  'is_error': m.metadata['is_error'] ?? false,
+                }
+              ]
+            });
+            continue;
+          }
 
-            return {
-              'role': role,
-              'content': parts.length == 1 && parts[0]['type'] == 'text'
-                  ? parts[0]['text']
-                  : parts,
-            };
-          })
-          .toList(),
+          // If we have no parts (e.g. empty assistant message), ensure at least one part exists
+          if (parts.isEmpty && m.role == 'assistant') {
+            parts.add({'type': 'text', 'text': ''});
+          }
+
+          result.add({
+            'role': role,
+            'content': parts.length == 1 && parts[0]['type'] == 'text'
+                ? parts[0]['text']
+                : parts,
+          });
+        }
+        return result;
+      }(),
       'max_tokens': maxTokens,
       'temperature': temperature,
       'system': ?systemPrompt,

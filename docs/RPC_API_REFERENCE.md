@@ -108,6 +108,19 @@ Updates the autonomous billing and payment configuration.
 - `status`: "ok"
 - `billing`: (Object) The updated billing configuration details.
 
+### `config.updateSecurity`
+Updates security and execution policies, including Human-In-The-Loop gating and the System-1 Decision Middleware.
+**Params:**
+- `level`: (String, optional) Security level preset (`"none"`, `"low"`, `"medium"`, `"high"`).
+- `humanInTheLoop`: (Boolean, optional) Requires explicit user confirmation for sensitive actions.
+- `promptHardening`: (Boolean, optional) Defends against prompt injection and jailbreak instructions.
+- `restrictNetwork`: (Boolean, optional) Restricts outbound network access.
+- `promptAnalyzers`: (Boolean, optional) Pre-flight prompt analyzers.
+- `system1Middleware`: (Boolean, optional) Enables the local ModernBERT INT8 ONNX decision middleware for sub-15ms pre-flight safety checks, choice routing, and smart HITL verification.
+
+**Response:**
+- `status`: "ok"
+
 ### `config.getGoogleCredentials`
 Retrieves the Google OAuth client IDs and secrets from the vault.
 

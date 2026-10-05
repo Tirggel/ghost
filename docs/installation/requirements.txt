@@ -8,3 +8,8 @@ piper-tts>=1.2.0
 
 # File system sanitization helper for skills and downloads
 pathvalidate>=3.2.0
+
+# System-1 Decision Engine (Local ModernBERT INT8 ONNX Middleware)
+onnxruntime>=1.17.0
+transformers>=4.40.0
+numpy>=1.24.0

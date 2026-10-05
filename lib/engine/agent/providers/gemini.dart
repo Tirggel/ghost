@@ -285,8 +285,12 @@ class GeminiProvider extends AIModelProvider {
           parts.add(TextPart(m.content));
         }
 
+        // Only attach FunctionCall parts if followed by actual tool responses in history.
+        // Completed turns loaded from storage only contain tool_calls for UI summaries.
+        final hasToolFollowUp =
+            i + 1 < messages.length && messages[i + 1].role == 'tool';
         final toolCalls = m.metadata['tool_calls'] as List<dynamic>?;
-        if (toolCalls != null) {
+        if (hasToolFollowUp && toolCalls != null) {
           for (int callIdx = 0; callIdx < toolCalls.length; callIdx++) {
             final call = toolCalls[callIdx];
             final map = call is Map<String, dynamic>

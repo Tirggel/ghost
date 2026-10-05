@@ -87,8 +87,10 @@ node_modules/
 **/node_modules
 out/
 
-# Large assets and models
+# Large assets, models and datasets
 scripts/models/
+*.jsonl
+scripts/*.jsonl
 
 # Temporary data and scratch files
 scratch/
@@ -106,8 +108,10 @@ lib/libobjectbox.so
 app.sh
 gateway.sh
 
-# Python cache
+# Python cache and environments
 **/__pycache__/
+.venv/
+**/.venv/
 
 # Tests (Not needed for execution)
 test/

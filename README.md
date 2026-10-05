@@ -25,6 +25,7 @@ Ghost features a modern, integrated architecture:
 - **Kanban & Task Orchestration**: Integrated Multi-Agent Kanban system for automated task management, dependency tracking (`dependsOnIds`), and autonomous workflow transitions.
 - **Design Systems**: Centralized theme management with custom branding, Markdown-based styling ("The Monolith"), and unified token distribution.
 - **Memory Engine**: Dual-mode memory using Hive (standard) and ObjectBox (RAG) for secure, local knowledge.
+- **System-1 Decision Middleware**: Ultra-fast, non-autoregressive local ModernBERT INT8 ONNX engine for sub-15ms pre-flight security checks, categorical choice routing, tool payload risk scoring, and smart HITL intent verification.
 - **Google Antigravity & ACP**: Native Agent Client Protocol (ACP) adapter over STDIO and WebSocket, connecting Ghost as an autonomous coding agent to Antigravity CLI (`agy`), Antigravity IDE, and Zed.
 
 ---
@@ -58,6 +59,7 @@ flutter run
 > |---|---|---|
 > | **Human-In-The-Loop (HITL)** | Requires confirmation before sensitive actions | ✅ Enable |
 > | **Prompt Hardening** | Protects against jailbreaks & prompt injection | ✅ Enable |
+> | **System-1 Middleware** | Sub-15ms local ModernBERT INT8 model for pre-flight safety & smart HITL | ✅ Enable (if model present) |
 > | **Network Restriction** | Isolates web tools at high security level | ⚠️ As needed |
 > | **Prompt Analyzers** | Advanced analysis of incoming prompts | ⚠️ As needed |
 >
@@ -77,6 +79,7 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
 - **Design Systems**: Manage, export, and restore visual themes independently.
 
 ### 📚 Further Documentation
+- **[System-1 Decision Middleware](docs/SYSTEM1_MIDDLEWARE_EN.md)**: Deep dive into the local ModernBERT INT8 ONNX architecture, dataset generation, training in Colab, and sub-15ms pre-flight safety & smart HITL.
 - **[Google Workspace Setup](docs/GOOGLE_WORKSPACE_SETUP_EN.md)**: Guide for configuring Gmail, Calendar, and Drive.
 - **[Microsoft 365 Setup](docs/MICROSOFT_365_SETUP_EN.md)**: Guide for configuring Outlook and OneDrive via Azure AD.
 - **[Payments, Wallet & Binance Setup](docs/PAYMENTS_SETUP_EN.md)**: Guide for configuring credit cards, EVM blockchain wallets, and Binance API trading (including spot and demo accounts).
@@ -98,6 +101,7 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
 - **Multi-Model Support**: Use Anthropic (Claude), OpenAI (GPT), Google (Gemini), DeepSeek, Mistral, Groq, Together AI, Perplexity, X.AI (Grok), or local models via **LM Studio**, Ollama, and OpenRouter.
     - **Google Gemini 2.5 & 3**: Comprehensive support for Gemini 1.5, 2.0, 2.5 (`gemini-2.5-flash`), and Gemini 3 models. Features native Multi-Turn Function Calling with cryptographic Thought Signature preservation (`thought_signature`), automated resilience fallback (`skip_thought_signature_validator`), and clean separation of internal reasoning tokens (`reasoningContent`) from visible text.
     - **Streaming & Reasoning Models**: Real-time SSE streaming with chunk buffering, multi-turn tool call accumulation, and dedicated support for reasoning models (e.g. DeepSeek Reasoner, OpenAI o1/o3-mini).
+    - **Tool-Call History Hygiene**: Automated multi-turn message cleansing across Anthropic, Gemini, and OpenAI providers. Assistant tool calls are strictly paired with succeeding tool response turns, preventing provider validation errors when loading historical sessions from disk.
     - **Local AI Sovereignty**: Complete offline privacy with LM Studio, Ollama, and vLLM.
 - **Multi-Agent Kanban System**: 
     - **Task Orchestration**: Phase 3 task orchestration with automated status transitions.
@@ -167,6 +171,7 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
     - **Real-time UI Sync**: New agents and reconfiguration changes are broadcasted immediately to the UI for a seamless experience.
     - **Interactive Error Recovery**: Resume long-running agent tasks after hits like rate-limits with manual "Continue" buttons directly in the UI.
 - **Privacy & Security**:
+    - **System-1 Decision Middleware**: Ultra-fast non-autoregressive local Cross-Encoder engine (`ModernBERT INT8 ONNX`) operating in sub-15ms on CPU. Features pre-flight prompt injection / jailbreak blocking, phishing & crypto-drainer screening, dynamic tool payload risk scoring (evaluating full shell commands, financial amounts, and contracts), and smart Human-In-The-Loop (HITL) semantic intent verification (distinguishing explicit approval from refusal).
     - **Human-In-The-Loop (HITL)**: Sensitive actions (file system, terminal, web access) require explicit user confirmation via interactive **YES / NO buttons** in the chat.
     - **Security Audit Logs**: Track and review all security-relevant actions and events directly in the UI.
     - **Prompt Hardening**: Advanced system prompts protect the agent from jailbreaks and instructions that attempt to bypass security rules.

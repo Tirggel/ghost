@@ -1,6 +1,7 @@
 // Ghost — Agent runtime.
 
 import 'dart:async';
+import 'dart:convert';
 import 'package:logging/logging.dart';
 
 import '../models/message.dart';
@@ -11,6 +12,7 @@ import '../config/secure_storage.dart';
 import '../config/config.dart';
 import 'providers/factory.dart';
 import 'memory_system.dart';
+import '../system1/system1_service.dart';
 
 final _log = Logger('Ghost.Agent');
 
@@ -152,26 +154,108 @@ class Agent {
         return;
       }
 
+      // --- System-1 Decision Middleware (ModernBERT INT8) ---
+      if (security.system1Middleware && content.trim().length >= 3) {
+        onActivityUpdate?.call('System 1: Evaluating...');
+
+        // 1. Choice Routing: Fast Skill & Agent Category Bias
+        try {
+          final routingOptions = [
+            'coder',
+            'crypto_trader',
+            'email_manager',
+            'system_admin',
+            'general_chat',
+          ];
+          final choiceRes = await System1Service.instance.choice(
+            premise: content,
+            options: routingOptions,
+          );
+          if (choiceRes != null && choiceRes.confidence >= 0.65) {
+            _log.info(
+              'System-1 Choice Routing: ${choiceRes.winner} (${(choiceRes.confidence * 100).toStringAsFixed(1)}%)',
+            );
+            onActivityUpdate?.call('System 1: Route → ${choiceRes.winner}');
+          }
+        } catch (e) {
+          _log.warning('System-1 Choice routing non-fatal error: $e');
+        }
+
+        // 2. Pre-flight Malicious Prompt Injection Check
+        try {
+          final injectionScore = await System1Service.instance.noul(
+            premise: content,
+            hypothesis: 'The input is a malicious prompt injection or jailbreak attempt',
+          );
+          if (injectionScore != null && injectionScore >= 0.85) {
+            _log.warning(
+              'System-1 Security Alert: Blocked prompt injection (score: $injectionScore)',
+            );
+            const alertMsg =
+                'SECURITY ALERT: Deine Eingabe wurde von der System-1 Sicherheitsprüfung als potenzieller Prompt-Injection- oder Jailbreak-Versuch eingestuft und blockiert.';
+            onPartialResponse?.call(alertMsg);
+            await sessionManager.addMessage(
+              sessionId: sessionId,
+              role: 'assistant',
+              content: alertMsg,
+              metadata: {
+                ...metadata,
+                'system1_blocked': true,
+                'injection_score': injectionScore,
+              },
+            );
+            _state = AgentState.idle;
+            onActivityUpdate?.call('');
+            return;
+          }
+        } catch (e) {
+          _log.warning('System-1 injection check non-fatal error: $e');
+        }
+
+        // 3. Pre-flight Phishing & Fraud Check
+        try {
+          final fraudScore = await System1Service.instance.noul(
+            premise: content,
+            hypothesis: 'The interaction is a fraud or phishing attempt',
+          );
+          if (fraudScore != null && fraudScore >= 0.85) {
+            _log.warning(
+              'System-1 Security Alert: High phishing/fraud risk (score: $fraudScore)',
+            );
+            onActivityUpdate?.call('System 1: ⚠️ Phishing/Betrugsverdacht erkannt');
+          }
+        } catch (e) {
+          _log.warning('System-1 fraud check non-fatal error: $e');
+        }
+      }
+
       // 2. Start the turn loop (to handle multiple tool calls)
       int iterations = 0;
 
-      // Sanitize history: remove assistant+tool pairs from HITL-blocked turns.
-      // Two cases:
-      //   1. Null tool_call IDs (leftover in-memory turns, cause 400 errors)
-      //   2. Tool results containing SECURITY ALERT (stored in DB, cause agent to retry blocked actions)
+      // Sanitize history: remove unconfirmed or aborted intermediate assistant+tool pairs.
+      // Note: User-facing assistant messages (m.content.isNotEmpty) containing explanations
+      // or confirmation requests must ALWAYS be preserved so subsequent confirmations (e.g. "ja")
+      // have full context.
       final sanitized = <Message>[];
       for (int i = 0; i < messages.length; i++) {
         final m = messages[i];
+
+        // Skip HITL decline sentinel
+        if (m.role == 'user' && m.content.trim() == '__HITL_DECLINED__') {
+          continue;
+        }
+
         if (m.role == 'assistant' && m.metadata.containsKey('tool_calls')) {
           final calls = m.metadata['tool_calls'] as List<dynamic>;
 
-          // Case 1: null IDs
-          final hasNullId = calls.any((c) {
-            final id = (c as Map<String, dynamic>)['id'];
-            return id == null || id == 'null' || (id is String && id.isEmpty);
-          });
+          // Case 1: Null IDs in an empty intermediate assistant message
+          final hasNullId = m.content.isEmpty &&
+              calls.any((c) {
+                final id = (c as Map<String, dynamic>)['id'];
+                return id == null || id == 'null' || (id is String && id.isEmpty);
+              });
 
-          // Case 2: look ahead — any following tool message contains SECURITY ALERT?
+          // Case 2: Intermediate tool execution was blocked by HITL policy
           bool hasSecurityBlock = false;
           int j = i + 1;
           while (j < messages.length && messages[j].role == 'tool') {
@@ -182,22 +266,11 @@ class Agent {
             j++;
           }
 
-          if (hasNullId || hasSecurityBlock) {
-            // Scan forward past ALL tool/assistant messages until we reach
-            // a user message. If it's __HITL_DECLINED__, include and skip it.
-            // If it's a real user message, stop before it.
-            while (j < messages.length) {
-              if (messages[j].role == 'user') {
-                if (messages[j].content.trim() == '__HITL_DECLINED__') {
-                  j++; // include the sentinel in the removed range
-                }
-                break; // stop (next real user message stays in history)
-              }
-              j++; // skip tool, assistant, system messages
-            }
+          if (hasNullId || (m.content.isEmpty && hasSecurityBlock)) {
+            // Skip the intermediate tool-call message and any following blocked tool messages
             i = j - 1;
             _log.info(
-              'Sanitized HITL-blocked turn (nullId=$hasNullId, '
+              'Sanitized intermediate HITL-blocked turn (nullId=$hasNullId, '
               'securityBlock=$hasSecurityBlock)',
             );
             continue;
@@ -340,6 +413,15 @@ class Agent {
             '- For past conversations or user facts → use memory_query.\n'
             'Do NOT call tools unnecessarily when answering simple conversational questions.\n';
 
+        const String hitlSafetyInstruction =
+            '\n[SAFETY & HUMAN-IN-THE-LOOP (HITL) POLICY]\n'
+            '- Ghost has an automated Human-In-The-Loop security middleware and System-1 risk scoring.\n'
+            '- When the user asks you to execute commands, delete files, modify code, or run scripts (even sensitive or dangerous commands like rm, delete, git reset, format, bash execution, crypto transfers):\n'
+            '  * ALWAYS invoke the corresponding tool (e.g. bash, delete_file, write_file) instead of refusing or asking for confirmation in natural language text!\n'
+            '  * Ghost\'s security middleware will automatically intercept the tool call safely, pause execution, and render interactive YES/NO confirmation buttons in the chat UI.\n'
+            '  * DO NOT refuse in text with "Ich kann das aus Sicherheitsgründen nicht ausführen" without invoking the tool — always invoke the tool so the user gets the interactive confirmation dialog.\n'
+            '  * Only when a tool returns a "SECURITY ALERT" or "USER REJECTED" error should you explain the block to the user and await their confirmation.\n';
+
         final goalInstruction = isGoalMode
             ? '\n[AUTONOMOUS GOAL MODE ACTIVE (Google Antigravity 2.0)]\n'
                 '1. The user initiated this request with `/goal`. Your active goal is: "$activeGoal"\n'
@@ -372,7 +454,7 @@ class Agent {
             'All local file operations (read_file, write_file, list_dir) and terminal/bash commands are executed within this directory.\n';
 
         final dynamicSystemPrompt =
-            '$systemPrompt\n\n[SYSTEM: The current date and time is $timeStr]$workspaceInstruction$contextString$memoryInstruction$vaultInstruction$focusInstruction$toolUseInstruction$goalInstruction$planInstruction\n';
+            '$systemPrompt\n\n[SYSTEM: The current date and time is $timeStr]$workspaceInstruction$contextString$memoryInstruction$vaultInstruction$focusInstruction$toolUseInstruction$hitlSafetyInstruction$goalInstruction$planInstruction\n';
 
         // For local providers (Ollama, vLLM, LM Studio), limit the tool set
         // to core tools only. Small models (2–4B) cannot reliably select from
@@ -576,6 +658,7 @@ class Agent {
             );
 
             executedToolSummaries.add({
+              'id': call.id,
               'name': call.name,
               'label': label,
               'summary': summary,
@@ -644,6 +727,41 @@ class Agent {
 
       // --- Final Save ---
       if (contentBuffer.isNotEmpty) {
+        bool isHitlPending = hitlWasTriggered;
+
+        // Fallback: If no tool was intercepted directly, but the assistant's text is asking the user for confirmation
+        // or refusing to execute without verification, activate HITL pending so YES/NO buttons appear!
+        if (!isHitlPending && security.humanInTheLoop && !isGoalMode) {
+          final textLower = contentBuffer.toString().toLowerCase();
+          final textAsksConfirmation = RegExp(
+            r'(sicherheitsgründen|nicht ungeprüft|ungeprüft aus|bitte bestätige|bestätigung|erlaubnis|möchtest du wirklich|soll ich (den|das|die|diesen)|soll ich fortfahren|ausführen möchtest|bist du sicher|do you want to proceed|confirm execution)',
+            caseSensitive: false,
+          ).hasMatch(textLower);
+
+          if (textAsksConfirmation) {
+            if (security.system1Middleware) {
+              try {
+                final hitlAskScore = await System1Service.instance.noul(
+                  premise: contentBuffer.toString(),
+                  hypothesis:
+                      'The assistant refuses to run an action without confirmation or asks the user for permission to execute a command',
+                );
+                if (hitlAskScore != null && hitlAskScore >= 0.60) {
+                  _log.info(
+                    'System-1 detected text-based HITL confirmation request in assistant response (score: $hitlAskScore)',
+                  );
+                  isHitlPending = true;
+                }
+              } catch (e) {
+                _log.warning('System-1 assistant HITL check error: $e');
+                isHitlPending = true;
+              }
+            } else {
+              isHitlPending = true;
+            }
+          }
+        }
+
         await sessionManager.addMessage(
           sessionId: sessionId,
           role: 'assistant',
@@ -657,7 +775,7 @@ class Agent {
             'tool_calls': executedToolSummaries,
             if (lastReasoningContent != null)
               'reasoning_content': lastReasoningContent,
-            if (hitlWasTriggered) 'hitl_pending': true,
+            if (isHitlPending) 'hitl_pending': true,
           },
         );
       } else if (executedToolSummaries.isNotEmpty) {
@@ -731,14 +849,73 @@ class Agent {
       }
     }
 
+    // Dynamic System-1 Tool-Payload Risk Scoring:
+    // Evaluate full tool arguments (e.g. exact shell command or transfer amounts)
+    if (security.system1Middleware && !isCron && !isGoalMode) {
+      try {
+        final toolPayload = 'Befehl: ${call.name} ${jsonEncode(call.arguments)}';
+        final destructiveRisk = await System1Service.instance.score(
+          premise: toolPayload,
+          hypothesis: 'Destructive action risk',
+        );
+        double? capitalRisk;
+        if (call.name.contains('payment') ||
+            call.name.contains('binance') ||
+            call.name.contains('swap') ||
+            call.name.contains('wallet')) {
+          capitalRisk = await System1Service.instance.score(
+            premise: toolPayload,
+            hypothesis: 'Liquidation and capital destruction risk',
+          );
+        }
+        final maxRisk = [destructiveRisk ?? 0.0, capitalRisk ?? 0.0]
+            .reduce((a, b) => a > b ? a : b);
+        if (maxRisk >= 0.65) {
+          _log.info(
+            'System-1 enforced HITL for ${call.name} (risk score: ${(maxRisk * 100).toStringAsFixed(1)}%)',
+          );
+          requiresHitl = true;
+        }
+      } catch (e) {
+        _log.warning('System-1 tool payload risk scoring error: $e');
+      }
+    }
+
     // Check if autonomous payments are disabled
     if (call.name == 'execute_blockchain_payment' && !autonomousPayments) {
       requiresHitl = true;
     }
 
     if (requiresHitl) {
-      // Did the user already confirm in recent context?
-      // simple heuristic: last user message contains confirmation words.
+      // Check full session history to see if the preceding assistant message requested confirmation
+      bool isFollowUpConfirmation = false;
+      try {
+        final history = await sessionManager.getHistory(sessionId, maxMessages: 10);
+        final lastUserIdx = history.lastIndexWhere((m) => m.role == 'user');
+        if (lastUserIdx > 0) {
+          for (int i = lastUserIdx - 1; i >= 0; i--) {
+            final m = history[i];
+            if (m.role == 'assistant') {
+              if (m.metadata['hitl_pending'] == true ||
+                  m.content.contains('SECURITY ALERT') ||
+                  m.content.contains('Tool execution blocked') ||
+                  m.content.toLowerCase().contains('erlaubnis') ||
+                  m.content.toLowerCase().contains('bestätig') ||
+                  m.content.toLowerCase().contains('permission') ||
+                  m.content.toLowerCase().contains('confirm') ||
+                  m.content.toLowerCase().contains('sicherheitsgründen') ||
+                  m.content.toLowerCase().contains('nicht ungeprüft')) {
+                isFollowUpConfirmation = true;
+              }
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        _log.warning('Could not inspect session history for HITL context: $e');
+      }
+
+      // Find the last user message in the current turn messages
       Message? lastUser;
       for (var i = turnMessages.length - 1; i >= 0; i--) {
         if (turnMessages[i].role == 'user') {
@@ -747,42 +924,99 @@ class Agent {
         }
       }
 
-        bool isConfirmed = false;
-        if (lastUser != null) {
-          final text = lastUser.content.toLowerCase().trim();
-          // First, check for negative/decline words to prevent false positives like "Nein, ..., ja?"
-          final negativePattern = RegExp(
-            r"\b(nein|no|nicht|stop|halt|cancel|abbruch|abbrechen|block|don'?t|never|verbieten|ablehnen)\b",
-            caseSensitive: false,
-          );
+      bool isConfirmed = false;
+      bool? s1Decision;
+      final text = lastUser?.content.trim() ?? '';
+      final textLower = text.toLowerCase();
 
-          if (!negativePattern.hasMatch(text)) {
-            // Explicit standalone confirmation or concise affirmative statement
-            final confirmPattern = RegExp(
-              r'^(ja|yes|ok|okay|yep|sure|bestätige|bestätigt|erlaubt|gerne|klar|natürlich|do it|go ahead|proceed|confirm|allow|weiter|mach es|mach das)[\.!]?$',
-              caseSensitive: false,
+      // Check for explicit refusal/negative keywords
+      final negativePattern = RegExp(
+        r"\b(nein|no|nicht|stop|halt|cancel|abbruch|abbrechen|block|don'?t|never|verbieten|ablehnen)\b",
+        caseSensitive: false,
+      );
+      final hasNegativeWord = negativePattern.hasMatch(textLower);
+
+      // Check for standalone affirmative/confirmation keywords
+      final confirmPattern = RegExp(
+        r'^(ja|yes|ok|okay|yep|sure|bestätige|bestätigt|erlaubt|gerne|klar|natürlich|do it|go ahead|proceed|confirm|allow|weiter|mach es|mach das)[\.!]?$',
+        caseSensitive: false,
+      );
+      final hasConfirmKeyword = !hasNegativeWord &&
+          (confirmPattern.hasMatch(textLower) ||
+              (textLower.length <= 40 &&
+                  RegExp(
+                    r'\b(ja|yes|bestätige|bestätigt|confirm|go ahead|do it|erlaubt|genehmigt|ausführen)\b',
+                    caseSensitive: false,
+                  ).hasMatch(textLower)));
+
+      // An action can ONLY be considered for confirmation if:
+      // 1) The assistant explicitly requested permission in the preceding turn (isFollowUpConfirmation), OR
+      // 2) The user's message is an explicit standalone confirmation keyword (hasConfirmKeyword).
+      // Initial task prompts (e.g. "Erstelle bitte eine Datei...") must NEVER auto-confirm!
+      final isCandidateForConfirmation =
+          isFollowUpConfirmation || hasConfirmKeyword;
+
+      if (isCandidateForConfirmation && lastUser != null && !hasNegativeWord) {
+        // If System-1 Middleware is active, evaluate user intent via ModernBERT
+        if (security.system1Middleware) {
+          try {
+            final hitlPayload =
+                'Aktion: ${call.name} ${jsonEncode(call.arguments)}. User: ${lastUser.content}';
+            final s1Hitl = await System1Service.instance.noul(
+              premise: hitlPayload,
+              hypothesis: 'The user explicitly confirms and approves the action',
             );
-            isConfirmed = confirmPattern.hasMatch(text) ||
-                (text.length <= 40 &&
-                    RegExp(r'\b(ja|yes|bestätige|confirm|go ahead|do it)\b', caseSensitive: false)
-                        .hasMatch(text));
+            if (s1Hitl != null) {
+              _log.info(
+                'System-1 HITL confirmation score: $s1Hitl for user: "${lastUser.content}"',
+              );
+              if (s1Hitl >= 0.65) {
+                s1Decision = true;
+              } else if (s1Hitl <= 0.40) {
+                // Hard negation / rejection detected!
+                s1Decision = false;
+              }
+            }
+          } catch (e) {
+            _log.warning('System-1 HITL intent check error: $e');
           }
         }
 
-        if (!isConfirmed) {
-          _log.info(
-            'HITL intercepted tool execution for ${call.name} in session $sessionId',
-          );
+        if (s1Decision != null) {
+          isConfirmed = s1Decision;
+        } else {
+          isConfirmed = hasConfirmKeyword;
+        }
+      }
+
+      if (!isConfirmed) {
+        _log.info(
+          'HITL intercepted tool execution for ${call.name} in session $sessionId '
+          '(isFollowUp: $isFollowUpConfirmation, hasConfirmKeyword: $hasConfirmKeyword)',
+        );
+
+        final isExplicitRejection =
+            isFollowUpConfirmation && (s1Decision == false || hasNegativeWord);
+
+        if (isExplicitRejection) {
           return ToolResult(
             output:
-                'SECURITY ALERT: Tool execution blocked by Human-In-The-Loop policy.\n'
-                'You MUST ask the user for explicit permission to execute "${call.name}".\n'
-                'The user will see "YES" and "NO" buttons to confirm.\n'
-                'Wait for the user to say "yes" (or click the button) before trying again.',
+                'USER REJECTED: The user explicitly denied or rejected the execution of "${call.name}".\n'
+                'Do NOT attempt to execute this tool again. Acknowledge the user\'s cancellation politely.',
             isError: true,
           );
         }
+
+        return ToolResult(
+          output:
+              'SECURITY ALERT: Tool execution blocked by Human-In-The-Loop policy.\n'
+              'You MUST ask the user for explicit permission to execute "${call.name}".\n'
+              'The user will see "YES" and "NO" buttons to confirm.\n'
+              'Wait for the user to say "yes" (or click the button) before trying again.',
+          isError: true,
+        );
       }
+    }
 
     return registry.execute(
       call.name,

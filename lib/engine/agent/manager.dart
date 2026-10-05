@@ -23,6 +23,7 @@ import '../models/provider.dart';
 import '../tasks/task.dart';
 import '../tasks/task_manager.dart';
 import '../infra/env.dart';
+import '../system1/system1_service.dart';
 
 final _log = Logger('Ghost.AgentManager');
 
@@ -153,6 +154,11 @@ class AgentManager {
       security: config.security,
       autonomousPayments: config.billing.autonomous,
     );
+
+    // 2.5. Initialize System-1 Middleware if enabled
+    if (config.security.system1Middleware) {
+      unawaited(System1Service.instance.start());
+    }
 
     // 3. Initialize custom agents
     await reloadCustomAgents(config.customAgents);
@@ -631,6 +637,13 @@ class AgentManager {
     defaultAgent.security = config.security;
     defaultAgent.autonomousPayments = config.billing.autonomous;
 
+    // 1.5 Update System-1 Middleware state
+    if (config.security.system1Middleware) {
+      unawaited(System1Service.instance.start());
+    } else {
+      unawaited(System1Service.instance.stop());
+    }
+
     // 2. Refresh memory engine config
     memoryEngine.config = config.memory;
     await memoryEngine.initialize(
@@ -927,4 +940,12 @@ class AgentManager {
   }
 
   // (Deleted _resolveDesignSystem since it is now in DesignSystemManager)
+
+  /// Clean up subscriptions and release background processes.
+  void dispose() {
+    _skillsSubscription?.cancel();
+    _skillInstalledSubscription?.cancel();
+    _configChangedController.close();
+    System1Service.instance.dispose();
+  }
 }

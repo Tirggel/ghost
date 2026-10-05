@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../../core/constants.dart';
+import '../../../../engine/system1/system1_service.dart';
 import '../../../widgets/app_styles.dart';
 
 class SecurityTab extends ConsumerStatefulWidget {
@@ -41,6 +42,7 @@ class _SecurityTabState extends ConsumerState<SecurityTab> with SettingsSaveMixi
   void _onLevelChanged(String? val) {
     if (val == null) return;
     final level = SecurityLevel.values.firstWhere((e) => e.name == val);
+    final modelAvail = System1Service.instance.isModelAvailable();
 
     SecurityConfig updated;
     switch (level) {
@@ -51,6 +53,7 @@ class _SecurityTabState extends ConsumerState<SecurityTab> with SettingsSaveMixi
           promptHardening: false,
           restrictNetwork: false,
           promptAnalyzers: false,
+          system1Middleware: false,
         );
         break;
       case SecurityLevel.low:
@@ -60,6 +63,7 @@ class _SecurityTabState extends ConsumerState<SecurityTab> with SettingsSaveMixi
           promptHardening: true,
           restrictNetwork: false,
           promptAnalyzers: false,
+          system1Middleware: modelAvail ? true : false,
         );
         break;
       case SecurityLevel.medium:
@@ -69,6 +73,7 @@ class _SecurityTabState extends ConsumerState<SecurityTab> with SettingsSaveMixi
           promptHardening: true,
           restrictNetwork: true,
           promptAnalyzers: false,
+          system1Middleware: modelAvail ? true : false,
         );
         break;
       case SecurityLevel.high:
@@ -78,6 +83,7 @@ class _SecurityTabState extends ConsumerState<SecurityTab> with SettingsSaveMixi
           promptHardening: true,
           restrictNetwork: true,
           promptAnalyzers: true,
+          system1Middleware: modelAvail ? true : false,
         );
         break;
     }
@@ -178,6 +184,44 @@ class _SecurityTabState extends ConsumerState<SecurityTab> with SettingsSaveMixi
           value: _security.promptAnalyzers,
           onChanged: (val) =>
               _updateConfig(_security.copyWith(promptAnalyzers: val)),
+        ),
+
+        // System-1 Decision Middleware (ModernBERT INT8)
+        Builder(
+          builder: (context) {
+            final modelAvailable = System1Service.instance.isModelAvailable();
+            return AppSwitchListTile(
+              title: Text(
+                'settings.security.system1_middleware'.tr(),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'settings.security.system1_middleware_desc'.tr(),
+                    style: const TextStyle(color: AppColors.textDim, fontSize: 13),
+                  ),
+                  if (!modelAvailable) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '⚠️ ${'settings.security.system1_model_missing'.tr()}',
+                      style: const TextStyle(
+                        color: Colors.amber,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              value: modelAvailable && _security.system1Middleware,
+              onChanged: modelAvailable
+                  ? (val) =>
+                      _updateConfig(_security.copyWith(system1Middleware: val))
+                  : null,
+            );
+          },
         ),
       ],
     );

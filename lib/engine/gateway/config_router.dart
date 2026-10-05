@@ -1120,6 +1120,8 @@ class ConfigRouter {
             params['restrictNetwork'] as bool? ?? current.restrictNetwork,
         promptAnalyzers:
             params['promptAnalyzers'] as bool? ?? current.promptAnalyzers,
+        system1Middleware:
+            params['system1Middleware'] as bool? ?? current.system1Middleware,
       );
 
       await saveConfig(config.copyWith(security: updated), configPath);
