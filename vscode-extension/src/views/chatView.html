@@ -132,31 +132,25 @@
     }
 
     /* Modal dialog */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.65);
-      backdrop-filter: blur(2px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 999;
-      padding: 14px;
-    }
-    .modal-card {
+    dialog.modal-card {
+      margin: auto;
       background: var(--vscode-sideBarSectionHeader-background, #252526);
       border: 1px solid var(--vscode-sideBar-border, #454545);
       border-radius: 6px;
       padding: 14px;
-      width: 100%;
+      width: calc(100% - 28px);
       max-width: 280px;
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+      color: var(--vscode-foreground, #cccccc);
+    }
+    dialog.modal-card[open] {
       display: flex;
       flex-direction: column;
       gap: 10px;
+    }
+    dialog.modal-card::backdrop {
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(2px);
     }
     .modal-card h3 {
       font-size: 13px;
@@ -241,10 +235,77 @@
     .msg-header {
       font-size: 10px;
       font-weight: 700;
-      opacity: 0.7;
+      opacity: 0.85;
       margin-bottom: 4px;
       display: flex;
+      align-items: center;
       justify-content: space-between;
+      gap: 8px;
+    }
+    .msg-edit-btn {
+      background: rgba(255, 255, 255, 0.14);
+      color: inherit;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      opacity: 0.85;
+      transition: opacity 0.15s ease, background 0.15s ease;
+    }
+    .msg-edit-btn:hover {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.25);
+    }
+    .message.user.editing {
+      width: 95%;
+    }
+    .edit-textarea {
+      field-sizing: content;
+      height: auto;
+      width: 100%;
+      min-block-size: 3lh;
+      max-block-size: 10lh;
+      background: var(--vscode-input-background, #1e1e1e);
+      color: var(--vscode-input-foreground, #ffffff);
+      border: 1px solid var(--vscode-focusBorder, #007acc);
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-family: inherit;
+      font-size: 12px;
+      resize: vertical;
+      outline: none;
+      margin-top: 4px;
+    }
+    .edit-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .edit-actions button {
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .edit-cancel-btn {
+      background: rgba(0, 0, 0, 0.3);
+      color: var(--vscode-button-foreground, #ffffff);
+    }
+    .edit-cancel-btn:hover {
+      background: rgba(0, 0, 0, 0.45);
+    }
+    .edit-send-btn {
+      background: var(--vscode-editor-background, #1e1e1e);
+      color: var(--vscode-foreground, #ffffff);
+      border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    }
+    .edit-send-btn:hover {
+      background: var(--vscode-button-secondaryHoverBackground, #3a3d41);
     }
 
     /* Markdown styling */
@@ -349,6 +410,11 @@
     }
     textarea {
       flex: 1;
+      field-sizing: content;
+      height: auto;
+      width: 100%;
+      min-block-size: 3lh;
+      max-block-size: 10lh;
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
       border: 1px solid var(--vscode-input-border, #555555);
@@ -476,17 +542,15 @@
   </div>
 
   <!-- Delete Session Confirmation Modal -->
-  <div class="modal-overlay" id="deleteModal" style="display: none;">
-    <div class="modal-card">
-      <h3 id="deleteModalTitle">Sitzung löschen</h3>
-      <p id="deleteModalText">Möchtest du die aktive Sitzung löschen oder alle bisherigen Sitzungen unwiderruflich leeren?</p>
-      <div class="modal-actions">
-        <button class="btn-danger" id="confirmDeleteCurrentBtn">Aktuelle Sitzung löschen</button>
-        <button class="btn-danger-outline" id="confirmDeleteAllBtn">Alle Sitzungen löschen</button>
-        <button class="btn-cancel" id="cancelDeleteBtn">Abbrechen</button>
-      </div>
+  <dialog class="modal-card" id="deleteModal" closedby="any">
+    <h3 id="deleteModalTitle">Sitzung löschen</h3>
+    <p id="deleteModalText">Möchtest du die aktive Sitzung löschen oder alle bisherigen Sitzungen unwiderruflich leeren?</p>
+    <div class="modal-actions">
+      <button type="button" class="btn-danger" id="confirmDeleteCurrentBtn">Aktuelle Sitzung löschen</button>
+      <button type="button" class="btn-danger-outline" id="confirmDeleteAllBtn">Alle Sitzungen löschen</button>
+      <button type="button" class="btn-cancel" id="cancelDeleteBtn">Abbrechen</button>
     </div>
-  </div>
+  </dialog>
 
   <script>
     const vscode = acquireVsCodeApi();
@@ -514,6 +578,15 @@
 
     let isGenerating = false;
     let currentStreamEl = null;
+    let userMessageCount = 0;
+
+    function closeDeleteModal() {
+      if (typeof deleteModal.close === 'function' && deleteModal.open) {
+        deleteModal.close();
+      } else {
+        deleteModal.removeAttribute('open');
+      }
+    }
 
     // Ready signal
     vscode.postMessage({ type: 'ready' });
@@ -527,27 +600,26 @@
     });
 
     deleteSessionBtn.addEventListener('click', () => {
-      const currentSessionId = sessionSelect.value;
-      if (!currentSessionId || currentSessionId === 'default') {
-        confirmDeleteCurrentBtn.style.display = 'none';
+      confirmDeleteCurrentBtn.style.display = 'block';
+      if (typeof deleteModal.showModal === 'function') {
+        deleteModal.showModal();
       } else {
-        confirmDeleteCurrentBtn.style.display = 'block';
+        deleteModal.setAttribute('open', '');
       }
-      deleteModal.style.display = 'flex';
     });
 
     confirmDeleteCurrentBtn.addEventListener('click', () => {
-      deleteModal.style.display = 'none';
+      closeDeleteModal();
       vscode.postMessage({ type: 'deleteCurrentSession' });
     });
 
     confirmDeleteAllBtn.addEventListener('click', () => {
-      deleteModal.style.display = 'none';
+      closeDeleteModal();
       vscode.postMessage({ type: 'deleteAllSessions' });
     });
 
     cancelDeleteBtn.addEventListener('click', () => {
-      deleteModal.style.display = 'none';
+      closeDeleteModal();
     });
 
     settingsBtn.addEventListener('click', () => {
@@ -585,6 +657,12 @@
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         submitPrompt();
+      } else if (e.key === 'ArrowUp' && !promptInput.value.trim()) {
+        const userMsgs = messagesContainer.querySelectorAll('.message.user');
+        if (userMsgs.length > 0) {
+          e.preventDefault();
+          startEditMessage(userMsgs[userMsgs.length - 1]);
+        }
       }
     });
 
@@ -611,9 +689,9 @@
       escaped = escaped.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
         const cleanCode = code.trim();
         const encoded = encodeURIComponent(cleanCode);
-        return '<pre><code>' + cleanCode + '</code><div class="code-actions">' +
-          '<button onclick="insertCode(\'' + encoded + '\')">In Editor einfügen</button>' +
-          '<button onclick="copyCode(\'' + encoded + '\')">Kopieren</button>' +
+        return '<pre tabindex="0"><code>' + cleanCode + '</code><div class="code-actions">' +
+          '<button type="button" onclick="insertCode(\'' + encoded + '\')">In Editor einfügen</button>' +
+          '<button type="button" onclick="copyCode(\'' + encoded + '\')">Kopieren</button>' +
           '</div></pre>';
       });
 
@@ -638,13 +716,99 @@
       vscode.postMessage({ type: 'copyCode', code: decodeURIComponent(encoded) });
     }
 
-    function appendMessage(role, content) {
+    function startEditMessage(msgDiv) {
+      if (!msgDiv || msgDiv.classList.contains('editing')) return;
+      const rawContent = msgDiv.dataset.rawContent || '';
+      const userIndex = parseInt(msgDiv.dataset.userIndex || '0', 10);
+      const body = msgDiv.querySelector('.msg-body');
+      if (!body) return;
+
+      msgDiv.classList.add('editing');
+      body.innerHTML = '';
+
+      const textarea = document.createElement('textarea');
+      textarea.className = 'edit-textarea';
+      textarea.value = rawContent;
+      textarea.setAttribute('aria-label', 'Nachricht bearbeiten');
+
+      const actions = document.createElement('div');
+      actions.className = 'edit-actions';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'edit-cancel-btn';
+      cancelBtn.textContent = 'Abbrechen';
+
+      const sendEditBtn = document.createElement('button');
+      sendEditBtn.type = 'button';
+      sendEditBtn.className = 'edit-send-btn';
+      sendEditBtn.textContent = '➤ Neu senden';
+
+      const cancelEdit = () => {
+        msgDiv.classList.remove('editing');
+        body.innerHTML = formatMarkdown(rawContent);
+      };
+
+      const confirmEdit = () => {
+        const editedText = textarea.value.trim();
+        if (!editedText) return;
+        msgDiv.classList.remove('editing');
+        vscode.postMessage({
+          type: 'editMessage',
+          userMessageIndex: userIndex,
+          text: editedText,
+        });
+      };
+
+      cancelBtn.addEventListener('click', cancelEdit);
+      sendEditBtn.addEventListener('click', confirmEdit);
+
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          confirmEdit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          cancelEdit();
+        }
+      });
+
+      actions.appendChild(cancelBtn);
+      actions.appendChild(sendEditBtn);
+      body.appendChild(textarea);
+      body.appendChild(actions);
+
+      textarea.focus();
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    }
+
+    function appendMessage(role, content, explicitUserIndex) {
       const msgDiv = document.createElement('div');
       msgDiv.className = 'message ' + (role === 'user' ? 'user' : 'assistant');
 
       const header = document.createElement('div');
       header.className = 'msg-header';
-      header.textContent = role === 'user' ? 'Du' : '👻 Ghost';
+
+      if (role === 'user') {
+        const uIdx = typeof explicitUserIndex === 'number' ? explicitUserIndex : userMessageCount++;
+        msgDiv.dataset.userIndex = String(uIdx);
+        msgDiv.dataset.rawContent = content;
+
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = 'Du';
+
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'msg-edit-btn';
+        editBtn.title = 'Nachricht bearbeiten & neu an LLM senden (überschreibt Antwort)';
+        editBtn.textContent = '✏️ Bearbeiten';
+        editBtn.addEventListener('click', () => startEditMessage(msgDiv));
+
+        header.appendChild(titleSpan);
+        header.appendChild(editBtn);
+      } else {
+        header.textContent = '👻 Ghost';
+      }
 
       const body = document.createElement('div');
       body.className = 'msg-body';
@@ -690,27 +854,39 @@
 
         case 'sessionsList':
           sessionSelect.innerHTML = '';
+          let foundCurrent = false;
           if (msg.sessions && msg.sessions.length > 0) {
             msg.sessions.forEach(s => {
               const opt = document.createElement('option');
               opt.value = s.id;
               opt.textContent = s.title || ('Session ' + s.id.substring(0, 8));
-              if (s.id === msg.currentSessionId) opt.selected = true;
+              if (s.id === msg.currentSessionId) {
+                opt.selected = true;
+                foundCurrent = true;
+              }
               sessionSelect.appendChild(opt);
             });
-          } else {
+          }
+          if (!foundCurrent) {
             const opt = document.createElement('option');
             opt.value = msg.currentSessionId || 'default';
-            opt.textContent = 'Aktuelle Sitzung';
-            sessionSelect.appendChild(opt);
+            opt.textContent = msg.currentSessionId
+              ? ('Aktuelle Sitzung (' + msg.currentSessionId.substring(0, 8) + ')')
+              : 'Aktuelle Sitzung';
+            opt.selected = true;
+            sessionSelect.insertBefore(opt, sessionSelect.firstChild);
           }
           break;
 
         case 'sessionSwitched':
           messagesContainer.innerHTML = '';
           currentStreamEl = null;
-          if (msg.messages && msg.messages.length > 0) {
-            msg.messages.forEach(m => appendMessage(m.role, m.content));
+          userMessageCount = 0;
+          const visibleMessages = (msg.messages || []).filter(
+            m => m.role !== 'system' && (!m.content || m.content.trim() !== '__HITL_DECLINED__')
+          );
+          if (visibleMessages.length > 0) {
+            visibleMessages.forEach(m => appendMessage(m.role, m.content));
           } else {
             appendMessage('assistant', 'Neue Sitzung gestartet. Wie kann ich dir helfen?');
           }
@@ -729,6 +905,40 @@
           currentStreamEl = assistantDiv.querySelector('.msg-body');
           messagesContainer.scrollTop = messagesContainer.scrollHeight;
           break;
+
+        case 'userMessageEdited': {
+          const targetIdx = typeof msg.userMessageIndex === 'number' ? msg.userMessageIndex : -1;
+          let targetEl = messagesContainer.querySelector('.message.user[data-user-index="' + targetIdx + '"]');
+          if (!targetEl) {
+            const allUserEls = messagesContainer.querySelectorAll('.message.user');
+            if (allUserEls.length > 0) {
+              targetEl = allUserEls[allUserEls.length - 1];
+            }
+          }
+          let resolvedIdx = targetIdx >= 0 ? targetIdx : 0;
+          if (targetEl) {
+            resolvedIdx = parseInt(targetEl.dataset.userIndex || String(resolvedIdx), 10);
+            while (targetEl.nextElementSibling) {
+              targetEl.nextElementSibling.remove();
+            }
+            targetEl.remove();
+          }
+          userMessageCount = resolvedIdx;
+          appendMessage('user', msg.text, resolvedIdx);
+          userMessageCount = resolvedIdx + 1;
+
+          isGenerating = true;
+          sendBtn.textContent = '■';
+          sendBtn.classList.add('stop');
+          activityBar.classList.remove('active');
+          const editAssistantDiv = document.createElement('div');
+          editAssistantDiv.className = 'message assistant';
+          editAssistantDiv.innerHTML = '<div class="msg-header">👻 Ghost</div><div class="msg-body"><span class="cursor"></span></div>';
+          messagesContainer.appendChild(editAssistantDiv);
+          currentStreamEl = editAssistantDiv.querySelector('.msg-body');
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          break;
+        }
 
         case 'activity':
           if (msg.activity) {

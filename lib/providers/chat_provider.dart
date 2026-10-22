@@ -74,6 +74,14 @@ class ChatNotifier extends Notifier<Map<String, ChatState>> {
     state = Map.fromEntries(state.entries.where((e) => !idSet.contains(e.key)));
   }
 
+  void clearAllSessions() {
+    for (final sub in _subs.values) {
+      sub.cancel();
+    }
+    _subs.clear();
+    state = {};
+  }
+
   void initSession(String sessionId) {
     if (state.containsKey(sessionId)) return;
 

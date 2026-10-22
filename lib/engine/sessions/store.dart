@@ -46,6 +46,16 @@ class SessionStore {
     _log.fine('Appended message to session $sessionId');
   }
 
+  /// Overwrite the entire transcript for a session.
+  Future<void> saveTranscript(String sessionId, List<Message> messages) async {
+    await _ensureOpen();
+
+    final history = messages.map((m) => m.toJson()).toList();
+    await _box.put(sessionId, jsonEncode(history));
+
+    _log.fine('Saved transcript (${messages.length} messages) for session $sessionId');
+  }
+
   /// Load all messages for a session.
   Future<List<Message>> loadTranscript(String sessionId) async {
     await _ensureOpen();

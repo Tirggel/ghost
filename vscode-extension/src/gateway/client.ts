@@ -370,6 +370,31 @@ export class GhostGatewayClient extends EventEmitter {
     });
   }
 
+  public async editMessage(
+    sessionId: string,
+    userMessageIndex: number,
+    content: string,
+    options: {
+      model?: string;
+      provider?: string;
+      agentId?: string;
+      workspaceDir?: string;
+      attachments?: any[];
+    } = {}
+  ): Promise<{ sessionId: string; status: string }> {
+    return this.sendRpc<{ sessionId: string; status: string }>("agent.editMessage", {
+      sessionId,
+      userMessageIndex,
+      content,
+      channelType: "vscode",
+      model: options.model,
+      provider: options.provider,
+      agentId: options.agentId,
+      workspaceDir: options.workspaceDir,
+      attachments: options.attachments,
+    });
+  }
+
   public async getHistory(sessionId: string, maxMessages = 50): Promise<Message[]> {
     const res = await this.sendRpc<{ sessionId: string; messages: Message[] }>("agent.history", {
       sessionId,

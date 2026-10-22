@@ -57,6 +57,10 @@ class Agent {
   SecurityConfig security;
   bool autonomousPayments;
   final Set<String> _stoppedSessions = {};
+  final Map<String, int> _sessionRunIds = {};
+
+  /// Current generation run token for [sessionId].
+  int currentRunId(String sessionId) => _sessionRunIds[sessionId] ?? 0;
 
   int get maxToolIterations {
     if (_maxToolIterationsOverride != null) return _maxToolIterationsOverride;
@@ -87,8 +91,14 @@ class Agent {
     void Function(String activity)? onActivityUpdate,
   }) async {
     _stoppedSessions.remove(sessionId);
+    final runId = (_sessionRunIds[sessionId] ?? 0) + 1;
+    _sessionRunIds[sessionId] = runId;
+    bool isAborted() =>
+        _stoppedSessions.contains(sessionId) ||
+        _sessionRunIds[sessionId] != runId;
+
     _state = AgentState.thinking;
-    _log.info('Processing message for session $sessionId');
+    _log.info('Processing message for session $sessionId (run $runId)');
 
     try {
       final history = await sessionManager.getHistory(
@@ -370,8 +380,8 @@ class Agent {
       var totalToolsExecuted = 0;
 
       while (iterations < effectiveMaxIterations) {
-        if (_stoppedSessions.contains(sessionId)) {
-          _log.info('Session $sessionId stopped by user.');
+        if (isAborted()) {
+          _log.info('Session $sessionId stopped or superseded by user.');
           _stoppedSessions.remove(sessionId);
           break;
         }
@@ -587,10 +597,16 @@ class Agent {
             systemPrompt: dynamicSystemPrompt,
             tools: activeTools,
             onPartialResponse: (chunk) {
+              if (isAborted()) return;
               streamedAny = true;
               onPartialResponse?.call(chunk);
             },
           );
+          if (isAborted()) {
+            _log.info('Session $sessionId aborted during provider chat.');
+            _stoppedSessions.remove(sessionId);
+            break;
+          }
           if (response.reasoningContent != null) {
             lastReasoningContent = response.reasoningContent;
           }
@@ -743,6 +759,11 @@ class Agent {
       _state = AgentState.idle;
       onActivityUpdate?.call('');
 
+      if (isAborted()) {
+        _log.info('Skipping final save for aborted session $sessionId');
+        return;
+      }
+
       // --- Final Save ---
       if (contentBuffer.isNotEmpty) {
         bool isHitlPending = hitlWasTriggered;
@@ -825,6 +846,7 @@ class Agent {
   /// Interrupt processing for a specific session.
   void stop(String sessionId) {
     _stoppedSessions.add(sessionId);
+    _sessionRunIds[sessionId] = (_sessionRunIds[sessionId] ?? 0) + 1;
     _log.info('Stop signal received for session $sessionId');
   }
 

@@ -32,7 +32,7 @@ Ghost bietet eine moderne, integrierte Architektur:
 
 ## 🚀 Installation & Setup
 
-> 💡 **Tipp**: Wenn du Ghost einfach nur nutzen möchtest, kannst du die fertig zusammengestellten Programme für dein Betriebssystem (Linux, Windows, Mac) hier herunterladen: **[ghost-releases](./ghost-releases)** 😊
+> 💡 **Tipp**: Wenn du Ghost einfach nur nutzen möchtest, kannst du die fertig zusammengestellten Desktop-Programme für **Linux**, **Windows** und **macOS** direkt unter **[GitHub Releases](https://github.com/Tirggel/ghost/releases)** (oder lokal unter **[ghost-releases](./ghost-releases)**) herunterladen 😊
 >
 > *Die folgende Installationsanleitung richtet sich an **Entwickler**, die Ghost selbst bauen oder modifizieren möchten.*
 

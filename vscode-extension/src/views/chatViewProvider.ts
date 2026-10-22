@@ -53,6 +53,9 @@ export class GhostChatViewProvider implements vscode.WebviewViewProvider {
         case "sendMessage":
           await this.handleUserMessage(data.text);
           break;
+        case "editMessage":
+          await this.handleEditMessage(data.userMessageIndex, data.text);
+          break;
         case "stop":
           if (this.currentSessionId) {
             await this.client.stop(this.currentSessionId);
@@ -268,6 +271,55 @@ export class GhostChatViewProvider implements vscode.WebviewViewProvider {
         provider: this.currentProvider || undefined,
         model: this.currentModel || undefined,
       });
+      await this.refreshSessions();
+    } catch (e: any) {
+      this.isGenerating = false;
+      this.postMessage({
+        type: "error",
+        sessionId: this.currentSessionId,
+        error: e.message || String(e),
+      });
+    }
+  }
+
+  public async handleEditMessage(userMessageIndex: number, text: string) {
+    if (!text || !text.trim()) return;
+
+    if (this.client.getState() !== "connected") {
+      vscode.window.showWarningMessage("Ghost ist nicht verbunden. Bitte verbinden Sie sich zuerst.");
+      return;
+    }
+
+    if (!this.currentSessionId) {
+      await this.handleUserMessage(text);
+      return;
+    }
+
+    if (this.isGenerating) {
+      await this.client.stop(this.currentSessionId).catch(() => {});
+    }
+
+    this.isGenerating = true;
+    this.streamingContent = "";
+
+    // Update Webview: truncate from userMessageIndex and show edited message + new stream cursor
+    this.postMessage({
+      type: "userMessageEdited",
+      sessionId: this.currentSessionId,
+      userMessageIndex,
+      text,
+    });
+
+    const wsFolders = vscode.workspace.workspaceFolders;
+    const activeWorkspaceDir = wsFolders && wsFolders.length > 0 ? wsFolders[0].uri.fsPath : undefined;
+
+    try {
+      await this.client.editMessage(this.currentSessionId, userMessageIndex, text, {
+        workspaceDir: activeWorkspaceDir,
+        provider: this.currentProvider || undefined,
+        model: this.currentModel || undefined,
+      });
+      await this.refreshSessions();
     } catch (e: any) {
       this.isGenerating = false;
       this.postMessage({
@@ -311,15 +363,27 @@ export class GhostChatViewProvider implements vscode.WebviewViewProvider {
 
   public async deleteCurrentSession() {
     if (this.currentSessionId) {
-      await this.client.deleteSession(this.currentSessionId);
-      await this.startNewSession();
-      await this.refreshSessions();
-      vscode.window.showInformationMessage("Sitzung gelöscht.");
+      if (this.isGenerating) {
+        await this.client.stop(this.currentSessionId).catch(() => {});
+        this.isGenerating = false;
+      }
+      if (this.client.getState() === "connected") {
+        await this.client.deleteSession(this.currentSessionId).catch(() => {});
+      }
     }
+    await this.startNewSession();
+    await this.refreshSessions();
+    vscode.window.showInformationMessage("Aktive Sitzung gelöscht.");
   }
 
   public async deleteAllSessions() {
-    await this.client.deleteAllSessions();
+    if (this.isGenerating && this.currentSessionId) {
+      await this.client.stop(this.currentSessionId).catch(() => {});
+      this.isGenerating = false;
+    }
+    if (this.client.getState() === "connected") {
+      await this.client.deleteAllSessions().catch(() => {});
+    }
     await this.startNewSession();
     await this.refreshSessions();
     vscode.window.showInformationMessage("Alle Sitzungen wurden gelöscht.");

@@ -137,7 +137,16 @@
         {
           "command": "ghost.newSession",
           "when": "view == ghost.chatView",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "ghost.deleteCurrentSession",
+          "when": "view == ghost.chatView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "ghost.deleteAllSessions",
+          "when": "view == ghost.chatView"
         },
         {
           "command": "ghost.connect",

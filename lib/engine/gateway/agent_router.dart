@@ -100,6 +100,10 @@ class AgentRouter {
               'agentId': ?targetAgentId,
             },
           );
+          gateway.broadcast('agent.session_updated', {
+            'sessionId': session.id,
+            if (session.title != null) 'title': session.title,
+          });
         }
 
 
@@ -112,6 +116,89 @@ class AgentRouter {
           'status': 'processing',
         };
       });
+
+    // 1b. Edit a previous user message, truncate subsequent history, and re-run
+    gateway.rpcRegistry.register('agent.editMessage', (params, context) async {
+      final sessionId = params?['sessionId'] as String?;
+      final content = params?['content'] as String?;
+      if (sessionId == null || content == null) {
+        throw ProtocolError('Missing required parameter: sessionId or content');
+      }
+
+      final userMessageIndex = (params?['userMessageIndex'] as num?)?.toInt() ?? -1;
+      final rawAttachments = params?['attachments'] as List<dynamic>?;
+      final attachments = rawAttachments
+              ?.map((a) => MessageAttachment.fromJson(a as Map<String, dynamic>))
+              .toList() ??
+          [];
+
+      final channelType = params?['channelType'] as String? ?? 'gateway';
+      final String peerId =
+          (params?['peerId'] as String?) ?? (context.clientId ?? 'unknown');
+      final groupId = params?['groupId'] as String?;
+      final model = params?['model'] as String?;
+      final provider = params?['provider'] as String?;
+      final targetAgentId = params?['agentId'] as String?;
+      final workspaceDir = params?['workspaceDir'] as String?;
+
+      // Stop any active generation for this session before truncating
+      agentManager.stop(sessionId);
+
+      final session = sessionManager.getSession(sessionId) ??
+          sessionManager.createSession(
+            id: sessionId,
+            channelType: channelType,
+            peerId: peerId,
+            groupId: groupId,
+          );
+
+      if (targetAgentId != null) {
+        session.agentId = targetAgentId;
+      }
+      if (model != null) {
+        session.model = model;
+      }
+      if (provider != null) {
+        session.provider = provider;
+      }
+
+      // Truncate history from the edited user message onwards
+      await sessionManager.truncateFromUserMessage(session.id, userMessageIndex);
+
+      // Add the edited user message (preserve session metadata in case index 0 was replaced)
+      await sessionManager.addMessage(
+        sessionId: session.id,
+        role: 'user',
+        content: content,
+        attachments: attachments,
+        metadata: {
+          'channelType': session.channelType,
+          'senderId': session.peerId,
+          'groupId': ?session.groupId,
+          'model': ?session.model,
+          'provider': ?session.provider,
+          'agentId': session.agentId,
+          'title': ?session.title,
+          'edited': true,
+        },
+      );
+
+      // Notify connected clients that session history was updated
+      gateway.broadcast('agent.session_updated', {
+        'sessionId': session.id,
+        if (session.title != null) 'title': session.title,
+        'edited': true,
+      });
+
+      // Trigger agent processing in the background
+      unawaited(_processInAgent(session.id, content, targetAgentId,
+          attachments: attachments, workspaceDir: workspaceDir));
+
+      return {
+        'sessionId': session.id,
+        'status': 'processing',
+      };
+    });
 
     // 2. Query session history
     gateway.rpcRegistry.register('agent.history', (params, context) async {
@@ -144,16 +231,24 @@ class AgentRouter {
           .toList();
 
       if (all) {
+        for (final s in sessionManager.listSessions()) {
+          final id = s['id'] as String?;
+          if (id != null) agentManager.stop(id);
+        }
         await sessionManager.deleteAllSessions();
         gateway.broadcast('agent.sessions_cleared', {});
         return {'status': 'ok', 'all': true};
       } else if (sessionIds != null && sessionIds.isNotEmpty) {
+        for (final id in sessionIds) {
+          agentManager.stop(id);
+        }
         await sessionManager.deleteSessions(sessionIds);
         for (final id in sessionIds) {
           gateway.broadcast('agent.session_deleted', {'sessionId': id});
         }
         return {'status': 'ok', 'count': sessionIds.length};
       } else if (sessionId != null) {
+        agentManager.stop(sessionId);
         await sessionManager.deleteSession(sessionId);
         gateway.broadcast('agent.session_deleted', {'sessionId': sessionId});
         return {'status': 'ok', 'sessionId': sessionId};
@@ -335,6 +430,7 @@ class AgentRouter {
           ? agentManager.config.identity.name
           : '${agentManager.config.customAgents.firstWhere((a) => a.id == agent.id, orElse: () => const CustomAgentConfig(id: '', name: 'Unknown')).name} Agent';
 
+      final expectedRunId = agent.currentRunId(sessionId) + 1;
       await agent.processMessage(
         sessionId: sessionId,
         content: content,
@@ -356,11 +452,19 @@ class AgentRouter {
         },
       );
 
+      // If this turn was stopped or superseded (e.g. by editMessage or deleteSession), do not broadcast completion
+      if (agent.currentRunId(sessionId) != expectedRunId) {
+        return;
+      }
+
       // Notify completion
       if (session != null && session.history.isNotEmpty) {
         final lastMsg = session.history.last;
-        // Don't broadcast sentinel messages
-        if (lastMsg.content.trim() == '__HITL_DECLINED__') return;
+        // Don't broadcast sentinel messages or non-assistant messages
+        if (lastMsg.content.trim() == '__HITL_DECLINED__' ||
+            lastMsg.role != 'assistant') {
+          return;
+        }
         gateway.broadcast('agent.response', {
           'sessionId': sessionId,
           'message': lastMsg.toJson(),

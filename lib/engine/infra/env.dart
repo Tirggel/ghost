@@ -80,7 +80,24 @@ class Env {
     final cwdScripts = Directory(p.join(Directory.current.path, 'scripts'));
     if (cwdScripts.existsSync()) return cwdScripts.path;
 
-    // 3. Try relative to Platform.script (standard for compiled/snapshot runs)
+    // 3. Try relative to compiled executable (Linux/Windows bundle or macOS .app)
+    final resolvedExeDir = p.dirname(Platform.resolvedExecutable);
+    final bundleScripts = Directory(p.join(resolvedExeDir, 'scripts'));
+    if (bundleScripts.existsSync()) return bundleScripts.path;
+
+    if (Platform.isMacOS) {
+      final macResourcesScripts = Directory(
+        p.normalize(p.join(resolvedExeDir, '..', 'Resources', 'scripts')),
+      );
+      if (macResourcesScripts.existsSync()) return macResourcesScripts.path;
+
+      final macOuterScripts = Directory(
+        p.normalize(p.join(resolvedExeDir, '..', '..', '..', 'scripts')),
+      );
+      if (macOuterScripts.existsSync()) return macOuterScripts.path;
+    }
+
+    // 4. Try relative to Platform.script (standard for compiled/snapshot runs)
     // We go up 2 levels from lib/main.dart or bin/exe
     final scriptPath = Platform.script.toFilePath();
     final exeDir = p.dirname(p.dirname(scriptPath));

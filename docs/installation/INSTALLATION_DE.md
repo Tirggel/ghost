@@ -92,6 +92,26 @@ Ghost unterstützt eine lokale, nicht-autoregressive Entscheidungs-Middleware ba
 
 ---
 
+### 7. Desktop-Releases erstellen (Linux, Windows, macOS)
+
+#### Lokaler Release-Build
+Um ein eigenständiges Release-Paket für dein aktuelles Betriebssystem zu kompilieren (inklusive gebündelter nativer Bibliotheken und Laufzeit-Skripte in `ghost-releases/`):
+- **Linux & macOS**:
+  ```bash
+  ./scripts/build_release.sh
+  ```
+- **Windows (PowerShell)**:
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .\scripts\build_release.ps1
+  ```
+
+#### Multi-Plattform CI/CD via GitHub Actions
+Da Flutter Desktop jeweils die nativen System-Compiler voraussetzt (MSVC unter Windows, Xcode unter macOS, Clang/GTK3 unter Linux), enthält Ghost eine vollautomatische Multi-Plattform-Pipeline unter [`.github/workflows/build-releases.yml`](../../.github/workflows/build-releases.yml):
+- **Automatisches GitHub Release per Tag**: Beim Pushen eines Versions-Tags (`git tag v0.1.0 && git push origin v0.1.0`) baut GitHub Actions parallel **Linux (`x64`)**, **Windows (`x64`)** und **macOS (`Universal`)** auf nativen Cloud-Runnern und veröffentlicht die fertigen Archive (`ghost-linux-x64.tar.gz`, `ghost-windows-x64.zip`, `ghost-macos-universal.zip`) direkt unter **GitHub Releases**.
+- **Manueller Start**: Alternativ lässt sich der Build jederzeit im Reiter **Actions** auf GitHub über **Run workflow** starten.
+
+---
+
 ## 📚 Spezialisierte Anleitungen
 Entdecke unsere spezialisierte Dokumentation für erweiterte Konfiguration und Entwicklung:
 - **[System-1 Entscheidungs-Middleware](../SYSTEM1_MIDDLEWARE_DE.md)**: Detaillierte Architektur der lokalen ModernBERT-INT8-Entscheidungs-Engine.

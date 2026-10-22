@@ -231,6 +231,50 @@ class SessionManager {
     await store.appendMessage(sessionId, message);
   }
 
+  /// Truncate a session's history starting from the [userMessageIndex]-th visible
+  /// user message (0-based), removing that message and all subsequent messages.
+  /// If [userMessageIndex] is negative or >= the number of visible user messages,
+  /// truncates from the last visible user message.
+  Future<bool> truncateFromUserMessage(
+    String sessionId,
+    int userMessageIndex,
+  ) async {
+    final session = getSession(sessionId);
+    final List<Message> history = session != null
+        ? session.history
+        : await store.loadTranscript(sessionId);
+
+    if (history.isEmpty) return false;
+
+    final userIndices = <int>[];
+    for (int i = 0; i < history.length; i++) {
+      final m = history[i];
+      if (m.role == 'user' && m.isVisible) {
+        userIndices.add(i);
+      }
+    }
+
+    if (userIndices.isEmpty) return false;
+
+    final int targetIdx;
+    if (userMessageIndex < 0 || userMessageIndex >= userIndices.length) {
+      targetIdx = userIndices.last;
+    } else {
+      targetIdx = userIndices[userMessageIndex];
+    }
+
+    history.removeRange(targetIdx, history.length);
+    if (session != null) {
+      session.lastActiveAt = DateTime.now();
+    }
+
+    await store.saveTranscript(sessionId, history);
+    _log.info(
+      'Truncated session $sessionId from userMessageIndex=$userMessageIndex (raw index $targetIdx)',
+    );
+    return true;
+  }
+
   /// Get a session by ID.
   Session? getSession(String sessionId) {
     return _sessions[sessionId];

@@ -94,6 +94,26 @@ Ghost supports a local non-autoregressive decision middleware powered by ModernB
 
 ---
 
+### 7. Building Desktop Releases (Linux, Windows, macOS)
+
+#### Local Release Build
+To compile a standalone release bundle for your current operating system (including bundled native libraries and runtime scripts in `ghost-releases/`):
+- **Linux & macOS**:
+  ```bash
+  ./scripts/build_release.sh
+  ```
+- **Windows (PowerShell)**:
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .\scripts\build_release.ps1
+  ```
+
+#### Multi-Platform CI/CD via GitHub Actions
+Because Flutter Desktop requires native platform toolchains (MSVC on Windows, Xcode on macOS, Clang/GTK3 on Linux), Ghost includes an automated multi-platform workflow in [`.github/workflows/build-releases.yml`](../../.github/workflows/build-releases.yml):
+- **Automatic Release on Tag**: Pushing a version tag (`git tag v0.1.0 && git push origin v0.1.0`) compiles **Linux (`x64`)**, **Windows (`x64`)**, and **macOS (`Universal`)** in parallel on native GitHub runners and publishes the archives (`ghost-linux-x64.tar.gz`, `ghost-windows-x64.zip`, `ghost-macos-universal.zip`) to **GitHub Releases**.
+- **Manual Trigger**: You can also trigger the workflow anytime under the **Actions** tab on GitHub via **Run workflow**.
+
+---
+
 ## 📚 Specialized Guides
 Check out our specialized documentation for advanced configuration and development:
 - **[System-1 Decision Middleware](../SYSTEM1_MIDDLEWARE_EN.md)**: Deep dive into the local ModernBERT INT8 ONNX decision engine.

@@ -14,6 +14,8 @@ export '../core/models/config_models.dart';
 import '../core/internal_gateway.dart';
 import '../core/secure_storage_impl.dart';
 import '../core/platform_storage.dart';
+import 'chat_provider.dart';
+import 'shell_provider.dart';
 
 // The URL of the gateway (defaulting to localhost)
 final gatewayUrlProvider = AsyncNotifierProvider<GatewayUrlNotifier, String>(
@@ -206,31 +208,53 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
 
     final sub = ref.read(gatewayClientProvider).messages.listen((msg) {
       if (msg['method'] == 'agent.session_updated') {
-        final sessionId = msg['params']['sessionId'] as String?;
-        final title = msg['params']['title'] as String?;
-        if (sessionId != null && title != null) {
-          state = state.map((s) {
-            if (s.id == sessionId) {
-              return ChatSession(
-                id: s.id,
-                title: title,
-                model: s.model,
-                provider: s.provider,
-                messageCount: s.messageCount,
-                agentName: s.agentName,
-                agentId: s.agentId,
-                createdAt: s.createdAt,
-                lastActiveAt: s.lastActiveAt,
-                inputTokens: s.inputTokens,
-                outputTokens: s.outputTokens,
-              );
-            }
-            return s;
-          }).toList();
-
+        final sessionId = msg['params']?['sessionId'] as String?;
+        final title = msg['params']?['title'] as String?;
+        final edited = msg['params']?['edited'] == true;
+        if (sessionId != null) {
+          final exists = state.any((s) => s.id == sessionId);
+          if (!exists || edited) {
+            refresh();
+          } else if (title != null) {
+            state = state.map((s) {
+              if (s.id == sessionId) {
+                return ChatSession(
+                  id: s.id,
+                  title: title,
+                  model: s.model,
+                  provider: s.provider,
+                  messageCount: s.messageCount,
+                  agentName: s.agentName,
+                  agentId: s.agentId,
+                  createdAt: s.createdAt,
+                  lastActiveAt: s.lastActiveAt,
+                  inputTokens: s.inputTokens,
+                  outputTokens: s.outputTokens,
+                );
+              }
+              return s;
+            }).toList();
+          }
           // Also update pending if applicable
           _pending.removeWhere((p) => p.id == sessionId);
         }
+      } else if (msg['method'] == 'agent.session_deleted') {
+        final sessionId = msg['params']?['sessionId'] as String?;
+        if (sessionId != null) {
+          _pending.removeWhere((p) => p.id == sessionId);
+          state = state.where((s) => s.id != sessionId).toList();
+          ref.read(chatProvider.notifier).removeSession(sessionId);
+          if (ref.read(shellProvider).activeSessionId == sessionId) {
+            ref.read(shellProvider.notifier).setActiveSession(null);
+          }
+        } else {
+          refresh();
+        }
+      } else if (msg['method'] == 'agent.sessions_cleared') {
+        _pending.clear();
+        state = [];
+        ref.read(chatProvider.notifier).clearAllSessions();
+        ref.read(shellProvider.notifier).setActiveSession(null);
       } else if (msg['method'] == 'agent.response' ||
           msg['method'] == 'agent.stream') {
         final sessionId = msg['params']['sessionId'] as String?;
