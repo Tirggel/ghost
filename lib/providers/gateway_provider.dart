@@ -693,8 +693,14 @@ class ConfigNotifier extends Notifier<AppConfig> {
     }
   }
 
-  Future<void> updateAgentSkills(List<String> skills) async {
-    await updateAgent({'skills': skills});
+  Future<void> updateAgentSkills(
+    List<String> skills, {
+    List<String>? disabledSkills,
+  }) async {
+    await updateAgent({
+      'skills': skills,
+      if (disabledSkills != null) 'disabledSkills': disabledSkills,
+    });
   }
 
   Future<void> updateAgentWorkspace(String workspace) async {

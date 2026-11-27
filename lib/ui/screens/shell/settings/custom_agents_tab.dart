@@ -69,6 +69,9 @@ class _CustomAgentsTabState extends ConsumerState<CustomAgentsTab> {
               isPrimary: true,
               onPressed: () {
                 final id = const Uuid().v4();
+                final allSlugs = (ref.read(skillsProvider).value ?? [])
+                    .map((s) => s['slug'] as String)
+                    .toList();
                 setState(() {
                   _newAgents.insert(0, {
                     'id': id,
@@ -79,7 +82,8 @@ class _CustomAgentsTabState extends ConsumerState<CustomAgentsTab> {
                     'cronSchedule': '',
                     'cronMessage': '',
                     'designSystem': '',
-                    'skills': <String>[],
+                    'skills': allSlugs,
+                    'disabledSkills': <String>[],
                     'isNew': true,
                     'enabled': true,
                   });
@@ -192,7 +196,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
   final _controllers = <String, TextEditingController>{};
   String? _selectedProvider;
   String? _selectedModel;
-  final List<String> _selectedSkills = [];
+  final List<String> _disabledSkills = [];
   List<String> _availableModels = [];
 
   String _selectedDesignSystem = '';
@@ -258,8 +262,8 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
       _selectedModel = agent.model;
       _enabled = agent.enabled;
       _sendChatHistory = agent.shouldSendChatHistory;
-      if (_selectedSkills.isEmpty) {
-        _selectedSkills.addAll(agent.skills);
+      if (_disabledSkills.isEmpty) {
+        _disabledSkills.addAll(agent.disabledSkills);
       }
     } else {
       final map = agent as Map<String, dynamic>;
@@ -275,8 +279,10 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
       _selectedModel = map['model'] as String?;
       _enabled = (map['enabled'] as bool?) ?? true;
       _sendChatHistory = (map['shouldSendChatHistory'] as bool?) ?? true;
-      if (_selectedSkills.isEmpty) {
-        _selectedSkills.addAll((map['skills'] as List<dynamic>?)?.cast<String>() ?? []);
+      if (_disabledSkills.isEmpty) {
+        _disabledSkills.addAll(
+          (map['disabledSkills'] as List<dynamic>?)?.cast<String>() ?? [],
+        );
       }
     }
 
@@ -323,6 +329,12 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
           ? agent.id
           : ((agent as Map<String, dynamic>)['id'] as String? ?? const Uuid().v4());
 
+      final allSlugs = (ref.read(skillsProvider).value ?? [])
+          .map((s) => s['slug'] as String)
+          .toList();
+      final enabledSlugs =
+          allSlugs.where((slug) => !_disabledSkills.contains(slug)).toList();
+
       final newAgentData = {
         'id': id,
         'name': _controllers['name']!.text.trim(),
@@ -332,7 +344,8 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
         'cronSchedule': _controllers['cronSchedule']!.text.trim(),
         'cronMessage': _controllers['cronMessage']!.text.trim(),
         'designSystem': _selectedDesignSystem,
-        'skills': _selectedSkills,
+        'skills': enabledSlugs,
+        'disabledSkills': _disabledSkills,
         'enabled': _enabled,
         'shouldSendChatHistory': _sendChatHistory,
       };
@@ -546,19 +559,35 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
           label: 'settings.identity.skills_section',
           hint: 'settings.identity.skills_section',
           controller: TextEditingController(),
-          value: _selectedSkills.isEmpty ? 'settings.common.none'.tr() : _selectedSkills.map((sId) {
-            final skill = skills.firstWhere((s) => s['slug'] == sId, orElse: () => {'name': sId});
-            return skill['name'];
-          }).join(', '),
+          value: (() {
+            final allSlugs = skills.map((s) => s['slug'] as String).toList();
+            final activeSlugs = allSlugs
+                .where((sId) => !_disabledSkills.contains(sId))
+                .toList();
+            if (activeSlugs.isEmpty) return 'settings.common.none'.tr();
+            return activeSlugs.map((sId) {
+              final skill = skills.firstWhere(
+                (s) => s['slug'] == sId,
+                orElse: () => {'name': sId},
+              );
+              return skill['name'];
+            }).join(', ');
+          })(),
           customEditWidget: AppUnifiedPicker<String>(
-            values: _selectedSkills.toSet(),
+            values: skills
+                .map((s) => s['slug'] as String)
+                .where((s) => !_disabledSkills.contains(s))
+                .toSet(),
             multiSelect: true,
             items: skills.map((s) => s['slug'] as String).toList(),
             label: 'settings.identity.skills_section',
             hint: 'settings.identity.skills_section',
             onMultiChanged: (vals) => setState(() {
-              _selectedSkills.clear();
-              _selectedSkills.addAll(vals);
+              final allSlugs = skills.map((s) => s['slug'] as String).toList();
+              _disabledSkills.clear();
+              _disabledSkills.addAll(
+                allSlugs.where((slug) => !vals.contains(slug)),
+              );
             }),
             displayValue: (v) {
               final skill = skills.firstWhere((s) => s['slug'] == v, orElse: () => {'name': v});

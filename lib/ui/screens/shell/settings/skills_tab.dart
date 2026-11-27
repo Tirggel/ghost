@@ -251,18 +251,36 @@ class _SkillsTabState extends ConsumerState<SkillsTab> with SettingsSaveMixin {
             }
 
             if (confirmed == true && mounted) {
-              if (isUsedByIdentity) {
-                final nextSkills = config.agent.skills.where((s) => s != slug).toList();
-                await ref.read(configProvider.notifier).updateAgentSkills(nextSkills);
+              final hasDisabledIdentity =
+                  config.agent.disabledSkills.contains(slug);
+              if (isUsedByIdentity || hasDisabledIdentity) {
+                final nextSkills =
+                    config.agent.skills.where((s) => s != slug).toList();
+                final nextDisabled = config.agent.disabledSkills
+                    .where((s) => s != slug)
+                    .toList();
+                await ref.read(configProvider.notifier).updateAgentSkills(
+                      nextSkills,
+                      disabledSkills: nextDisabled,
+                    );
               }
-              if (isUsedByCustomAgent && mounted) {
+              if (mounted) {
                 final currentConfig = ref.read(configProvider);
                 for (final agent in currentConfig.customAgents) {
-                  if (agent.skills.contains(slug)) {
-                    final nextSkills = agent.skills.where((s) => s != slug).toList();
+                  if (agent.skills.contains(slug) ||
+                      agent.disabledSkills.contains(slug)) {
+                    final nextSkills =
+                        agent.skills.where((s) => s != slug).toList();
+                    final nextDisabled =
+                        agent.disabledSkills.where((s) => s != slug).toList();
                     await ref.read(configProvider.notifier).updateCustomAgent(
-                      agent.copyWith(skills: nextSkills).toJson(),
-                    );
+                          agent
+                              .copyWith(
+                                skills: nextSkills,
+                                disabledSkills: nextDisabled,
+                              )
+                              .toJson(),
+                        );
                   }
                 }
               }

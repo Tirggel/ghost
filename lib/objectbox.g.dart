@@ -12,9 +12,9 @@ import 'package:flat_buffers/flat_buffers.dart' as fb;
 import 'package:objectbox/internal.dart'
     as obx_int; // generated code can access "internal" functionality
 import 'package:objectbox/objectbox.dart' as obx;
-import 'engine/infra/objectbox_flutter_libs_stub.dart'
-    if (dart.library.ui) 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
+import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
+import 'engine/agent/ontology/ontology_models.dart';
 import 'engine/agent/rag_memory.dart';
 
 export 'package:objectbox/objectbox.dart'; // so that callers only have to import this file
@@ -55,6 +55,151 @@ final _entities = <obx_int.ModelEntity>[
         id: const obx_int.IdUid(5, 505725302784329942),
         name: 'embedding',
         type: 28,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(2, 4441078034335330543),
+    name: 'OntologyEdge',
+    lastPropertyId: const obx_int.IdUid(6, 4597449960223434544),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 5557018112952403306),
+        name: 'obxId',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 3243747853982041023),
+        name: 'subjectId',
+        type: 6,
+        flags: 8,
+        indexId: const obx_int.IdUid(2, 8450802249872516413),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 3972660615630010960),
+        name: 'predicate',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(3, 2471900552134285341),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 2843230681592982235),
+        name: 'objectId',
+        type: 6,
+        flags: 8,
+        indexId: const obx_int.IdUid(4, 8534734921082822494),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 2667060031525842793),
+        name: 'confidence',
+        type: 8,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 4597449960223434544),
+        name: 'createdAt',
+        type: 10,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(3, 6125865448418217713),
+    name: 'OntologyNode',
+    lastPropertyId: const obx_int.IdUid(6, 4474396710799460918),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 3035064169332409311),
+        name: 'obxId',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 8784907955878112358),
+        name: 'canonicalKey',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(5, 5051039332947719667),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 3793331450972438717),
+        name: 'label',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(6, 6576186109554743489),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 1969700782433042067),
+        name: 'entityType',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(7, 7487412109765779983),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 1914404687584430832),
+        name: 'updatedAt',
+        type: 10,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 4474396710799460918),
+        name: 'metadataJson',
+        type: 9,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(4, 8849514103691348310),
+    name: 'OntologyRelationDef',
+    lastPropertyId: const obx_int.IdUid(6, 3140122868705397083),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 6941801907511622416),
+        name: 'obxId',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 8341933321925303818),
+        name: 'predicate',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(8, 3028810517052858755),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 2429473079409516699),
+        name: 'domainType',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 635567971705407898),
+        name: 'rangeType',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 6600135080725941852),
+        name: 'isFunctional',
+        type: 1,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 3140122868705397083),
+        name: 'isTransitive',
+        type: 1,
         flags: 0,
       ),
     ],
@@ -106,8 +251,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
     // Typically, this is done with `dart run build_runner build`.
     generatorVersion: obx_int.GeneratorVersion.v2025_12_16,
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(1, 7141642882014988805),
-    lastIndexId: const obx_int.IdUid(1, 5891081993253487757),
+    lastEntityId: const obx_int.IdUid(4, 8849514103691348310),
+    lastIndexId: const obx_int.IdUid(8, 3028810517052858755),
     lastRelationId: const obx_int.IdUid(0, 0),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
@@ -177,6 +322,194 @@ obx_int.ModelDefinition getObjectBoxModel() {
         return object;
       },
     ),
+    OntologyEdge: obx_int.EntityDefinition<OntologyEdge>(
+      model: _entities[1],
+      toOneRelations: (OntologyEdge object) => [],
+      toManyRelations: (OntologyEdge object) => {},
+      getId: (OntologyEdge object) => object.obxId,
+      setId: (OntologyEdge object, int id) {
+        object.obxId = id;
+      },
+      objectToFB: (OntologyEdge object, fb.Builder fbb) {
+        final predicateOffset = fbb.writeString(object.predicate);
+        fbb.startTable(7);
+        fbb.addInt64(0, object.obxId);
+        fbb.addInt64(1, object.subjectId);
+        fbb.addOffset(2, predicateOffset);
+        fbb.addInt64(3, object.objectId);
+        fbb.addFloat64(4, object.confidence);
+        fbb.addInt64(5, object.createdAt.millisecondsSinceEpoch);
+        fbb.finish(fbb.endTable());
+        return object.obxId;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final obxIdParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          4,
+          0,
+        );
+        final subjectIdParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          6,
+          0,
+        );
+        final predicateParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final objectIdParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          10,
+          0,
+        );
+        final confidenceParam = const fb.Float64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          12,
+          0,
+        );
+        final createdAtParam = DateTime.fromMillisecondsSinceEpoch(
+          const fb.Int64Reader().vTableGet(buffer, rootOffset, 14, 0),
+        );
+        final object = OntologyEdge(
+          obxId: obxIdParam,
+          subjectId: subjectIdParam,
+          predicate: predicateParam,
+          objectId: objectIdParam,
+          confidence: confidenceParam,
+          createdAt: createdAtParam,
+        );
+
+        return object;
+      },
+    ),
+    OntologyNode: obx_int.EntityDefinition<OntologyNode>(
+      model: _entities[2],
+      toOneRelations: (OntologyNode object) => [],
+      toManyRelations: (OntologyNode object) => {},
+      getId: (OntologyNode object) => object.obxId,
+      setId: (OntologyNode object, int id) {
+        object.obxId = id;
+      },
+      objectToFB: (OntologyNode object, fb.Builder fbb) {
+        final canonicalKeyOffset = fbb.writeString(object.canonicalKey);
+        final labelOffset = fbb.writeString(object.label);
+        final entityTypeOffset = fbb.writeString(object.entityType);
+        final metadataJsonOffset = fbb.writeString(object.metadataJson);
+        fbb.startTable(7);
+        fbb.addInt64(0, object.obxId);
+        fbb.addOffset(1, canonicalKeyOffset);
+        fbb.addOffset(2, labelOffset);
+        fbb.addOffset(3, entityTypeOffset);
+        fbb.addInt64(4, object.updatedAt.millisecondsSinceEpoch);
+        fbb.addOffset(5, metadataJsonOffset);
+        fbb.finish(fbb.endTable());
+        return object.obxId;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final obxIdParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          4,
+          0,
+        );
+        final canonicalKeyParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final labelParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final entityTypeParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 10, '');
+        final metadataJsonParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 14, '');
+        final updatedAtParam = DateTime.fromMillisecondsSinceEpoch(
+          const fb.Int64Reader().vTableGet(buffer, rootOffset, 12, 0),
+        );
+        final object = OntologyNode(
+          obxId: obxIdParam,
+          canonicalKey: canonicalKeyParam,
+          label: labelParam,
+          entityType: entityTypeParam,
+          metadataJson: metadataJsonParam,
+          updatedAt: updatedAtParam,
+        );
+
+        return object;
+      },
+    ),
+    OntologyRelationDef: obx_int.EntityDefinition<OntologyRelationDef>(
+      model: _entities[3],
+      toOneRelations: (OntologyRelationDef object) => [],
+      toManyRelations: (OntologyRelationDef object) => {},
+      getId: (OntologyRelationDef object) => object.obxId,
+      setId: (OntologyRelationDef object, int id) {
+        object.obxId = id;
+      },
+      objectToFB: (OntologyRelationDef object, fb.Builder fbb) {
+        final predicateOffset = fbb.writeString(object.predicate);
+        final domainTypeOffset = fbb.writeString(object.domainType);
+        final rangeTypeOffset = fbb.writeString(object.rangeType);
+        fbb.startTable(7);
+        fbb.addInt64(0, object.obxId);
+        fbb.addOffset(1, predicateOffset);
+        fbb.addOffset(2, domainTypeOffset);
+        fbb.addOffset(3, rangeTypeOffset);
+        fbb.addBool(4, object.isFunctional);
+        fbb.addBool(5, object.isTransitive);
+        fbb.finish(fbb.endTable());
+        return object.obxId;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final obxIdParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          4,
+          0,
+        );
+        final predicateParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final domainTypeParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final rangeTypeParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 10, '');
+        final isFunctionalParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          12,
+          false,
+        );
+        final isTransitiveParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          14,
+          false,
+        );
+        final object = OntologyRelationDef(
+          obxId: obxIdParam,
+          predicate: predicateParam,
+          domainType: domainTypeParam,
+          rangeType: rangeTypeParam,
+          isFunctional: isFunctionalParam,
+          isTransitive: isTransitiveParam,
+        );
+
+        return object;
+      },
+    ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -207,5 +540,104 @@ class RAGChunk_ {
   /// See [RAGChunk.embedding].
   static final embedding = obx.QueryDoubleVectorProperty<RAGChunk>(
     _entities[0].properties[4],
+  );
+}
+
+/// [OntologyEdge] entity fields to define ObjectBox queries.
+class OntologyEdge_ {
+  /// See [OntologyEdge.obxId].
+  static final obxId = obx.QueryIntegerProperty<OntologyEdge>(
+    _entities[1].properties[0],
+  );
+
+  /// See [OntologyEdge.subjectId].
+  static final subjectId = obx.QueryIntegerProperty<OntologyEdge>(
+    _entities[1].properties[1],
+  );
+
+  /// See [OntologyEdge.predicate].
+  static final predicate = obx.QueryStringProperty<OntologyEdge>(
+    _entities[1].properties[2],
+  );
+
+  /// See [OntologyEdge.objectId].
+  static final objectId = obx.QueryIntegerProperty<OntologyEdge>(
+    _entities[1].properties[3],
+  );
+
+  /// See [OntologyEdge.confidence].
+  static final confidence = obx.QueryDoubleProperty<OntologyEdge>(
+    _entities[1].properties[4],
+  );
+
+  /// See [OntologyEdge.createdAt].
+  static final createdAt = obx.QueryDateProperty<OntologyEdge>(
+    _entities[1].properties[5],
+  );
+}
+
+/// [OntologyNode] entity fields to define ObjectBox queries.
+class OntologyNode_ {
+  /// See [OntologyNode.obxId].
+  static final obxId = obx.QueryIntegerProperty<OntologyNode>(
+    _entities[2].properties[0],
+  );
+
+  /// See [OntologyNode.canonicalKey].
+  static final canonicalKey = obx.QueryStringProperty<OntologyNode>(
+    _entities[2].properties[1],
+  );
+
+  /// See [OntologyNode.label].
+  static final label = obx.QueryStringProperty<OntologyNode>(
+    _entities[2].properties[2],
+  );
+
+  /// See [OntologyNode.entityType].
+  static final entityType = obx.QueryStringProperty<OntologyNode>(
+    _entities[2].properties[3],
+  );
+
+  /// See [OntologyNode.updatedAt].
+  static final updatedAt = obx.QueryDateProperty<OntologyNode>(
+    _entities[2].properties[4],
+  );
+
+  /// See [OntologyNode.metadataJson].
+  static final metadataJson = obx.QueryStringProperty<OntologyNode>(
+    _entities[2].properties[5],
+  );
+}
+
+/// [OntologyRelationDef] entity fields to define ObjectBox queries.
+class OntologyRelationDef_ {
+  /// See [OntologyRelationDef.obxId].
+  static final obxId = obx.QueryIntegerProperty<OntologyRelationDef>(
+    _entities[3].properties[0],
+  );
+
+  /// See [OntologyRelationDef.predicate].
+  static final predicate = obx.QueryStringProperty<OntologyRelationDef>(
+    _entities[3].properties[1],
+  );
+
+  /// See [OntologyRelationDef.domainType].
+  static final domainType = obx.QueryStringProperty<OntologyRelationDef>(
+    _entities[3].properties[2],
+  );
+
+  /// See [OntologyRelationDef.rangeType].
+  static final rangeType = obx.QueryStringProperty<OntologyRelationDef>(
+    _entities[3].properties[3],
+  );
+
+  /// See [OntologyRelationDef.isFunctional].
+  static final isFunctional = obx.QueryBooleanProperty<OntologyRelationDef>(
+    _entities[3].properties[4],
+  );
+
+  /// See [OntologyRelationDef.isTransitive].
+  static final isTransitive = obx.QueryBooleanProperty<OntologyRelationDef>(
+    _entities[3].properties[5],
   );
 }

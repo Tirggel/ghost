@@ -253,7 +253,7 @@ class GhostConfig {
       if (skillsContext.isNotEmpty) ...[
         '',
         '### ACTIVE SKILLS — MANDATORY FIRST PRIORITY ###',
-        'If an available active skill covers the user\'s request (e.g. weather, specific APIs, specialized tools), you MUST ALWAYS use the skill first instead of performing generic web searches or answering without the skill!',
+        'If an available active skill covers the user\'s request (e.g. weather, specific APIs, specialized tools), you MUST ALWAYS load it with `ghost_load_skill` and use the skill first instead of performing generic web searches or answering without the skill!',
       ],
       '',
       userContext,
@@ -554,6 +554,7 @@ class CustomAgentConfig {
     this.model,
     this.provider,
     this.skills = const [],
+    this.disabledSkills = const [],
     this.enabled = true,
     this.avatar,
     this.shouldSendChatHistory = true,
@@ -573,6 +574,10 @@ class CustomAgentConfig {
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      disabledSkills: (json['disabledSkills'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       enabled: json['enabled'] as bool? ?? true,
       avatar: json['avatar'] as String?,
       shouldSendChatHistory: json['shouldSendChatHistory'] as bool? ?? true,
@@ -588,10 +593,17 @@ class CustomAgentConfig {
   final String? model;
   final String? provider;
   final List<String> skills;
+  final List<String> disabledSkills;
   final bool enabled;
   final String? avatar;
   final bool shouldSendChatHistory;
   final String designSystem;
+
+  /// Resolves the allowed skill slugs using the opt-out model (`allInstalledSlugs - disabledSkills`).
+  List<String> resolveAllowedSkills(List<String> allInstalledSlugs) {
+    final disabled = disabledSkills.toSet();
+    return allInstalledSlugs.where((s) => !disabled.contains(s)).toList();
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -602,6 +614,7 @@ class CustomAgentConfig {
         if (model != null) 'model': model,
         if (provider != null) 'provider': provider,
         'skills': skills,
+        'disabledSkills': disabledSkills,
         'enabled': enabled,
         if (avatar != null) 'avatar': avatar,
         'shouldSendChatHistory': shouldSendChatHistory,
@@ -617,6 +630,7 @@ class CustomAgentConfig {
     String? model,
     String? provider,
     List<String>? skills,
+    List<String>? disabledSkills,
     bool? enabled,
     String? avatar,
     bool? shouldSendChatHistory,
@@ -631,6 +645,7 @@ class CustomAgentConfig {
       model: model ?? this.model,
       provider: provider ?? this.provider,
       skills: skills ?? this.skills,
+      disabledSkills: disabledSkills ?? this.disabledSkills,
       enabled: enabled ?? this.enabled,
       avatar: avatar ?? this.avatar,
       shouldSendChatHistory:
@@ -648,6 +663,7 @@ class AgentConfig {
     this.maxTokens = 4096,
     this.thinkingMode = 'auto',
     this.skills = const [],
+    this.disabledSkills = const [],
     this.designSystem = '',
   });
 
@@ -662,6 +678,10 @@ class AgentConfig {
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      disabledSkills: (json['disabledSkills'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       designSystem: json['designSystem'] as String? ?? '',
     );
   }
@@ -672,7 +692,14 @@ class AgentConfig {
   final int maxTokens;
   final String thinkingMode;
   final List<String> skills;
+  final List<String> disabledSkills;
   final String designSystem;
+
+  /// Resolves the allowed skill slugs using the opt-out model (`allInstalledSlugs - disabledSkills`).
+  List<String> resolveAllowedSkills(List<String> allInstalledSlugs) {
+    final disabled = disabledSkills.toSet();
+    return allInstalledSlugs.where((s) => !disabled.contains(s)).toList();
+  }
 
   Map<String, dynamic> toJson() => {
         'model': model,
@@ -681,6 +708,7 @@ class AgentConfig {
         'maxTokens': maxTokens,
         'thinkingMode': thinkingMode,
         'skills': skills,
+        'disabledSkills': disabledSkills,
         'designSystem': designSystem,
       };
 
@@ -691,6 +719,7 @@ class AgentConfig {
     int? maxTokens,
     String? thinkingMode,
     List<String>? skills,
+    List<String>? disabledSkills,
     String? designSystem,
   }) {
     return AgentConfig(
@@ -700,6 +729,7 @@ class AgentConfig {
       maxTokens: maxTokens ?? this.maxTokens,
       thinkingMode: thinkingMode ?? this.thinkingMode,
       skills: skills ?? this.skills,
+      disabledSkills: disabledSkills ?? this.disabledSkills,
       designSystem: designSystem ?? this.designSystem,
     );
   }
@@ -946,6 +976,8 @@ class MemoryConfig {
     this.enabled = true,
     this.ragEnabled = false,
     this.workspaceRagEnabled = false,
+    this.ontologyEnabled = true,
+    this.ontologyAutoExtract = true,
     this.backend = 'hive',
     this.embeddingProvider = '',
     this.embeddingModel = '',
@@ -960,6 +992,8 @@ class MemoryConfig {
       enabled: json['enabled'] as bool? ?? true,
       ragEnabled: json['ragEnabled'] as bool? ?? false,
       workspaceRagEnabled: json['workspaceRagEnabled'] as bool? ?? false,
+      ontologyEnabled: json['ontologyEnabled'] as bool? ?? true,
+      ontologyAutoExtract: json['ontologyAutoExtract'] as bool? ?? true,
       backend: json['backend'] as String? ?? 'hive',
       embeddingProvider: json['embeddingProvider'] as String? ?? '',
       embeddingModel: json['embeddingModel'] as String? ?? '',
@@ -973,6 +1007,8 @@ class MemoryConfig {
   final bool enabled;
   final bool ragEnabled;
   final bool workspaceRagEnabled;
+  final bool ontologyEnabled;
+  final bool ontologyAutoExtract;
   final String backend;
   final String embeddingProvider;
   final String embeddingModel;
@@ -985,6 +1021,8 @@ class MemoryConfig {
         'enabled': enabled,
         'ragEnabled': ragEnabled,
         'workspaceRagEnabled': workspaceRagEnabled,
+        'ontologyEnabled': ontologyEnabled,
+        'ontologyAutoExtract': ontologyAutoExtract,
         'backend': backend,
         'embeddingProvider': embeddingProvider,
         'embeddingModel': embeddingModel,
@@ -998,6 +1036,8 @@ class MemoryConfig {
     bool? enabled,
     bool? ragEnabled,
     bool? workspaceRagEnabled,
+    bool? ontologyEnabled,
+    bool? ontologyAutoExtract,
     String? backend,
     String? embeddingProvider,
     String? embeddingModel,
@@ -1010,6 +1050,8 @@ class MemoryConfig {
       enabled: enabled ?? this.enabled,
       ragEnabled: ragEnabled ?? this.ragEnabled,
       workspaceRagEnabled: workspaceRagEnabled ?? this.workspaceRagEnabled,
+      ontologyEnabled: ontologyEnabled ?? this.ontologyEnabled,
+      ontologyAutoExtract: ontologyAutoExtract ?? this.ontologyAutoExtract,
       backend: backend ?? this.backend,
       embeddingProvider: embeddingProvider ?? this.embeddingProvider,
       embeddingModel: embeddingModel ?? this.embeddingModel,

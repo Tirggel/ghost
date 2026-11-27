@@ -66,6 +66,10 @@ class RAGMemoryEngine {
   Box<RAGChunk>? _box;
   bool _initialized = false;
   bool _syncing = false;
+
+  /// Exposes the underlying ObjectBox [Store] so co-located engines (e.g. Ontology)
+  /// can share the same database instance without opening a second LMDB store.
+  Store? get store => _store;
   
   final _uuid = const Uuid();
 

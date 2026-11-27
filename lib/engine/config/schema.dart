@@ -136,6 +136,13 @@ void _validateAgent(AgentConfig agent, List<String> errors) {
       '(got "${agent.thinkingMode}")',
     );
   }
+
+  for (final slug in agent.disabledSkills) {
+    if (slug.trim().isEmpty) {
+      errors.add('agent.disabledSkills must not contain empty skill slugs');
+      break;
+    }
+  }
 }
 
 void _validateMemory(MemoryConfig memory, List<String> errors) {
@@ -237,6 +244,15 @@ void _validateCustomAgents(
 
     if (agent.name.isEmpty) {
       errors.add('customAgent ${agent.id} must have a name');
+    }
+
+    for (final slug in agent.disabledSkills) {
+      if (slug.trim().isEmpty) {
+        errors.add(
+          'customAgent ${agent.id}.disabledSkills must not contain empty skill slugs',
+        );
+        break;
+      }
     }
   }
 }

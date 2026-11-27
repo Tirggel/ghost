@@ -59,7 +59,14 @@ class ManageAgentsTool extends Tool {
           'skills': {
             'type': 'array',
             'items': {'type': 'string'},
-            'description': 'List of skill slugs the agent should have access to.',
+            'description':
+                'Optional list of skill slugs to restrict the agent to. If omitted, the agent gets access to all active skills by default (opt-out model).',
+          },
+          'disabledSkills': {
+            'type': 'array',
+            'items': {'type': 'string'},
+            'description':
+                'Optional list of skill slugs to disable for this agent (opt-out).',
           },
           'enabled': {
             'type': 'boolean',
@@ -110,7 +117,33 @@ class ManageAgentsTool extends Tool {
     final systemPrompt = input['systemPrompt'] as String? ?? '';
     final cronSchedule = input['cronSchedule'] as String?;
     final cronMessage = input['cronMessage'] as String? ?? 'Run your scheduled task.';
-    final skills = (input['skills'] as List<dynamic>?)?.cast<String>() ?? [];
+    final allSlugs = (await agentManager.skillManager.loadSkills())
+        .map((s) => s.slug)
+        .toList();
+    final requestedSkills = (input['skills'] as List<dynamic>?)
+        ?.map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final explicitDisabled = (input['disabledSkills'] as List<dynamic>?)
+        ?.map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    final List<String> disabledSkills;
+    final List<String> skills;
+    if (explicitDisabled != null) {
+      disabledSkills = explicitDisabled;
+      skills = requestedSkills ??
+          allSlugs.where((s) => !disabledSkills.contains(s)).toList();
+    } else if (requestedSkills != null && requestedSkills.isNotEmpty) {
+      disabledSkills =
+          allSlugs.where((s) => !requestedSkills.contains(s)).toList();
+      skills = requestedSkills;
+    } else {
+      disabledSkills = const [];
+      skills = allSlugs;
+    }
+
     final enabled = input['enabled'] as bool? ?? true;
 
     final newAgent = CustomAgentConfig(
@@ -120,6 +153,7 @@ class ManageAgentsTool extends Tool {
       cronSchedule: cronSchedule,
       cronMessage: cronMessage,
       skills: skills,
+      disabledSkills: disabledSkills,
       enabled: enabled,
       model: agentManager.config.agent.model,
       provider: agentManager.config.agent.provider,

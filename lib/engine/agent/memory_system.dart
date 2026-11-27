@@ -1,13 +1,46 @@
 import 'dart:async';
 import 'memory.dart';
 import 'rag_memory.dart';
+import 'ontology/ontology_extractor.dart';
+import 'ontology/ontology_store_service.dart';
+import '../config/config.dart';
 import '../infra/errors.dart';
 import '../models/provider.dart';
 
 class MemorySystem {
-  MemorySystem({required this.standard, required this.rag});
+  MemorySystem({
+    required this.standard,
+    required this.rag,
+    this.ontology,
+  });
+
   final MemoryEngine standard;
   final RAGMemoryEngine rag;
+  final OntologyStoreService? ontology;
+
+  bool get isOntologyEnabled =>
+      ontology != null &&
+      ontology!.isInitialized &&
+      ontology!.config.ontologyEnabled;
+
+  bool get isOntologyAutoExtractEnabled =>
+      isOntologyEnabled && ontology!.config.ontologyAutoExtract;
+
+  Future<String> queryOntology(
+    String text, {
+    UserConfig? userConfig,
+    int maxDepth = 2,
+    int maxFacts = 15,
+  }) async {
+    if (!isOntologyEnabled) return '';
+    return OntologyExtractor.buildPreTurnContext(
+      userMessage: text,
+      ontology: ontology!,
+      userConfig: userConfig,
+      maxDepth: maxDepth,
+      maxFacts: maxFacts,
+    );
+  }
 
   Future<List<String>> query(String text, {int limit = 5, String? category, AIModelProvider? activeProvider, String? workspaceDir}) async {
     final results = <String>[];

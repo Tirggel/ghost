@@ -3,18 +3,21 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:cron/cron.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:logging/logging.dart';
 
 import '../config/config.dart';
 import '../config/io.dart';
 import '../config/secure_storage.dart';
 import '../models/message.dart';
+import '../models/skill.dart';
 import '../sessions/manager.dart';
 import '../sessions/session.dart';
 import '../tools/registry.dart';
 import 'agent.dart';
 import 'memory.dart';
 import 'rag_memory.dart';
+import 'ontology/ontology_store_service.dart';
 import 'providers/factory.dart';
 import 'skills.dart';
 import 'design_system_manager.dart';
@@ -65,7 +68,15 @@ class AgentManager {
       storage: storage,
       stateDir: stateDir,
     );
-    memorySystem = MemorySystem(standard: memoryEngine, rag: ragMemoryEngine);
+    ontologyStoreService = OntologyStoreService(
+      config: config.memory,
+      stateDir: stateDir,
+    );
+    memorySystem = MemorySystem(
+      standard: memoryEngine,
+      rag: ragMemoryEngine,
+      ontology: ontologyStoreService,
+    );
   }
 
   GhostConfig config;
@@ -96,11 +107,17 @@ class AgentManager {
   late final DesignSystemManager designSystemManager;
   late final MemoryEngine memoryEngine;
   late final RAGMemoryEngine ragMemoryEngine;
+  late final OntologyStoreService ontologyStoreService;
   late final MemorySystem memorySystem;
   final Map<String, Agent> _customAgents = {};
   final Map<String, ScheduledTask> _cronTasks = {};
   StreamSubscription<void>? _skillsSubscription;
   StreamSubscription<String>? _skillInstalledSubscription;
+  StreamSubscription<String>? _skillDeletedSubscription;
+
+  static const String _migrationsBoxName = 'ghost_migrations';
+  static const String _skillsOptOutMigrationKey =
+      'skills_optout_migration_v1_done';
 
   final _cron = Cron();
 
@@ -119,6 +136,8 @@ class AgentManager {
       agentProvider: config.agent.provider,
     );
     await ragMemoryEngine.initialize();
+    await ontologyStoreService.initialize(sharedStore: ragMemoryEngine.store);
+    await ontologyStoreService.syncUserProfile(config.user);
     if (config.memory.ragEnabled && config.memory.workspaceRagEnabled) {
       unawaited(ragMemoryEngine.syncWorkspaceRag(workspaceDir));
     }
@@ -126,6 +145,15 @@ class AgentManager {
     // 1.6. Initialize SkillManager
     await skillManager.initialize();
     await designSystemManager.initialize();
+
+    final skillEntries = await skillManager.loadSkillsWithContent();
+    final allInstalledSlugs = skillEntries.map((e) => e.skill.slug).toList();
+
+    // 1.7. Run one-time idempotent opt-out migration for existing agents
+    await _runSkillsOptOutMigrationIfNeeded(allInstalledSlugs);
+
+    final defaultAllowedSkills =
+        config.agent.resolveAllowedSkills(allInstalledSlugs);
 
     String defaultDesignSystemContent = '';
     if (config.agent.designSystem.isNotEmpty) {
@@ -141,17 +169,16 @@ class AgentManager {
       toolRegistry: toolRegistry,
       storage: storage,
       memory: memorySystem,
-      skills: config.agent.skills,
+      skills: defaultAllowedSkills,
       systemPrompt: config.buildSystemPrompt(
         workspaceDir: workspaceDir,
-        skillsContext:
-            await skillManager.buildSkillContext(config.agent.skills),
         designSystemContent: defaultDesignSystemContent,
       ),
       workspaceDir: workspaceDir,
       stateDir: stateDir,
       browserHeadless: config.tools.browserHeadless,
       security: config.security,
+      userConfig: config.user,
       autonomousPayments: config.billing.autonomous,
     );
 
@@ -163,15 +190,25 @@ class AgentManager {
     // 3. Initialize custom agents
     await reloadCustomAgents(config.customAgents);
 
-    // 4. Listen for skill changes to rebuild prompts
-    _skillsSubscription = skillManager.onSkillsChanged.listen((_) {
-      _log.info('Skills changed, rebuilding system prompts...');
-      updateConfig(config);
+    // 3.5. Synchronize all installed skills & agent permissions into the Ontology Graph
+    await syncOntologySkillsAndPermissions(preloadedEntries: skillEntries);
+
+    // 4. Listen for skill changes to sync ontology & rebuild prompts
+    _skillsSubscription = skillManager.onSkillsChanged.listen((_) async {
+      _log.info('Skills changed, syncing ontology and rebuilding system prompts...');
+      await syncOntologySkillsAndPermissions();
+      await updateConfig(config);
     });
 
     _skillInstalledSubscription = skillManager.onSkillInstalled.listen((slug) async {
-      _log.info('New skill installed: $slug. Automatically adding to default agent skills.');
+      _log.info('New skill installed: $slug. Syncing ontology and opt-out agent permissions.');
       await _handleNewSkillInstalled(slug);
+    });
+
+    _skillDeletedSubscription = skillManager.onSkillDeleted.listen((slug) async {
+      _log.info('Skill deleted: $slug. Removing from ontology graph.');
+      await ontologyStoreService.removeSkillNode(slug);
+      await syncOntologySkillsAndPermissions();
     });
   }
 
@@ -221,6 +258,9 @@ class AgentManager {
       }
     }
 
+    final allInstalledSlugs =
+        (await skillManager.loadSkills()).map((s) => s.slug).toList();
+
     for (final agentConfig in agentConfigs) {
       try {
         final provider = await ProviderFactory.create(
@@ -235,10 +275,11 @@ class AgentManager {
           dsContent = ds?.content ?? '';
         }
 
+        final allowedSkills =
+            agentConfig.resolveAllowedSkills(allInstalledSlugs);
+
         final finalPrompt = config.buildSystemPrompt(
           workspaceDir: workspaceDir,
-          skillsContext:
-              await skillManager.buildSkillContext(agentConfig.skills),
           designSystemContent: dsContent,
         );
 
@@ -250,7 +291,7 @@ class AgentManager {
           toolRegistry: toolRegistry,
           storage: storage,
           memory: memorySystem,
-          skills: agentConfig.skills,
+          skills: allowedSkills,
           systemPrompt: agentConfig.systemPrompt.isNotEmpty
               ? '${agentConfig.systemPrompt}\n\n$finalPrompt'
               : finalPrompt,
@@ -259,6 +300,7 @@ class AgentManager {
           browserHeadless: config.tools.browserHeadless,
           shouldSendChatHistory: agentConfig.shouldSendChatHistory,
           security: config.security,
+          userConfig: config.user,
           autonomousPayments: config.billing.autonomous,
         );
 
@@ -625,16 +667,18 @@ class AgentManager {
     final resolvedWs = (wsDir == null || wsDir.isEmpty || wsDir == '.')
         ? Env.defaultWorkspaceDir
         : wsDir;
+    final allInstalledSlugs =
+        (await skillManager.loadSkills()).map((s) => s.slug).toList();
     defaultAgent.workspaceDir = resolvedWs;
     workspaceDir = defaultAgent.workspaceDir;
-    defaultAgent.skills = config.agent.skills;
+    defaultAgent.skills = config.agent.resolveAllowedSkills(allInstalledSlugs);
     defaultAgent.systemPrompt = config.buildSystemPrompt(
       workspaceDir: workspaceDir,
-      skillsContext: await skillManager.buildSkillContext(config.agent.skills),
       designSystemContent: defaultDesignSystemContent,
     );
     defaultAgent.browserHeadless = config.tools.browserHeadless;
     defaultAgent.security = config.security;
+    defaultAgent.userConfig = config.user;
     defaultAgent.autonomousPayments = config.billing.autonomous;
 
     // 1.5 Update System-1 Middleware state
@@ -652,6 +696,9 @@ class AgentManager {
     );
     ragMemoryEngine.updateConfig(config.memory);
     await ragMemoryEngine.initialize();
+    ontologyStoreService.updateConfig(config.memory);
+    await ontologyStoreService.initialize(sharedStore: ragMemoryEngine.store);
+    await ontologyStoreService.syncUserProfile(config.user);
     if (config.memory.ragEnabled && config.memory.workspaceRagEnabled) {
       unawaited(ragMemoryEngine.syncWorkspaceRag(workspaceDir));
     }
@@ -675,18 +722,18 @@ class AgentManager {
 
         final finalPrompt = config.buildSystemPrompt(
           workspaceDir: workspaceDir,
-          skillsContext:
-              await skillManager.buildSkillContext(agentConfig.skills),
           designSystemContent: dsContent,
         );
 
         agent.workspaceDir = workspaceDir;
+        agent.skills = agentConfig.resolveAllowedSkills(allInstalledSlugs);
         agent.systemPrompt = agentConfig.systemPrompt.isNotEmpty
             ? '${agentConfig.systemPrompt}\n\n$finalPrompt'
             : finalPrompt;
         agent.browserHeadless = config.tools.browserHeadless;
         agent.shouldSendChatHistory = agentConfig.shouldSendChatHistory;
         agent.security = config.security;
+        agent.userConfig = config.user;
         agent.autonomousPayments = config.billing.autonomous;
       }
     }
@@ -706,6 +753,7 @@ class AgentManager {
     // Refresh local config and reload crons
     config = config.copyWith(customAgents: agents);
     await reloadCustomAgents(agents);
+    await syncOntologySkillsAndPermissions();
     
     notifyConfigChanged();
   }
@@ -724,11 +772,13 @@ class AgentManager {
   Future<void> shutdown() async {
     await _skillsSubscription?.cancel();
     await _skillInstalledSubscription?.cancel();
+    await _skillDeletedSubscription?.cancel();
     for (final task in _cronTasks.values) {
       await task.cancel();
     }
     await _cron.close();
     await memoryEngine.close();
+    await ontologyStoreService.close();
     await ragMemoryEngine.close();
   }
 
@@ -909,17 +959,187 @@ class AgentManager {
       await memoryEngine.clear();
     } else if (type == 'rag') {
       await ragMemoryEngine.clear();
+    } else if (type == 'ontology') {
+      await ontologyStoreService.clear(reseedDefaults: true);
+      await ontologyStoreService.syncUserProfile(config.user);
+      await syncOntologySkillsAndPermissions();
     } else {
       _log.warning('Unknown memory type to clear: $type');
     }
   }
 
-  /// Automatically add a newly installed skill to the main agent's skills list and save.
+  /// Synchronizes all installed skills, metadata, HITL policies, and per-agent
+  /// `DARF_NUTZEN` permission edges into [ontologyStoreService].
+  Future<void> syncOntologySkillsAndPermissions({
+    List<({Skill skill, String markdownContent})>? preloadedEntries,
+  }) async {
+    if (!ontologyStoreService.isInitialized) return;
+
+    final entries = preloadedEntries ?? await skillManager.loadSkillsWithContent();
+
+    final skills = entries.map((e) => e.skill).toList();
+    final shortDescriptions = <String, String>{
+      for (final entry in entries)
+        entry.skill.slug: SkillManager.extractShortDescription(
+          entry.skill,
+          entry.markdownContent,
+        ),
+    };
+    final allSlugs = skills.map((s) => s.slug).toList();
+
+    await ontologyStoreService.syncSkills(
+      skills,
+      shortDescriptions: shortDescriptions,
+    );
+
+    final defaultAllowed = config.agent.resolveAllowedSkills(allSlugs);
+    await ontologyStoreService.syncAgentSkillPermissions(
+      agentId: 'default-agent',
+      agentName: config.identity.name,
+      allowedSkillSlugs: defaultAllowed,
+    );
+    defaultAgent.skills = defaultAllowed;
+
+    final activeAgentIds = <String>{'default-agent'};
+    for (final ca in config.customAgents) {
+      activeAgentIds.add(ca.id);
+      final allowed = ca.resolveAllowedSkills(allSlugs);
+      await ontologyStoreService.syncAgentSkillPermissions(
+        agentId: ca.id,
+        agentName: ca.name,
+        allowedSkillSlugs: allowed,
+      );
+      final liveAgent = _customAgents[ca.id];
+      if (liveAgent != null) {
+        liveAgent.skills = allowed;
+      }
+    }
+
+    await ontologyStoreService.pruneOrphanAgentNodes(activeAgentIds);
+  }
+
+  /// Runs a one-time, idempotent migration unlocking all installed skills for
+  /// all existing agents (opt-out model). Persists the completion flag in both
+  /// a dedicated Hive box (`ghost_migrations` in `stateDir`) and `SecureStorage`
+  /// so subsequent manual opt-outs are never overwritten on restart.
+  Future<void> _runSkillsOptOutMigrationIfNeeded(
+    List<String> allInstalledSlugs,
+  ) async {
+    Box<dynamic>? migrationsBox;
+    try {
+      try {
+        migrationsBox = Hive.isBoxOpen(_migrationsBoxName)
+            ? Hive.box<dynamic>(_migrationsBoxName)
+            : await Hive.openBox<dynamic>(_migrationsBoxName);
+      } catch (_) {
+        Hive.init(stateDir);
+        migrationsBox = await Hive.openBox<dynamic>(_migrationsBoxName);
+      }
+
+      final hiveDone = migrationsBox.get(_skillsOptOutMigrationKey) == true;
+      final vaultDone = await storage.get(_skillsOptOutMigrationKey) == 'true';
+
+      if (hiveDone || vaultDone) {
+        if (!hiveDone) {
+          await migrationsBox.put(_skillsOptOutMigrationKey, true);
+        }
+        if (!vaultDone) {
+          await storage.set(_skillsOptOutMigrationKey, 'true');
+        }
+        return;
+      }
+
+      _log.info(
+        'Running one-time opt-out skills migration for default and '
+        '${config.customAgents.length} custom agent(s)...',
+      );
+
+      final updatedDefaultAgent = config.agent.copyWith(
+        disabledSkills: const [],
+        skills: List<String>.from(allInstalledSlugs),
+      );
+
+      final updatedCustomAgents = config.customAgents
+          .map(
+            (ca) => ca.copyWith(
+              disabledSkills: const [],
+              skills: List<String>.from(allInstalledSlugs),
+            ),
+          )
+          .toList();
+
+      config = config.copyWith(
+        agent: updatedDefaultAgent,
+        customAgents: updatedCustomAgents,
+      );
+
+      await storage.set(
+        'agent_config',
+        jsonEncode(updatedDefaultAgent.toJson()),
+      );
+      await storage.set(
+        'custom_agents_config',
+        jsonEncode(updatedCustomAgents.map((a) => a.toJson()).toList()),
+      );
+
+      if (configPath != null) {
+        try {
+          await saveConfig(config, configPath!);
+        } catch (e) {
+          _log.warning('Could not persist migrated config to $configPath: $e');
+        }
+      }
+
+      await migrationsBox.put(_skillsOptOutMigrationKey, true);
+      await storage.set(_skillsOptOutMigrationKey, 'true');
+      _log.info('One-time opt-out skills migration completed.');
+    } catch (e, stack) {
+      _log.severe('Opt-out skills migration failed: $e', e, stack);
+    } finally {
+      try {
+        await migrationsBox?.close();
+      } catch (_) {}
+    }
+  }
+
+  /// Syncs a newly installed skill into the ontology and enables it for all
+  /// agents that have not explicitly opted out of [slug].
   Future<void> _handleNewSkillInstalled(String slug) async {
-    if (!config.agent.skills.contains(slug)) {
-      final updatedSkills = List<String>.from(config.agent.skills)..add(slug);
-      final updatedAgent = config.agent.copyWith(skills: updatedSkills);
-      final newConfig = config.copyWith(agent: updatedAgent);
+    final allSlugs =
+        (await skillManager.loadSkills()).map((s) => s.slug).toList();
+    if (!allSlugs.contains(slug)) {
+      allSlugs.add(slug);
+    }
+
+    var changed = false;
+    var nextAgent = config.agent;
+    if (!nextAgent.disabledSkills.contains(slug) &&
+        !nextAgent.skills.contains(slug)) {
+      nextAgent = nextAgent.copyWith(
+        skills: nextAgent.resolveAllowedSkills(allSlugs),
+      );
+      changed = true;
+    }
+
+    final nextCustomAgents = <CustomAgentConfig>[];
+    var customChanged = false;
+    for (final ca in config.customAgents) {
+      if (!ca.disabledSkills.contains(slug) && !ca.skills.contains(slug)) {
+        nextCustomAgents.add(
+          ca.copyWith(skills: ca.resolveAllowedSkills(allSlugs)),
+        );
+        customChanged = true;
+        changed = true;
+      } else {
+        nextCustomAgents.add(ca);
+      }
+    }
+
+    if (changed) {
+      final newConfig = config.copyWith(
+        agent: nextAgent,
+        customAgents: nextCustomAgents,
+      );
 
       if (configPath != null) {
         try {
@@ -929,13 +1149,21 @@ class AgentManager {
         }
       }
       try {
-        await storage.set('agent_config', jsonEncode(updatedAgent.toJson()));
+        await storage.set('agent_config', jsonEncode(nextAgent.toJson()));
+        if (customChanged) {
+          await storage.set(
+            'custom_agents_config',
+            jsonEncode(nextCustomAgents.map((a) => a.toJson()).toList()),
+          );
+        }
       } catch (e) {
-        _log.severe('Failed to save agent_config to secure storage: $e');
+        _log.severe('Failed to save agent configs to secure storage: $e');
       }
 
       await updateConfig(newConfig);
       notifyConfigChanged();
+    } else {
+      await syncOntologySkillsAndPermissions();
     }
   }
 
@@ -945,6 +1173,7 @@ class AgentManager {
   void dispose() {
     _skillsSubscription?.cancel();
     _skillInstalledSubscription?.cancel();
+    _skillDeletedSubscription?.cancel();
     _configChangedController.close();
     System1Service.instance.dispose();
   }

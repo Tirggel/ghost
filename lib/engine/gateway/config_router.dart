@@ -17,6 +17,7 @@ import '../gateway/server.dart';
 import '../gateway/protocol.dart';
 import '../infra/errors.dart';
 import '../agent/manager.dart';
+import '../agent/ontology/ontology_store_service.dart';
 import '../agent/providers/factory.dart';
 import '../config/config.dart';
 import '../channels/manager.dart';
@@ -544,18 +545,38 @@ class ConfigRouter {
       if (params == null) throw ProtocolError('Missing params');
 
       final config = await loadConfig(configPath);
-      final skills = (params['skills'] as List<dynamic>?)
+      final installedSlugs = (await agentManager.skillManager.loadSkills())
+          .map((s) => s.slug)
+          .toList();
+      final requestedSkills = (params['skills'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList();
+      final requestedDisabled = (params['disabledSkills'] as List<dynamic>?)
           ?.map((e) => e.toString())
           .toList();
 
       final current = await _loadAgentFromVault() ?? config.agent;
+
+      List<String>? nextSkills = requestedSkills;
+      List<String>? nextDisabled = requestedDisabled;
+      if (requestedDisabled != null && requestedSkills == null) {
+        nextSkills = installedSlugs
+            .where((s) => !requestedDisabled.contains(s))
+            .toList();
+      } else if (requestedSkills != null && requestedDisabled == null) {
+        nextDisabled = installedSlugs
+            .where((s) => !requestedSkills.contains(s))
+            .toList();
+      }
+
       final updated = current.copyWith(
         workspace: params['workspace'] as String?,
         model: params['model'] as String?,
         provider: params['provider'] as String?,
         maxTokens: (params['maxTokens'] as num?)?.toInt(),
         thinkingMode: params['thinkingMode'] as String?,
-        skills: skills,
+        skills: nextSkills,
+        disabledSkills: nextDisabled,
         designSystem: params['designSystem'] as String?,
       );
 
@@ -742,7 +763,35 @@ class ConfigRouter {
       if (params == null) throw ProtocolError('Missing params');
 
       final config = await loadConfig(configPath);
-      final agentData = params['agent'] as Map<String, dynamic>? ?? params;
+      final agentData = Map<String, dynamic>.from(
+        params['agent'] as Map<String, dynamic>? ?? params,
+      );
+      final installedSlugs = (await agentManager.skillManager.loadSkills())
+          .map((s) => s.slug)
+          .toList();
+
+      // Opt-out default: if disabledSkills is omitted, allow all installed skills
+      // unless a non-empty subset was explicitly supplied in `skills`.
+      if (!agentData.containsKey('disabledSkills')) {
+        final passedSkills = (agentData['skills'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList();
+        if (passedSkills == null || passedSkills.isEmpty) {
+          agentData['disabledSkills'] = <String>[];
+          agentData['skills'] = installedSlugs;
+        } else {
+          agentData['disabledSkills'] = installedSlugs
+              .where((s) => !passedSkills.contains(s))
+              .toList();
+        }
+      } else if (!agentData.containsKey('skills')) {
+        final disabled = (agentData['disabledSkills'] as List<dynamic>)
+            .map((e) => e.toString())
+            .toSet();
+        agentData['skills'] =
+            installedSlugs.where((s) => !disabled.contains(s)).toList();
+      }
+
       final newAgent = CustomAgentConfig.fromJson(agentData);
 
       final currentAgents =
@@ -758,6 +807,7 @@ class ConfigRouter {
 
       await _syncAgentManagerConfig();
       await agentManager.reloadCustomAgents(updatedAgents);
+      await agentManager.syncOntologySkillsAndPermissions();
 
       return {'status': 'ok', 'agent': newAgent.toJson()};
     });
@@ -769,7 +819,29 @@ class ConfigRouter {
       if (params == null) throw ProtocolError('Missing params');
 
       final config = await loadConfig(configPath);
-      final agentData = params['agent'] as Map<String, dynamic>? ?? params;
+      final agentData = Map<String, dynamic>.from(
+        params['agent'] as Map<String, dynamic>? ?? params,
+      );
+      final installedSlugs = (await agentManager.skillManager.loadSkills())
+          .map((s) => s.slug)
+          .toList();
+
+      if (agentData.containsKey('disabledSkills') &&
+          !agentData.containsKey('skills')) {
+        final disabled = (agentData['disabledSkills'] as List<dynamic>)
+            .map((e) => e.toString())
+            .toSet();
+        agentData['skills'] =
+            installedSlugs.where((s) => !disabled.contains(s)).toList();
+      } else if (agentData.containsKey('skills') &&
+          !agentData.containsKey('disabledSkills')) {
+        final passed = (agentData['skills'] as List<dynamic>)
+            .map((e) => e.toString())
+            .toSet();
+        agentData['disabledSkills'] =
+            installedSlugs.where((s) => !passed.contains(s)).toList();
+      }
+
       final updatedAgent = CustomAgentConfig.fromJson(agentData);
 
       final currentAgents =
@@ -797,6 +869,7 @@ class ConfigRouter {
 
       await _syncAgentManagerConfig();
       await agentManager.reloadCustomAgents(updatedAgents);
+      await agentManager.syncOntologySkillsAndPermissions();
 
       return {'status': 'ok', 'agent': updatedAgent.toJson()};
     });
@@ -830,6 +903,7 @@ class ConfigRouter {
 
       await _syncAgentManagerConfig();
       await agentManager.reloadCustomAgents(updatedAgents);
+      await agentManager.syncOntologySkillsAndPermissions();
 
       return {'status': 'ok', 'deletedId': agentId};
     });
@@ -919,9 +993,7 @@ class ConfigRouter {
 
       final zipBytes = base64Decode(zipBase64);
       final skill = await agentManager.skillManager.installSkill(zipBytes);
-      // Wait to verify successful install, we could update the agents if there are globals
-      // but the agents load skills dynamically for system prompt on the fly. Wait, Agent system prompt
-      // is static once built. Let's rebuild agent prompts.
+      await agentManager.syncOntologySkillsAndPermissions();
       await _syncAgentManagerConfig();
       gateway.broadcast('skills.changed');
       return {'status': 'ok', 'skill': skill.toJson()};
@@ -936,6 +1008,7 @@ class ConfigRouter {
       if (url == null) throw ProtocolError('Missing GitHub URL');
 
       final skill = await agentManager.skillManager.downloadGithubSkill(url);
+      await agentManager.syncOntologySkillsAndPermissions();
       await _syncAgentManagerConfig();
       gateway.broadcast('skills.changed');
       return {'status': 'ok', 'skill': skill.toJson()};
@@ -949,6 +1022,7 @@ class ConfigRouter {
       final skill = await agentManager.skillManager.installSkillFromDirectory(
         path,
       );
+      await agentManager.syncOntologySkillsAndPermissions();
       await _syncAgentManagerConfig();
       gateway.broadcast('skills.changed');
       return {'status': 'ok', 'skill': skill.toJson()};
@@ -967,6 +1041,7 @@ class ConfigRouter {
         type: type,
         emoji: emoji,
       );
+      await agentManager.syncOntologySkillsAndPermissions();
       await _syncAgentManagerConfig();
       gateway.broadcast('skills.changed');
       return {'status': 'ok', 'skill': skill.toJson()};
@@ -977,6 +1052,7 @@ class ConfigRouter {
       if (slug == null) throw ProtocolError('Missing slug');
 
       await agentManager.skillManager.deleteSkill(slug);
+      await agentManager.syncOntologySkillsAndPermissions();
       await _syncAgentManagerConfig();
       gateway.broadcast('skills.changed');
       return {'status': 'ok', 'deletedSlug': slug};
@@ -1001,7 +1077,9 @@ class ConfigRouter {
       }
 
       await agentManager.skillManager.updateSkillContent(slug, content);
+      await agentManager.syncOntologySkillsAndPermissions();
       await _syncAgentManagerConfig();
+      gateway.broadcast('skills.changed');
       return {'status': 'ok', 'slug': slug};
     });
 
@@ -1016,7 +1094,9 @@ class ConfigRouter {
       if (data == null) throw ProtocolError('Missing backup data');
 
       await agentManager.skillManager.restoreSkills(data);
+      await agentManager.syncOntologySkillsAndPermissions();
       await _syncAgentManagerConfig();
+      gateway.broadcast('skills.changed');
       return {'status': 'ok'};
     });
 
@@ -1047,6 +1127,10 @@ class ConfigRouter {
         ragEnabled: params['ragEnabled'] as bool? ?? current.ragEnabled,
         workspaceRagEnabled:
             params['workspaceRagEnabled'] as bool? ?? current.workspaceRagEnabled,
+        ontologyEnabled:
+            params['ontologyEnabled'] as bool? ?? current.ontologyEnabled,
+        ontologyAutoExtract:
+            params['ontologyAutoExtract'] as bool? ?? current.ontologyAutoExtract,
         backend: params['backend'] as String? ?? current.backend,
         embeddingProvider:
             params['embeddingProvider'] as String? ?? current.embeddingProvider,
@@ -1167,8 +1251,9 @@ class ConfigRouter {
 
       // 1. Properly shutdown all managers and releases file handles
       try {
+        await agentManager.ontologyStoreService.clear(reseedDefaults: false);
         await channelManager.shutdown();
-        await agentManager.shutdown(); // Closes memory engines
+        await agentManager.shutdown(); // Closes memory engines & ObjectBox stores
         await agentManager.sessionManager.shutdown(); // Closes session store
       } catch (e) {
         _log.warning('Error during managers shutdown: $e');
@@ -1259,17 +1344,22 @@ class ConfigRouter {
         if (include('config')) {
           for (final entity in ghostDir.listSync()) {
             final name = p.basename(entity.path);
-            // Skip specialized directories (handled separately) and vault.json
+            // Skip specialized directories (handled separately), vault.json, and temp backup files
             if (name == 'sessions' ||
                 name == 'vault.json' ||
+                name == OntologyStoreService.backupFileName ||
                 name == 'skills' ||
                 name == 'design-systems')
               continue;
             if (entity is File) {
               await encoder.addFile(entity, name);
             } else if (entity is Directory) {
-              // Skip memory/rag dirs if memory not selected
-              if ((name == 'memory' || name == 'rag') && !include('memory'))
+              // Skip memory/rag/objectbox dirs if memory not selected
+              if ((name == 'memory' ||
+                      name == 'rag' ||
+                      name == 'objectbox_rag' ||
+                      name == 'objectbox_ontology') &&
+                  !include('memory'))
                 continue;
               await encoder.addDirectory(entity, includeDirName: true);
             }
@@ -1300,13 +1390,40 @@ class ConfigRouter {
           }
         }
 
-        // 4. Memory (standard + rag)
+        // 4. Memory (standard + rag + portable ontology JSON export)
         if (include('memory') && !include('config')) {
-          for (final dirName in ['memory', 'rag']) {
+          for (final dirName in [
+            'memory',
+            'rag',
+            'objectbox_rag',
+            'objectbox_ontology',
+          ]) {
             final dir = Directory(p.join(ghostDir.path, dirName));
             if (await dir.exists()) {
               await encoder.addDirectory(dir, includeDirName: true);
             }
+          }
+        }
+
+        if (include('memory')) {
+          try {
+            final ontologyJson =
+                await agentManager.ontologyStoreService.exportJson();
+            final ontologyBackupFile = File(
+              p.join(
+                Directory.systemTemp.path,
+                '${OntologyStoreService.backupFileName}.${DateTime.now().microsecondsSinceEpoch}',
+              ),
+            );
+            await ontologyBackupFile.writeAsString(ontologyJson);
+            await encoder.addFile(
+              ontologyBackupFile,
+              OntologyStoreService.backupFileName,
+            );
+            await ontologyBackupFile.delete();
+            _log.info('Ontology knowledge graph exported to backup zip');
+          } catch (e) {
+            _log.warning('Could not export ontology to backup: $e');
           }
         }
 
@@ -1399,6 +1516,7 @@ class ConfigRouter {
         final archive = ZipDecoder().decodeBytes(bytes);
 
         // 1. Prepare for wipe
+        await agentManager.ontologyStoreService.close();
         await agentManager.ragMemoryEngine.close();
         await agentManager.shutdown();
         try {
@@ -1706,6 +1824,8 @@ class ConfigRouter {
           enabled: memory.enabled,
           ragEnabled: false,
           workspaceRagEnabled: memory.workspaceRagEnabled,
+          ontologyEnabled: memory.ontologyEnabled,
+          ontologyAutoExtract: memory.ontologyAutoExtract,
           backend: memory.backend,
           embeddingProvider: '',
           embeddingModel: '',

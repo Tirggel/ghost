@@ -38,10 +38,141 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "2:4441078034335330543",
+      "lastPropertyId": "6:4597449960223434544",
+      "name": "OntologyEdge",
+      "properties": [
+        {
+          "id": "1:5557018112952403306",
+          "name": "obxId",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3243747853982041023",
+          "name": "subjectId",
+          "indexId": "2:8450802249872516413",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:3972660615630010960",
+          "name": "predicate",
+          "indexId": "3:2471900552134285341",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "4:2843230681592982235",
+          "name": "objectId",
+          "indexId": "4:8534734921082822494",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "5:2667060031525842793",
+          "name": "confidence",
+          "type": 8
+        },
+        {
+          "id": "6:4597449960223434544",
+          "name": "createdAt",
+          "type": 10
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "3:6125865448418217713",
+      "lastPropertyId": "6:4474396710799460918",
+      "name": "OntologyNode",
+      "properties": [
+        {
+          "id": "1:3035064169332409311",
+          "name": "obxId",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8784907955878112358",
+          "name": "canonicalKey",
+          "indexId": "5:5051039332947719667",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:3793331450972438717",
+          "name": "label",
+          "indexId": "6:6576186109554743489",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "4:1969700782433042067",
+          "name": "entityType",
+          "indexId": "7:7487412109765779983",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "5:1914404687584430832",
+          "name": "updatedAt",
+          "type": 10
+        },
+        {
+          "id": "6:4474396710799460918",
+          "name": "metadataJson",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "4:8849514103691348310",
+      "lastPropertyId": "6:3140122868705397083",
+      "name": "OntologyRelationDef",
+      "properties": [
+        {
+          "id": "1:6941801907511622416",
+          "name": "obxId",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8341933321925303818",
+          "name": "predicate",
+          "indexId": "8:3028810517052858755",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:2429473079409516699",
+          "name": "domainType",
+          "type": 9
+        },
+        {
+          "id": "4:635567971705407898",
+          "name": "rangeType",
+          "type": 9
+        },
+        {
+          "id": "5:6600135080725941852",
+          "name": "isFunctional",
+          "type": 1
+        },
+        {
+          "id": "6:3140122868705397083",
+          "name": "isTransitive",
+          "type": 1
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "1:7141642882014988805",
-  "lastIndexId": "1:5891081993253487757",
+  "lastEntityId": "4:8849514103691348310",
+  "lastIndexId": "8:3028810517052858755",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

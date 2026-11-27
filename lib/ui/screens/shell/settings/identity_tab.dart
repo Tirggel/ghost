@@ -26,7 +26,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
   String? _selectedModel;
   String _selectedDesignSystem = '';
   List<String> _availableModels = [];
-  final List<String> _mainAgentSkills = [];
+  final List<String> _mainAgentDisabledSkills = [];
   int _avatarNonce = 0;
   bool _isEditing = false;
 
@@ -69,8 +69,8 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
 
     _selectedProvider = agent.provider;
     _selectedModel = agent.model;
-    _mainAgentSkills.clear();
-    _mainAgentSkills.addAll(agent.skills);
+    _mainAgentDisabledSkills.clear();
+    _mainAgentDisabledSkills.addAll(agent.disabledSkills);
 
     if (_selectedProvider != null) {
       _updateModels(_selectedProvider!);
@@ -108,8 +108,15 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
       };
       await ref.read(configProvider.notifier).updateIdentity(identityConfig);
       
+      final allSkills = ref.read(skillsProvider).value ?? [];
+      final allSlugs = allSkills.map((s) => s['slug'] as String).toList();
+      final enabledSlugs = allSlugs
+          .where((slug) => !_mainAgentDisabledSkills.contains(slug))
+          .toList();
+
       final agentData = <String, dynamic>{
-        'skills': _mainAgentSkills,
+        'skills': enabledSlugs,
+        'disabledSkills': _mainAgentDisabledSkills,
         'designSystem': _selectedDesignSystem.trim(),
       };
       if (_selectedProvider != null) agentData['provider'] = _selectedProvider;
@@ -332,19 +339,37 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
               label: 'settings.identity.skills_section',
               hint: 'settings.identity.skills_section',
               controller: TextEditingController(),
-              value: _mainAgentSkills.isEmpty ? 'settings.common.none'.tr() : _mainAgentSkills.map((sId) {
-                final skill = skills.firstWhere((s) => s['slug'] == sId, orElse: () => {'name': sId});
-                return skill['name'];
-              }).join(', '),
+              value: (() {
+                final allSlugs =
+                    skills.map((s) => s['slug'] as String).toList();
+                final activeSlugs = allSlugs
+                    .where((sId) => !_mainAgentDisabledSkills.contains(sId))
+                    .toList();
+                if (activeSlugs.isEmpty) return 'settings.common.none'.tr();
+                return activeSlugs.map((sId) {
+                  final skill = skills.firstWhere(
+                    (s) => s['slug'] == sId,
+                    orElse: () => {'name': sId},
+                  );
+                  return skill['name'];
+                }).join(', ');
+              })(),
               customEditWidget: AppUnifiedPicker<String>(
-                values: _mainAgentSkills.toSet(),
+                values: skills
+                    .map((s) => s['slug'] as String)
+                    .where((s) => !_mainAgentDisabledSkills.contains(s))
+                    .toSet(),
                 multiSelect: true,
                 items: skills.map((s) => s['slug'] as String).toList(),
                 label: 'settings.identity.skills_section',
                 hint: 'settings.identity.skills_section',
                 onMultiChanged: (vals) => setState(() {
-                  _mainAgentSkills.clear();
-                  _mainAgentSkills.addAll(vals);
+                  final allSlugs =
+                      skills.map((s) => s['slug'] as String).toList();
+                  _mainAgentDisabledSkills.clear();
+                  _mainAgentDisabledSkills.addAll(
+                    allSlugs.where((slug) => !vals.contains(slug)),
+                  );
                 }),
                 displayValue: (v) {
                   final skill = skills.firstWhere((s) => s['slug'] == v, orElse: () => {'name': v});

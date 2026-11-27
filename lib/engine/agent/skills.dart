@@ -33,7 +33,16 @@ class SkillManager {
   final _skillInstalledController = StreamController<String>.broadcast();
   Stream<String> get onSkillInstalled => _skillInstalledController.stream;
 
+  final _skillDeletedController = StreamController<String>.broadcast();
+  Stream<String> get onSkillDeleted => _skillDeletedController.stream;
+
   StreamSubscription<FileSystemEvent>? _watchSubscription;
+
+  void _emitSkillsChanged() {
+    if (!_skillsChangedController.isClosed) {
+      _skillsChangedController.add(null);
+    }
+  }
 
   Future<void> initialize() async {
     final dir = Directory(skillsDir);
@@ -67,15 +76,22 @@ class SkillManager {
     _watchSubscription?.cancel();
     _skillsChangedController.close();
     _skillInstalledController.close();
+    _skillDeletedController.close();
   }
 
   /// Discover all installed skills.
   Future<List<Skill>> loadSkills() async {
-    final List<Skill> skills = [];
+    final entries = await loadSkillsWithContent();
+    return entries.map((e) => e.skill).toList();
+  }
+
+  /// Discover all installed skills together with their raw `SKILL.md` content.
+  Future<List<({Skill skill, String markdownContent})>> loadSkillsWithContent() async {
+    final List<({Skill skill, String markdownContent})> results = [];
     final dir = Directory(skillsDir);
 
     if (!await dir.exists()) {
-      return skills;
+      return results;
     }
 
     final entities = await dir.list().toList();
@@ -86,6 +102,7 @@ class SkillManager {
         final mdFile = File(p.join(entity.path, 'SKILL.md'));
 
         Map<String, dynamic>? metaData;
+        String mdContent = '';
 
         if (await metaFile.exists()) {
           try {
@@ -98,55 +115,130 @@ class SkillManager {
 
         if (await mdFile.exists()) {
           try {
-            final mdContent = await mdFile.readAsString();
+            mdContent = await mdFile.readAsString();
             final frontmatter = _parseFrontmatter(mdContent);
 
             // Frontmatter takes precedence or fills gaps
             metaData ??= {};
-            if (frontmatter.containsKey('name')) {
-              metaData['name'] = frontmatter['name'];
-            }
-            if (frontmatter.containsKey('description')) {
-              metaData['description'] = frontmatter['description'];
-            }
-            if (frontmatter.containsKey('emoji')) {
-              metaData['emoji'] = frontmatter['emoji'];
-            }
-            if (frontmatter.containsKey('slug')) {
-              metaData['slug'] = frontmatter['slug'];
-            }
-            if (frontmatter.containsKey('mcp_command')) {
-              metaData['mcp_command'] = frontmatter['mcp_command'];
-            }
+            _mergeFrontmatter(metaData, frontmatter);
           } catch (e) {
             _log.warning('Failed to parse SKILL.md for skill $slug: $e');
           }
         }
 
         if (metaData != null || await mdFile.exists()) {
-          final hasPython = await File(p.join(entity.path, 'scripts', 'requirements.txt')).exists() ||
-              await File(p.join(entity.path, 'requirements.txt')).exists();
-          final hasNode = await File(p.join(entity.path, 'package.json')).exists() ||
-              await File(p.join(entity.path, 'scripts', 'package.json')).exists();
-          final mcpCommand = metaData?['mcp_command'] as String?;
-
-          final skill = Skill(
+          final skill = await _buildSkillFromDirectory(
             slug: slug,
-            name: metaData?['name'] as String? ?? slug,
-            description: metaData?['description'] as String? ?? '',
-            emoji: metaData?['emoji'] as String?,
-
-            hasPython: hasPython,
-            hasNode: hasNode,
-            hasMcp: mcpCommand != null,
-            mcpCommand: mcpCommand,
+            skillPath: entity.path,
+            metaData: metaData,
+            mdContent: mdContent,
           );
-          skills.add(skill);
+          results.add((skill: skill, markdownContent: mdContent));
         }
       }
     }
 
-    return skills;
+    return results;
+  }
+
+  void _mergeFrontmatter(
+    Map<String, dynamic> metaData,
+    Map<String, String> frontmatter,
+  ) {
+    if (frontmatter.containsKey('name')) metaData['name'] = frontmatter['name'];
+    if (frontmatter.containsKey('description')) {
+      metaData['description'] = frontmatter['description'];
+    }
+    if (frontmatter.containsKey('emoji')) metaData['emoji'] = frontmatter['emoji'];
+    if (frontmatter.containsKey('slug')) metaData['slug'] = frontmatter['slug'];
+    if (frontmatter.containsKey('mcp_command')) {
+      metaData['mcp_command'] = frontmatter['mcp_command'];
+    }
+    if (frontmatter.containsKey('category')) {
+      metaData['category'] = frontmatter['category'];
+    } else if (frontmatter.containsKey('domain')) {
+      metaData['category'] = frontmatter['domain'];
+    }
+    if (frontmatter.containsKey('requires_hitl')) {
+      metaData['requires_hitl'] = frontmatter['requires_hitl'];
+    } else if (frontmatter.containsKey('hitl')) {
+      metaData['requires_hitl'] = frontmatter['hitl'];
+    }
+    if (frontmatter.containsKey('security_level')) {
+      metaData['security_level'] = frontmatter['security_level'];
+    }
+    if (frontmatter.containsKey('requires_skills')) {
+      metaData['requires_skills'] = frontmatter['requires_skills'];
+    } else if (frontmatter.containsKey('depends_on')) {
+      metaData['requires_skills'] = frontmatter['depends_on'];
+    }
+  }
+
+  Future<Skill> _buildSkillFromDirectory({
+    required String slug,
+    required String skillPath,
+    required Map<String, dynamic>? metaData,
+    required String mdContent,
+  }) async {
+    final hasPython = await File(p.join(skillPath, 'scripts', 'requirements.txt')).exists() ||
+        await File(p.join(skillPath, 'requirements.txt')).exists();
+    final hasNode = await File(p.join(skillPath, 'package.json')).exists() ||
+        await File(p.join(skillPath, 'scripts', 'package.json')).exists();
+    final mcpCommand = metaData?['mcp_command'] as String?;
+
+    final name = metaData?['name'] as String? ?? slug;
+    final description = metaData?['description'] as String? ?? '';
+    final category = _normalizeCategory(
+      metaData?['category'] as String? ??
+          inferCategory(
+            slug: slug,
+            name: name,
+            description: description,
+            markdownContent: mdContent,
+          ),
+    );
+    final explicitSecurityLevel =
+        (metaData?['security_level'] as String?)?.trim().toLowerCase();
+    final explicitHitl = _parseOptionalBool(
+      metaData?['requires_hitl'] ?? metaData?['requiresHitl'],
+    );
+    final requiredSkills = _parseStringList(
+      metaData?['requires_skills'] ?? metaData?['requiredSkills'],
+    );
+
+    final securityLevel = inferSecurityLevel(
+      slug: slug,
+      name: name,
+      description: description,
+      category: category,
+      markdownContent: mdContent,
+      explicitLevel: explicitSecurityLevel,
+      explicitHitl: explicitHitl,
+    );
+    final requiresHitl = inferRequiresHitl(
+      slug: slug,
+      name: name,
+      description: description,
+      category: category,
+      markdownContent: mdContent,
+      explicitHitl: explicitHitl,
+      securityLevel: securityLevel,
+    );
+
+    return Skill(
+      slug: slug,
+      name: name,
+      description: description,
+      emoji: metaData?['emoji'] as String?,
+      category: category,
+      requiresHitl: requiresHitl,
+      securityLevel: securityLevel,
+      requiredSkills: requiredSkills,
+      hasPython: hasPython,
+      hasNode: hasNode,
+      hasMcp: mcpCommand != null,
+      mcpCommand: mcpCommand,
+    );
   }
 
   Map<String, String> _parseFrontmatter(String content) {
@@ -157,11 +249,39 @@ class SkillManager {
 
     if (match != null) {
       final yamlLines = match.group(1)!.split('\n');
-      for (final line in yamlLines) {
-        final colonIndex = line.indexOf(':');
+      String? currentListKey;
+      final currentListItems = <String>[];
+
+      void flushList() {
+        if (currentListKey != null && currentListItems.isNotEmpty) {
+          result[currentListKey!] = currentListItems.join(',');
+        }
+        currentListKey = null;
+        currentListItems.clear();
+      }
+
+      for (final rawLine in yamlLines) {
+        final trimmedLine = rawLine.trim();
+        if (currentListKey != null && trimmedLine.startsWith('- ')) {
+          var item = trimmedLine.substring(2).trim();
+          if ((item.startsWith('"') && item.endsWith('"')) ||
+              (item.startsWith("'") && item.endsWith("'"))) {
+            item = item.substring(1, item.length - 1);
+          }
+          if (item.isNotEmpty) currentListItems.add(item);
+          continue;
+        }
+
+        final colonIndex = rawLine.indexOf(':');
         if (colonIndex != -1) {
-          final key = line.substring(0, colonIndex).trim();
-          var value = line.substring(colonIndex + 1).trim();
+          flushList();
+          final key = rawLine.substring(0, colonIndex).trim();
+          var value = rawLine.substring(colonIndex + 1).trim();
+
+          if (value.isEmpty) {
+            currentListKey = key;
+            continue;
+          }
 
           // Remove surrounding quotes if present
           if ((value.startsWith('"') && value.endsWith('"')) ||
@@ -171,6 +291,7 @@ class SkillManager {
           result[key] = value;
         }
       }
+      flushList();
 
       // Legacy support for emoji in metadata block if needed
       if (!result.containsKey('emoji')) {
@@ -184,6 +305,151 @@ class SkillManager {
     return result;
   }
 
+  /// Extracts a clean 1-sentence short description for Stage 1 Progressive Disclosure.
+  static String extractShortDescription(Skill skill, String markdownContent) {
+    String raw = skill.description.trim();
+    if (raw.isEmpty && markdownContent.trim().isNotEmpty) {
+      var body = markdownContent.replaceFirst(
+        RegExp(r'^(?:---|\+\+\+)\s*\n[\s\S]*?\n(?:---|\+\+\+)\s*\n?'),
+        '',
+      );
+      body = body.replaceAll(RegExp(r'```[\s\S]*?```'), ' ');
+      final lines = body
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) =>
+              l.isNotEmpty &&
+              !l.startsWith('#') &&
+              !l.startsWith('---') &&
+              !l.startsWith('|'))
+          .toList();
+      if (lines.isNotEmpty) {
+        raw = lines.first.replaceFirst(RegExp(r'^[-*]\s+'), '');
+      }
+    }
+    if (raw.isEmpty) {
+      return skill.name;
+    }
+
+    final collapsed = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final sentenceMatch = RegExp(r'^(.+?[.!?])(?:\s|$)').firstMatch(collapsed);
+    final firstSentence = sentenceMatch != null ? sentenceMatch.group(1)! : collapsed;
+    if (firstSentence.length <= 160) {
+      return firstSentence;
+    }
+    return '${firstSentence.substring(0, 157).trimRight()}...';
+  }
+
+  static String _normalizeCategory(String raw) {
+    final clean = raw.trim().toLowerCase();
+    return clean.isEmpty ? 'general' : clean;
+  }
+
+  static bool? _parseOptionalBool(dynamic raw) {
+    if (raw is bool) return raw;
+    if (raw is String) {
+      final lower = raw.trim().toLowerCase();
+      if (lower == 'true' || lower == 'yes' || lower == '1') return true;
+      if (lower == 'false' || lower == 'no' || lower == '0') return false;
+    }
+    return null;
+  }
+
+  static List<String> _parseStringList(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+    if (raw is String) {
+      var cleaned = raw.trim();
+      if (cleaned.startsWith('[') && cleaned.endsWith(']')) {
+        cleaned = cleaned.substring(1, cleaned.length - 1);
+      }
+      if (cleaned.isEmpty) return const [];
+      return cleaned
+          .split(',')
+          .map((e) => e.trim().replaceAll(RegExp(r'''^["']|["']$'''), ''))
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+    return const [];
+  }
+
+  static String inferCategory({
+    required String slug,
+    required String name,
+    required String description,
+    required String markdownContent,
+  }) {
+    final text = '$slug $name $description'.toLowerCase();
+    if (RegExp(r'\b(crypto|binance|wallet|swap|payment|finance|trading|bank)\b')
+        .hasMatch(text)) {
+      return 'finance';
+    }
+    if (RegExp(r'\b(email|mail|gmail|outlook|calendar|slack|telegram|discord)\b')
+        .hasMatch(text)) {
+      return 'communication';
+    }
+    if (RegExp(r'\b(git|github|docker|k8s|kubernetes|deploy|devops|bash|shell|sysadmin)\b')
+        .hasMatch(text)) {
+      return 'system';
+    }
+    if (RegExp(r'\b(weather|news|search|web|scrape|browser)\b').hasMatch(text)) {
+      return 'web';
+    }
+    if (RegExp(r'\b(code|python|dart|flutter|node|typescript|sql|db)\b')
+        .hasMatch(text)) {
+      return 'development';
+    }
+    return 'general';
+  }
+
+  static String inferSecurityLevel({
+    required String slug,
+    required String name,
+    required String description,
+    required String category,
+    required String markdownContent,
+    String? explicitLevel,
+    bool? explicitHitl,
+  }) {
+    const valid = {'low', 'standard', 'high', 'critical'};
+    if (explicitLevel != null && valid.contains(explicitLevel)) {
+      return explicitLevel;
+    }
+    final combined = '$slug $name $description $markdownContent'.toLowerCase();
+    if (RegExp(
+      r'\b(execute_blockchain_payment|private_key|wallet_transfer|binance_create_order|rm\s+-rf|mkfs|format\s+disk)\b',
+    ).hasMatch(combined)) {
+      return 'critical';
+    }
+    if (explicitHitl == true ||
+        category == 'finance' ||
+        category == 'security' ||
+        RegExp(
+          r'\b(crypto|binance|blockchain|payment|token\s+swap|sudo|destructive)\b',
+        ).hasMatch(combined)) {
+      return 'high';
+    }
+    return 'standard';
+  }
+
+  static bool inferRequiresHitl({
+    required String slug,
+    required String name,
+    required String description,
+    required String category,
+    required String markdownContent,
+    bool? explicitHitl,
+    required String securityLevel,
+  }) {
+    if (explicitHitl != null) return explicitHitl;
+    if (securityLevel == 'critical' || securityLevel == 'high') return true;
+    return category == 'finance' || category == 'security';
+  }
+
   /// Installs a new skill from a zip archive.
   Future<Skill> installSkill(List<int> zipBytes) async {
     final archive = ZipDecoder().decodeBytes(zipBytes);
@@ -192,19 +458,12 @@ class SkillManager {
     final metaJson = <String, dynamic>{};
 
     // 1. Look for SKILL.md for frontmatter metadata (Modern way)
+    String mdContent = '';
     for (final file in archive) {
       if (file.isFile && p.basename(file.name) == 'SKILL.md') {
-        final content = utf8.decode(file.content as List<int>);
-        final frontmatter = _parseFrontmatter(content);
-        if (frontmatter.containsKey('name')) {
-          metaJson['name'] = frontmatter['name'];
-        }
-        if (frontmatter.containsKey('description')) {
-          metaJson['description'] = frontmatter['description'];
-        }
-        if (frontmatter.containsKey('emoji')) {
-          metaJson['emoji'] = frontmatter['emoji'];
-        }
+        mdContent = utf8.decode(file.content as List<int>);
+        final frontmatter = _parseFrontmatter(mdContent);
+        _mergeFrontmatter(metaJson, frontmatter);
         if (frontmatter.containsKey('slug')) {
           foundSlug = frontmatter['slug'];
         }
@@ -313,12 +572,13 @@ class SkillManager {
     await initializeRuntimes(foundSlug, skillDir.path);
 
     _skillInstalledController.add(foundSlug);
+    _emitSkillsChanged();
 
-    return Skill(
+    return _buildSkillFromDirectory(
       slug: foundSlug,
-      name: metaJson['name'] as String? ?? foundSlug,
-      description: metaJson['description'] as String? ?? '',
-      emoji: metaJson['emoji'] as String?,
+      skillPath: skillDir.path,
+      metaData: metaJson,
+      mdContent: mdContent,
     );
   }
 
@@ -345,16 +605,13 @@ class SkillManager {
       }
     }
 
+    String mdContent = '';
     if (await mdFile.exists()) {
       try {
-        final content = await mdFile.readAsString();
-        final frontmatter = _parseFrontmatter(content);
+        mdContent = await mdFile.readAsString();
+        final frontmatter = _parseFrontmatter(mdContent);
         metaData ??= {};
-        if (frontmatter.containsKey('name')) metaData['name'] = frontmatter['name'];
-        if (frontmatter.containsKey('slug')) metaData['slug'] = frontmatter['slug'];
-        if (frontmatter.containsKey('description')) metaData['description'] = frontmatter['description'];
-        if (frontmatter.containsKey('emoji')) metaData['emoji'] = frontmatter['emoji'];
-        if (frontmatter.containsKey('mcp_command')) metaData['mcp_command'] = frontmatter['mcp_command'];
+        _mergeFrontmatter(metaData, frontmatter);
         foundSlug ??= frontmatter['slug'];
       } catch (e) {
         _log.warning('Failed to parse SKILL.md: $e');
@@ -416,6 +673,7 @@ class SkillManager {
     await initializeRuntimes(foundSlug, targetPath);
 
     _skillInstalledController.add(foundSlug);
+    _emitSkillsChanged();
 
     if (moveSource) {
       try {
@@ -425,17 +683,11 @@ class SkillManager {
       }
     }
 
-    return Skill(
+    return _buildSkillFromDirectory(
       slug: foundSlug,
-      name: metaData?['name'] as String? ?? foundSlug,
-      description: metaData?['description'] as String? ?? '',
-      emoji: metaData?['emoji'] as String?,
-      hasPython: await File(p.join(targetPath, 'scripts', 'requirements.txt')).exists() ||
-                 await File(p.join(targetPath, 'requirements.txt')).exists(),
-      hasNode: await File(p.join(targetPath, 'package.json')).exists() ||
-               await File(p.join(targetPath, 'scripts', 'package.json')).exists(),
-      hasMcp: metaData?['mcp_command'] != null,
-      mcpCommand: metaData?['mcp_command'] as String?,
+      skillPath: targetPath,
+      metaData: metaData,
+      mdContent: mdContent,
     );
   }
 
@@ -560,6 +812,10 @@ class SkillManager {
     if (await skillDir.exists()) {
       await skillDir.delete(recursive: true);
     }
+    if (!_skillDeletedController.isClosed) {
+      _skillDeletedController.add(slug);
+    }
+    _emitSkillsChanged();
   }
 
   Future<String> readSkillContent(String slug) async {
@@ -577,6 +833,7 @@ class SkillManager {
       await skillFile.parent.create(recursive: true);
     }
     await skillFile.writeAsString(content);
+    _emitSkillsChanged();
   }
 
   /// Creates a new skill from a template.
@@ -736,6 +993,7 @@ await server.connect(transport);
     }
 
     _skillInstalledController.add(slug);
+    _emitSkillsChanged();
 
     return Skill(
       slug: slug,
@@ -921,6 +1179,7 @@ await server.connect(transport);
 
       await initializeRuntimes(slug, skillDir.path);
     }
+    _emitSkillsChanged();
   }
 
   /// Detects runtimes and initializes environments (venv, npm install).

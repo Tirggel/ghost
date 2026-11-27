@@ -11,6 +11,10 @@ class Skill {
     required this.name,
     this.description = '',
     this.emoji,
+    this.category = 'general',
+    this.requiresHitl = false,
+    this.securityLevel = 'standard',
+    this.requiredSkills = const [],
     this.hasPython = false,
     this.hasNode = false,
     this.hasMcp = false,
@@ -23,6 +27,10 @@ class Skill {
   final String name;
   final String description;
   final String? emoji;
+  final String category;
+  final bool requiresHitl;
+  final String securityLevel;
+  final List<String> requiredSkills;
 
   final bool hasPython;
   final bool hasNode;
@@ -36,7 +44,10 @@ class Skill {
     String? name,
     String? description,
     String? emoji,
-
+    String? category,
+    bool? requiresHitl,
+    String? securityLevel,
+    List<String>? requiredSkills,
     bool? hasPython,
     bool? hasNode,
     bool? hasMcp,
@@ -47,7 +58,10 @@ class Skill {
       name: name ?? this.name,
       description: description ?? this.description,
       emoji: emoji ?? this.emoji,
-
+      category: category ?? this.category,
+      requiresHitl: requiresHitl ?? this.requiresHitl,
+      securityLevel: securityLevel ?? this.securityLevel,
+      requiredSkills: requiredSkills ?? this.requiredSkills,
       hasPython: hasPython ?? this.hasPython,
       hasNode: hasNode ?? this.hasNode,
       hasMcp: hasMcp ?? this.hasMcp,

@@ -34,6 +34,10 @@ export 'engine/models/provider.dart';
 // Agent
 export 'engine/agent/agent.dart';
 export 'engine/agent/manager.dart'; // Wait, double engine? No, agent/manager.dart.
+export 'engine/agent/memory_system.dart';
+export 'engine/agent/ontology/ontology_models.dart';
+export 'engine/agent/ontology/ontology_store_service.dart';
+export 'engine/agent/ontology/ontology_extractor.dart';
 export 'engine/agent/providers/anthropic.dart';
 export 'engine/agent/providers/openai.dart';
 export 'engine/agent/providers/factory.dart';
@@ -54,6 +58,7 @@ export 'engine/tools/google_workspace.dart';
 export 'engine/tools/microsoft_graph.dart';
 export 'engine/tools/browser.dart';
 export 'engine/tools/memory.dart';
+export 'engine/tools/ontology.dart';
 export 'engine/tools/skills.dart';
 export 'engine/tools/agents.dart';
 export 'engine/tools/vault.dart';

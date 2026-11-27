@@ -259,6 +259,7 @@ class InternalGatewayManager {
       // Setup ACP (Agent Client Protocol) for Antigravity & Zed
       final contextProvider = AcpContextProvider(
         ragEngine: _agentManager!.memorySystem.rag,
+        ontologyStore: _agentManager!.ontologyStoreService,
       );
       final acpServer = AcpServer(
         agentManager: _agentManager!,
@@ -281,7 +282,15 @@ class InternalGatewayManager {
       );
 
       MemoryTools.registerAll(toolRegistry, _agentManager!.memorySystem);
-      SkillsTools.registerAll(toolRegistry, _agentManager!.skillManager);
+      OntologyTools.registerAll(
+        toolRegistry,
+        _agentManager!.ontologyStoreService,
+      );
+      SkillsTools.registerAll(
+        toolRegistry,
+        _agentManager!.skillManager,
+        ontology: _agentManager!.ontologyStoreService,
+      );
       AgentsTools.registerAll(toolRegistry, _agentManager!);
       BillingTools.registerAll(toolRegistry, storage, _agentManager!);
       BlockchainTools.registerAll(toolRegistry, storage, _agentManager!);

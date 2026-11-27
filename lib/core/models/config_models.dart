@@ -116,6 +116,7 @@ class AgentConfig {
     this.model,
     this.workspace,
     this.skills = const [],
+    this.disabledSkills = const [],
     this.designSystem = '',
   });
 
@@ -125,6 +126,8 @@ class AgentConfig {
       model: json['model'] as String?,
       workspace: json['workspace'] as String?,
       skills: (json['skills'] as List<dynamic>?)?.cast<String>() ?? [],
+      disabledSkills:
+          (json['disabledSkills'] as List<dynamic>?)?.cast<String>() ?? [],
       designSystem: json['designSystem'] as String? ?? '',
     );
   }
@@ -132,7 +135,13 @@ class AgentConfig {
   final String? model;
   final String? workspace;
   final List<String> skills;
+  final List<String> disabledSkills;
   final String designSystem;
+
+  List<String> resolveAllowedSkills(List<String> allInstalledSlugs) {
+    final disabled = disabledSkills.toSet();
+    return allInstalledSlugs.where((s) => !disabled.contains(s)).toList();
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -140,6 +149,7 @@ class AgentConfig {
       'model': model,
       'workspace': workspace,
       'skills': skills,
+      'disabledSkills': disabledSkills,
       'designSystem': designSystem,
     };
   }
@@ -155,6 +165,7 @@ class CustomAgentConfig {
     this.model,
     this.provider,
     this.skills = const [],
+    this.disabledSkills = const [],
     this.enabled = true,
     this.avatar,
     this.shouldSendChatHistory = true,
@@ -171,6 +182,8 @@ class CustomAgentConfig {
       model: json['model'] as String?,
       provider: json['provider'] as String?,
       skills: (json['skills'] as List<dynamic>?)?.cast<String>() ?? [],
+      disabledSkills:
+          (json['disabledSkills'] as List<dynamic>?)?.cast<String>() ?? [],
       enabled: json['enabled'] as bool? ?? true,
       avatar: json['avatar'] as String?,
       shouldSendChatHistory: json['shouldSendChatHistory'] as bool? ?? true,
@@ -186,10 +199,16 @@ class CustomAgentConfig {
   final String? model;
   final String? provider;
   final List<String> skills;
+  final List<String> disabledSkills;
   final bool enabled;
   final String? avatar;
   final bool shouldSendChatHistory;
   final String designSystem;
+
+  List<String> resolveAllowedSkills(List<String> allInstalledSlugs) {
+    final disabled = disabledSkills.toSet();
+    return allInstalledSlugs.where((s) => !disabled.contains(s)).toList();
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -200,6 +219,7 @@ class CustomAgentConfig {
         if (model != null) 'model': model,
         if (provider != null) 'provider': provider,
         'skills': skills,
+        'disabledSkills': disabledSkills,
         'enabled': enabled,
         if (avatar != null) 'avatar': avatar,
         'shouldSendChatHistory': shouldSendChatHistory,
@@ -215,6 +235,7 @@ class CustomAgentConfig {
     String? model,
     String? provider,
     List<String>? skills,
+    List<String>? disabledSkills,
     bool? enabled,
     String? avatar,
     bool? shouldSendChatHistory,
@@ -229,6 +250,7 @@ class CustomAgentConfig {
       model: model ?? this.model,
       provider: provider ?? this.provider,
       skills: skills ?? this.skills,
+      disabledSkills: disabledSkills ?? this.disabledSkills,
       enabled: enabled ?? this.enabled,
       avatar: avatar ?? this.avatar,
       shouldSendChatHistory:
@@ -280,6 +302,8 @@ class MemoryConfig {
     this.enabled = true,
     this.ragEnabled = false,
     this.workspaceRagEnabled = false,
+    this.ontologyEnabled = true,
+    this.ontologyAutoExtract = true,
     this.backend = 'hive',
     this.embeddingProvider = '',
     this.embeddingModel = '',
@@ -294,6 +318,8 @@ class MemoryConfig {
       enabled: json['enabled'] as bool? ?? true,
       ragEnabled: json['ragEnabled'] as bool? ?? false,
       workspaceRagEnabled: json['workspaceRagEnabled'] as bool? ?? false,
+      ontologyEnabled: json['ontologyEnabled'] as bool? ?? true,
+      ontologyAutoExtract: json['ontologyAutoExtract'] as bool? ?? true,
       backend: json['backend'] as String? ?? 'hive',
       embeddingProvider: json['embeddingProvider'] as String? ?? '',
       embeddingModel: json['embeddingModel'] as String? ?? '',
@@ -306,6 +332,8 @@ class MemoryConfig {
   final bool enabled;
   final bool ragEnabled;
   final bool workspaceRagEnabled;
+  final bool ontologyEnabled;
+  final bool ontologyAutoExtract;
   final String backend;
   final String embeddingProvider;
   final String embeddingModel;
@@ -319,6 +347,8 @@ class MemoryConfig {
       'enabled': enabled,
       'ragEnabled': ragEnabled,
       'workspaceRagEnabled': workspaceRagEnabled,
+      'ontologyEnabled': ontologyEnabled,
+      'ontologyAutoExtract': ontologyAutoExtract,
       'backend': backend,
       'embeddingProvider': embeddingProvider,
       'embeddingModel': embeddingModel,

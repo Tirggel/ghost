@@ -104,9 +104,19 @@ Future<void> main(List<String> arguments) async {
   );
   await agentManager.initialize();
 
-  // 7. Setup Context Provider (Workspace RAG)
+  // Register Memory, Ontology & Progressive-Disclosure Skill tools for ACP agent turns
+  MemoryTools.registerAll(toolRegistry, agentManager.memorySystem);
+  OntologyTools.registerAll(toolRegistry, agentManager.ontologyStoreService);
+  SkillsTools.registerAll(
+    toolRegistry,
+    agentManager.skillManager,
+    ontology: agentManager.ontologyStoreService,
+  );
+
+  // 7. Setup Context Provider (Workspace RAG + Knowledge Graph Ontology)
   final contextProvider = AcpContextProvider(
     ragEngine: agentManager.memorySystem.rag,
+    ontologyStore: agentManager.ontologyStoreService,
   );
 
   // 8. Instantiate ACP Server
@@ -138,10 +148,12 @@ Future<void> main(List<String> arguments) async {
     // Keep process alive until stdin closes
     ProcessSignal.sigint.watch().listen((_) async {
       await stdioTransport.stop();
+      await agentManager.shutdown();
       exit(0);
     });
 
     await stdioTransport.done;
+    await agentManager.shutdown();
     exit(0);
   }
 }

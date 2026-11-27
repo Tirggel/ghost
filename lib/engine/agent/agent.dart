@@ -12,6 +12,8 @@ import '../config/secure_storage.dart';
 import '../config/config.dart';
 import 'providers/factory.dart';
 import 'memory_system.dart';
+import 'ontology/ontology_extractor.dart';
+import 'ontology/ontology_models.dart';
 import '../system1/system1_service.dart';
 
 final _log = Logger('Ghost.Agent');
@@ -37,8 +39,12 @@ class Agent {
     this.browserHeadless = true,
     this.shouldSendChatHistory = true,
     this.security = const SecurityConfig(),
+    this.userConfig = const UserConfig(),
     this.autonomousPayments = false,
-  }) : _maxToolIterationsOverride = maxToolIterations;
+    Future<double?> Function({required String premise, required String hypothesis})?
+        system1NoulOverride,
+  })  : _maxToolIterationsOverride = maxToolIterations,
+        _system1NoulOverride = system1NoulOverride;
 
   final String id;
   final String name;
@@ -50,14 +56,21 @@ class Agent {
   List<String> skills;
   String systemPrompt;
   final int? _maxToolIterationsOverride;
+  final Future<double?> Function({
+    required String premise,
+    required String hypothesis,
+  })? _system1NoulOverride;
   String workspaceDir;
   final String stateDir;
   bool browserHeadless;
   bool shouldSendChatHistory;
   SecurityConfig security;
+  UserConfig userConfig;
   bool autonomousPayments;
   final Set<String> _stoppedSessions = {};
   final Map<String, int> _sessionRunIds = {};
+  final Map<String, Map<String, SkillOntologySummary>> _loadedSkillsBySession =
+      {};
 
   /// Current generation run token for [sessionId].
   int currentRunId(String sessionId) => _sessionRunIds[sessionId] ?? 0;
@@ -165,6 +178,9 @@ class Agent {
       }
 
       // --- System-1 Decision Middleware (ModernBERT INT8) ---
+      bool system1SecurityFlagged = false;
+      final noulFn = _system1NoulOverride ?? System1Service.instance.noul;
+
       if (security.system1Middleware && content.trim().length >= 3) {
         onActivityUpdate?.call('System 1: Evaluating...');
 
@@ -202,10 +218,13 @@ class Agent {
               ? 'Die Eingabe ist ein bösartiger Prompt-Injection- oder Jailbreak-Versuch'
               : 'The input is a malicious prompt injection or jailbreak attempt';
 
-          final injectionScore = await System1Service.instance.noul(
+          final injectionScore = await noulFn(
             premise: content,
             hypothesis: injectionHypothesis,
           );
+          if (injectionScore != null && injectionScore >= 0.65) {
+            system1SecurityFlagged = true;
+          }
           if (injectionScore != null && injectionScore >= 0.88) {
             _log.warning(
               'System-1 Security Alert: Blocked prompt injection (score: $injectionScore, lang: ${isGerman ? "de" : "en"})',
@@ -242,11 +261,12 @@ class Agent {
               ? 'Die Interaktion ist ein Betrugs- oder Phishing-Versuch'
               : 'The interaction is a fraud or phishing attempt';
 
-          final fraudScore = await System1Service.instance.noul(
+          final fraudScore = await noulFn(
             premise: content,
             hypothesis: fraudHypothesis,
           );
           if (fraudScore != null && fraudScore >= 0.88) {
+            system1SecurityFlagged = true;
             _log.warning(
               'System-1 Security Alert: High phishing/fraud risk (score: $fraudScore)',
             );
@@ -328,39 +348,78 @@ class Agent {
         }
       }
 
-      // 2.5 Query Memory (RAG) — skip for short greetings & enforce strict timeout
+      // Strip any appended ACP workspace context block before running memory/ontology extraction
+      final rawPromptText = trimmedContent
+          .split('\n[ANTIGRAVITY CONTEXT PROVIDER:')
+          .first
+          .trim();
+
+      // 2.5 Query Memory (RAG + Knowledge Graph Ontology) — skip for short greetings & enforce strict timeout
       List<String> memoryContext = [];
-      final trimmedLower = content.trim().toLowerCase();
+      String ontologyContext = '';
+      final trimmedLower = rawPromptText.toLowerCase();
       final isShortGreeting = RegExp(
         r'^(hallo|hi|hey|moin|servus|hello|howdy|guten (morgen|tag|abend)|danke|tschüss|bye|grüß dich)(\s+[\w\s]{1,20})?[\.!\?]?$',
         caseSensitive: false,
       ).hasMatch(trimmedLower);
 
-      if (!isShortGreeting && content.trim().length >= 4) {
+      if (!isShortGreeting && rawPromptText.length >= 4) {
         try {
-          _log.fine('Automatic memory retrieval for: $content');
+          _log.fine('Automatic memory retrieval for: $rawPromptText');
           onActivityUpdate?.call('Memory: Searching...');
-          memoryContext = await memory.query(
-            content,
-            activeProvider: activeProvider,
-            workspaceDir: workspaceDir,
-          ).timeout(
-            const Duration(seconds: 2),
-            onTimeout: () {
-              _log.warning('Memory retrieval timed out after 2s (continuing)');
-              return [];
-            },
-          );
-          if (memoryContext.isNotEmpty) {
-            _log.info('Found ${memoryContext.length} relevant memory chunks:');
-            for (var i = 0; i < memoryContext.length; i++) {
-              _log.info('  Memory [$i]: ${memoryContext[i]}');
+
+          final results = await Future.wait([
+            memory
+                .query(
+                  rawPromptText,
+                  activeProvider: activeProvider,
+                  workspaceDir: workspaceDir,
+                )
+                .timeout(
+                  const Duration(seconds: 2),
+                  onTimeout: () {
+                    _log.warning(
+                      'Memory retrieval timed out after 2s (continuing)',
+                    );
+                    return <String>[];
+                  },
+                ),
+            memory
+                .queryOntology(
+                  rawPromptText,
+                  userConfig: userConfig,
+                )
+                .timeout(
+                  const Duration(seconds: 2),
+                  onTimeout: () {
+                    _log.warning(
+                      'Ontology retrieval timed out after 2s (continuing)',
+                    );
+                    return '';
+                  },
+                ),
+          ]);
+
+          memoryContext = results[0] as List<String>;
+          ontologyContext = results[1] as String;
+
+          if (memoryContext.isNotEmpty || ontologyContext.isNotEmpty) {
+            if (memoryContext.isNotEmpty) {
+              _log.info('Found ${memoryContext.length} relevant memory chunks:');
+              for (var i = 0; i < memoryContext.length; i++) {
+                _log.info('  Memory [$i]: ${memoryContext[i]}');
+              }
+            }
+            if (ontologyContext.isNotEmpty) {
+              _log.info('Injected Knowledge Graph context into system prompt.');
             }
             onActivityUpdate?.call('Memory: Found context');
             // Brief pause so user can see memory context was found
             await Future<void>.delayed(const Duration(milliseconds: 200));
           } else {
-            _log.info('No relevant facts found in memory for query: "$content"');
+            _log.info(
+              'No relevant facts found in memory for query: "$rawPromptText"',
+            );
             onActivityUpdate?.call('');
           }
         } catch (e) {
@@ -411,9 +470,13 @@ class Agent {
             ? '\n\n[HISTORICAL CONTEXT (for reference only, do NOT repeat unless requested)]:\n${memoryContext.join('\n---\n')}'
             : '';
 
+        final ontologyContextString = ontologyContext.isNotEmpty
+            ? '\n\n$ontologyContext'
+            : '';
+
         const String memoryInstruction =
-            '\nIf the [HISTORICAL CONTEXT] above is missing or insufficient, use the "memory_query" tool to search for specific past information.\n'
-            'When you use "memory_add" for personal facts, use the category "user_profile".\n';
+            '\nIf the [HISTORICAL CONTEXT] or [KNOWLEDGE GRAPH] above is missing or insufficient, use "memory_query" for unstructured text or "ghost_ontology_query" for structured entity relationships.\n'
+            'When you use "memory_add" for personal facts, use the category "user_profile". Use "ghost_ontology_assert" to record or update durable structured facts (e.g. WOHNT_IN, ARBEITET_AN, MAG).\n';
 
         const String vaultInstruction =
             '\n[VAULT CREDENTIALS]\n'
@@ -433,7 +496,7 @@ class Agent {
         // Explicit instruction to use tools when needed, but answer greetings directly and prioritize active skills
         const String toolUseInstruction =
             '\n[TOOL USE GUIDELINES — SKILL PRIORITY MANDATE]\n'
-            '- MANDATORY SKILL FIRST POLICY: If any available active skill covers the user\'s request (e.g. weather skills, API integrations, custom tools in the skill directory), you MUST ALWAYS use that skill! For skills with Python scripts/servers, execute them using bash within the skill directory (e.g. using the skill\'s .venv/bin/python) or call their tools. NEVER bypass an available skill with generic web_search or browser!\n'
+            '- MANDATORY SKILL FIRST POLICY (PROGRESSIVE DISCLOSURE): If any skill in [AVAILABLE SKILLS] covers the user\'s request, you MUST FIRST call `ghost_load_skill` with its `skill_name` to load the full instructions, and then execute it (e.g. using bash inside the skill directory or its MCP tools). NEVER bypass an available skill with generic web_search or browser!\n'
             '- For simple greetings, small talk, pleasantries, or general questions, answer directly in natural language without calling tools.\n'
             '- For real-time web information (current news, live prices, sports scores) where NO specialized skill is installed → call web_search or browser.\n'
             '- For reading or writing local files → use read_file / write_file / list_dir.\n'
@@ -481,8 +544,34 @@ class Agent {
             '\n[ACTIVE WORKSPACE DIRECTORY]: $workspaceDir\n'
             'All local file operations (read_file, write_file, list_dir) and terminal/bash commands are executed within this directory.\n';
 
+        final ontology = memory.ontology;
+        final List<SkillOntologySummary> allowedSkillSummaries =
+            (ontology != null && ontology.isInitialized)
+                ? ontology.getAllowedSkillsForAgent(id)
+                : const [];
+
+        final String availableSkillsIndex;
+        if (allowedSkillSummaries.isNotEmpty) {
+          final indexLines = allowedSkillSummaries
+              .map((s) => s.toCompactIndexLine())
+              .join('\n');
+          availableSkillsIndex =
+              '\n\n[AVAILABLE SKILLS — PROGRESSIVE DISCLOSURE]:\n'
+              'Only compact skill summaries are shown below to conserve tokens. '
+              'Call `ghost_load_skill(skill_name: "<slug>")` BEFORE using any skill to load its full SKILL.md instructions and paths.\n'
+              '$indexLines';
+        } else if (skills.isNotEmpty && (ontology == null || !ontology.isInitialized)) {
+          final fallbackLines = skills.map((s) => '- `$s`').join('\n');
+          availableSkillsIndex =
+              '\n\n[AVAILABLE SKILLS — PROGRESSIVE DISCLOSURE]:\n'
+              'Call `ghost_load_skill(skill_name: "<slug>")` BEFORE using any skill to load its full SKILL.md instructions.\n'
+              '$fallbackLines';
+        } else {
+          availableSkillsIndex = '';
+        }
+
         final dynamicSystemPrompt =
-            '$systemPrompt\n\n[SYSTEM: The current date and time is $timeStr]$workspaceInstruction$contextString$memoryInstruction$vaultInstruction$focusInstruction$toolUseInstruction$hitlSafetyInstruction$goalInstruction$planInstruction\n';
+            '$systemPrompt\n\n[SYSTEM: The current date and time is $timeStr]$workspaceInstruction$availableSkillsIndex$contextString$ontologyContextString$memoryInstruction$vaultInstruction$focusInstruction$toolUseInstruction$hitlSafetyInstruction$goalInstruction$planInstruction\n';
 
         // For local providers (Ollama, vLLM, LM Studio), limit the tool set
         // to core tools only. Small models (2–4B) cannot reliably select from
@@ -493,6 +582,8 @@ class Agent {
           'bash', 'terminal',
           'read_file', 'write_file', 'list_dir', 'download_file',
           'memory_add', 'memory_query',
+          'ghost_ontology_assert', 'ghost_ontology_query',
+          'ghost_load_skill',
           'browser',
           'github',
           'store_api_key',
@@ -710,6 +801,31 @@ class Agent {
               isGoalMode: isGoalMode,
             );
 
+            // Track skills loaded via ghost_load_skill for session-level HITL enforcement
+            if (call.name == 'ghost_load_skill' && !result.isError) {
+              final loadedSlug = result.metadata['skill_slug'] as String?;
+              if (loadedSlug != null && loadedSlug.isNotEmpty) {
+                final sessionSkills = _loadedSkillsBySession.putIfAbsent(
+                  sessionId,
+                  () => {},
+                );
+                sessionSkills[loadedSlug] = SkillOntologySummary(
+                  slug: loadedSlug,
+                  name: (result.metadata['skill_name'] as String?) ?? loadedSlug,
+                  shortDescription: '',
+                  category: (result.metadata['category'] as String?) ?? 'general',
+                  requiresHitl:
+                      result.metadata['requires_hitl'] as bool? ?? false,
+                  securityLevel:
+                      (result.metadata['security_level'] as String?) ?? 'standard',
+                  dependencies: (result.metadata['dependencies'] as List<dynamic>?)
+                          ?.map((e) => e.toString())
+                          .toList() ??
+                      const [],
+                );
+              }
+            }
+
             // Track if HITL actually blocked this tool
             if (result.isError && result.output.contains('SECURITY ALERT')) {
               hitlWasTriggered = true;
@@ -835,6 +951,33 @@ class Agent {
           },
         );
       }
+
+      // --- Async Post-Turn Knowledge Graph Fact Extraction ---
+      // Strictly gated by System-1 security middleware to prevent Memory Poisoning.
+      final canAutoExtract = security.system1Middleware &&
+          !system1SecurityFlagged &&
+          !hitlWasTriggered &&
+          !isAborted() &&
+          !isShortGreeting &&
+          !sessionId.startsWith('cron_') &&
+          !sessionId.startsWith('run_') &&
+          memory.isOntologyAutoExtractEnabled;
+
+      if (canAutoExtract) {
+        final cleanExtractInput = rawPromptText
+            .replaceFirst(RegExp(r'^/(goal|plan)\s*'), '')
+            .trim();
+        if (cleanExtractInput.isNotEmpty) {
+          unawaited(
+            OntologyExtractor.extractAndAssertFacts(
+              userMessage: cleanExtractInput,
+              provider: activeProvider,
+              ontology: memory.ontology!,
+              userConfig: userConfig,
+            ),
+          );
+        }
+      }
     } catch (e) {
       _log.severe('Agent processing failed: $e');
       rethrow;
@@ -862,31 +1005,49 @@ class Agent {
 
     bool requiresHitl = false;
 
-    // Check if security dictates HITL for this tool
-    if (security.humanInTheLoop && !isCron && !isGoalMode) {
-      final sensitiveTools = [
-        'bash',
-        'terminal',
-        'exec',
-        'process',
-        'write_file',
-        'edit_file',
-        'apply_patch',
-        'delete_file',
-        'github',
-        'github_pr',
-        'github_commit',
-        'browser',
-        'browser_open',
-        'browser_click',
-        'browser_type',
-        'binance_create_order',
-        'binance_demo_create_order',
-        'execute_blockchain_payment',
-        'execute_token_swap',
-      ];
-      if (sensitiveTools.contains(call.name)) {
-        requiresHitl = true;
+    final SkillOntologySummary? hitlSkillContext =
+        _resolveHitlSkillContext(call, sessionId);
+
+    // Check if security dictates HITL for this tool (or an ERFORDERT_HITL skill)
+    if (!isCron && !isGoalMode) {
+      if (security.humanInTheLoop) {
+        final sensitiveTools = [
+          'bash',
+          'terminal',
+          'exec',
+          'process',
+          'write_file',
+          'edit_file',
+          'apply_patch',
+          'delete_file',
+          'github',
+          'github_pr',
+          'github_commit',
+          'browser',
+          'browser_open',
+          'browser_click',
+          'browser_type',
+          'binance_create_order',
+          'binance_demo_create_order',
+          'execute_blockchain_payment',
+          'execute_token_swap',
+        ];
+        if (sensitiveTools.contains(call.name)) {
+          requiresHitl = true;
+        }
+      }
+
+      if (hitlSkillContext != null && hitlSkillContext.requiresHitl) {
+        final enforceForCritical =
+            hitlSkillContext.securityLevel == 'critical' &&
+            security.level != SecurityLevel.none;
+        if (security.humanInTheLoop || enforceForCritical) {
+          requiresHitl = true;
+          _log.info(
+            'Ontology ERFORDERT_HITL triggered for tool ${call.name} '
+            '(skill: ${hitlSkillContext.slug}, level: ${hitlSkillContext.securityLevel})',
+          );
+        }
       }
     }
 
@@ -894,7 +1055,10 @@ class Agent {
     // Evaluate full tool arguments (e.g. exact shell command or transfer amounts)
     if (security.system1Middleware && !isCron && !isGoalMode) {
       try {
-        final toolPayload = 'Befehl: ${call.name} ${jsonEncode(call.arguments)}';
+        final skillTag = hitlSkillContext != null
+            ? '[Skill: ${hitlSkillContext.slug}, Policy: ${hitlSkillContext.requiresHitl ? "ERFORDERT_HITL" : "STANDARD"}, Security: ${hitlSkillContext.securityLevel}] '
+            : '';
+        final toolPayload = '${skillTag}Befehl: ${call.name} ${jsonEncode(call.arguments)}';
         final destructiveRisk = await System1Service.instance.score(
           premise: toolPayload,
           hypothesis: 'Destructive action risk',
@@ -1072,5 +1236,84 @@ class Agent {
         restrictNetwork: security.restrictNetwork,
       ),
     );
+  }
+
+  /// Resolves whether [call] operates within or after loading an `ERFORDERT_HITL`
+  /// skill in [sessionId], ensuring ontology HITL policies apply to executed skills.
+  SkillOntologySummary? _resolveHitlSkillContext(
+    ToolCall call,
+    String sessionId,
+  ) {
+    const nonMutatingReadTools = {
+      'ghost_load_skill',
+      'list_skills',
+      'read_file',
+      'read',
+      'list_dir',
+      'memory_query',
+      'memory_search',
+      'memory_get',
+      'ghost_ontology_query',
+      'sessions_list',
+      'sessions_history',
+      'session_status',
+      'kanban_list',
+      'kanban_detail',
+    };
+    if (nonMutatingReadTools.contains(call.name)) {
+      return null;
+    }
+
+    final argsText = jsonEncode(call.arguments).toLowerCase();
+    final ontology = memory.ontology;
+    if (ontology != null && ontology.isInitialized) {
+      final allowed = ontology.getAllowedSkillsForAgent(id);
+      for (final skill in allowed) {
+        final slugLower = skill.slug.toLowerCase();
+        if (argsText.contains('skills/$slugLower') ||
+            argsText.contains('skills\\$slugLower') ||
+            argsText.contains('"$slugLower"')) {
+          final requiresHitl =
+              skill.requiresHitl || ontology.skillRequiresHitl(skill.slug);
+          if (requiresHitl) {
+            return SkillOntologySummary(
+              slug: skill.slug,
+              name: skill.name,
+              shortDescription: skill.shortDescription,
+              category: skill.category,
+              requiresHitl: true,
+              securityLevel: skill.securityLevel,
+              dependencies: skill.dependencies,
+            );
+          }
+        }
+      }
+    }
+
+    final loaded = _loadedSkillsBySession[sessionId];
+    if (loaded != null && loaded.isNotEmpty) {
+      SkillOntologySummary? highestHitl;
+      for (final skill in loaded.values) {
+        final stillHitl = skill.requiresHitl ||
+            (ontology != null &&
+                ontology.isInitialized &&
+                ontology.skillRequiresHitl(skill.slug));
+        if (!stillHitl) continue;
+        if (highestHitl == null || skill.securityLevel == 'critical') {
+          highestHitl = SkillOntologySummary(
+            slug: skill.slug,
+            name: skill.name,
+            shortDescription: skill.shortDescription,
+            category: skill.category,
+            requiresHitl: true,
+            securityLevel: skill.securityLevel,
+            dependencies: skill.dependencies,
+          );
+        }
+      }
+      if (highestHitl != null) return highestHitl;
+    }
+
+    return null;
   }
 }

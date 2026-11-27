@@ -5,20 +5,24 @@ import 'dart:async';
 import 'dart:io';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
+import '../agent/ontology/ontology_extractor.dart';
+import '../agent/ontology/ontology_store_service.dart';
 import '../agent/rag_memory.dart';
 import 'protocol.dart';
 
 final _log = Logger('Ghost.AcpContextProvider');
 
-/// Context Provider integrating Ghost's Workspace RAG.
+/// Context Provider integrating Ghost's Workspace RAG and Ontology Knowledge Graph.
 class AcpContextProvider {
   AcpContextProvider({
     required this.ragEngine,
+    this.ontologyStore,
     this.providerId = 'ghost.workspace_rag',
     this.name = 'Ghost Workspace RAG Context Provider',
   });
 
   final RAGMemoryEngine ragEngine;
+  final OntologyStoreService? ontologyStore;
   final String providerId;
   final String name;
 
@@ -56,6 +60,25 @@ class AcpContextProvider {
             source: 'workspace_rag',
           ),
         );
+      }
+
+      // Include Knowledge Graph facts if ontology store is attached & initialized
+      if (ontologyStore != null && ontologyStore!.isInitialized) {
+        final graphContext = await OntologyExtractor.buildPreTurnContext(
+          userMessage: queryText,
+          ontology: ontologyStore!,
+          maxDepth: 2,
+          maxFacts: 12,
+        );
+        if (graphContext.isNotEmpty) {
+          items.add(
+            AcpContextItem(
+              title: 'Knowledge Graph Facts',
+              content: graphContext,
+              source: 'ontology_graph',
+            ),
+          );
+        }
       }
 
       // If RAG produced no results but a workspace is given, fallback to file structure overview

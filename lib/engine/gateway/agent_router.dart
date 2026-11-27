@@ -357,6 +357,27 @@ class AgentRouter {
       await agentManager.ragMemoryEngine.restore(data);
       return {'status': 'ok'};
     });
+
+    gateway.rpcRegistry.register('memory.ontology.backup', (params, context) async {
+      return {
+        'status': 'ok',
+        'data': await agentManager.ontologyStoreService.exportJson(),
+      };
+    });
+
+    gateway.rpcRegistry.register('memory.ontology.restore', (params, context) async {
+      final data = params?['data'] as String?;
+      if (data == null) throw ProtocolError('Missing required parameter: data');
+      await agentManager.ontologyStoreService.importJson(data);
+      return {'status': 'ok'};
+    });
+
+    gateway.rpcRegistry.register('memory.ontology.stats', (params, context) async {
+      return {
+        'status': 'ok',
+        'stats': agentManager.ontologyStoreService.getStats().toJson(),
+      };
+    });
   }
 
   Future<void> _processInAgent(

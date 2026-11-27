@@ -1,20 +1,198 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:logging/logging.dart';
-import '../agent/skills.dart';
-import 'registry.dart';
 import 'package:path/path.dart' as p;
+import '../agent/ontology/ontology_models.dart';
+import '../agent/ontology/ontology_store_service.dart';
+import '../agent/skills.dart';
+import '../models/skill.dart';
+import 'registry.dart';
 
 final _log = Logger('Ghost.Tools.Skills');
 
-/// Tools for managing Ghost skills.
+/// Tools for managing and progressively loading Ghost skills.
 class SkillsTools {
-  static void registerAll(ToolRegistry registry, SkillManager skillManager) {
+  static void registerAll(
+    ToolRegistry registry,
+    SkillManager skillManager, {
+    OntologyStoreService? ontology,
+  }) {
+    registry.register(LoadSkillTool(skillManager, ontology: ontology));
     registry.register(ImportSkillTool(skillManager));
     registry.register(ListSkillsTool(skillManager));
     registry.register(CreateSkillTemplateTool(skillManager));
     registry.register(DebugSkillTool(skillManager));
     registry.register(DownloadGithubSkillTool(skillManager));
+  }
+}
+
+/// Stage 2 Progressive Disclosure tool: loads full SKILL.md instructions and
+/// runtime metadata for a specific skill after verifying `DARF_NUTZEN` permission
+/// in the Ontology Knowledge Graph.
+class LoadSkillTool extends Tool {
+  LoadSkillTool(this.skillManager, {this.ontology});
+
+  final SkillManager skillManager;
+  final OntologyStoreService? ontology;
+
+  @override
+  String get name => 'ghost_load_skill';
+
+  @override
+  String get label => 'Load Skill';
+
+  @override
+  String get description =>
+      'Loads the full SKILL.md instructions, tool specifications, directory path, '
+      'dependencies, and security/HITL metadata for an authorized skill on demand. '
+      'Always call this BEFORE using a skill listed in [AVAILABLE SKILLS].';
+
+  @override
+  Map<String, dynamic> get inputSchema => {
+        'type': 'object',
+        'properties': {
+          'skill_name': {
+            'type': 'string',
+            'description':
+                'The slug or display name of the skill to load (e.g. "weather-pro").',
+          },
+        },
+        'required': ['skill_name'],
+      };
+
+  @override
+  String getLogSummary(Map<String, dynamic> input) =>
+      'Loading skill "${input['skill_name'] ?? input['skillName'] ?? ''}"';
+
+  @override
+  Future<ToolResult> execute(
+    Map<String, dynamic> input,
+    ToolContext context,
+  ) async {
+    final requested = (input['skill_name'] ??
+            input['skillName'] ??
+            input['slug'] ??
+            '')
+        .toString()
+        .trim();
+
+    if (requested.isEmpty) {
+      return const ToolResult.error('Parameter "skill_name" is required.');
+    }
+
+    try {
+      SkillOntologySummary? summary;
+      List<String> transitiveDeps = const [];
+
+      if (ontology != null && ontology!.isInitialized) {
+        summary = ontology!.resolveAuthorizedSkill(context.agentId, requested);
+        if (summary == null) {
+          if (ontology!.isSkillInstalledInOntology(requested)) {
+            return ToolResult.error(
+              'PERMISSION DENIED: Agent "${context.agentId}" is not authorized '
+              'to use skill "$requested" (missing DARF_NUTZEN permission in ontology).',
+            );
+          }
+          return ToolResult.error(
+            'Skill "$requested" was not found among installed skills.',
+          );
+        }
+        transitiveDeps = ontology!.getRequiredSkillSlugs(summary.slug);
+      }
+
+      final installedSkills = await skillManager.loadSkills();
+      Skill? diskSkill;
+      for (final s in installedSkills) {
+        if (summary != null) {
+          if (s.slug.toLowerCase() == summary.slug.toLowerCase()) {
+            diskSkill = s;
+            break;
+          }
+        } else if (s.slug.toLowerCase() == requested.toLowerCase() ||
+            s.name.toLowerCase() == requested.toLowerCase()) {
+          diskSkill = s;
+          break;
+        }
+      }
+
+      if (diskSkill == null && summary == null) {
+        return ToolResult.error(
+          'Skill "$requested" was not found among installed skills.',
+        );
+      }
+
+      final slug = summary?.slug ?? diskSkill!.slug;
+      final displayName = summary?.name ?? diskSkill?.name ?? slug;
+      final category = summary?.category ?? diskSkill?.category ?? 'general';
+      final requiresHitl = (summary?.requiresHitl ?? false) ||
+          (diskSkill?.requiresHitl ?? false) ||
+          (ontology != null &&
+              ontology!.isInitialized &&
+              ontology!.skillRequiresHitl(slug));
+      final securityLevel =
+          summary?.securityLevel ?? diskSkill?.securityLevel ?? 'standard';
+      final skillDirPath = p.join(skillManager.skillsDir, slug);
+      final markdown = await skillManager.readSkillContent(slug);
+
+      final allDeps = <String>{
+        ...?(summary?.dependencies),
+        ...?diskSkill?.requiredSkills,
+        ...transitiveDeps,
+      }.toList();
+
+      final buffer = StringBuffer();
+      buffer.writeln('=== SKILL LOADED: $displayName ($slug) ===');
+      buffer.writeln('Skill directory: $skillDirPath');
+      buffer.writeln('Category/Domain: $category');
+      buffer.writeln('Security level: $securityLevel');
+      buffer.writeln('Requires HITL approval: ${requiresHitl ? "YES (ERFORDERT_HITL)" : "no"}');
+      if (diskSkill?.hasPython == true) {
+        buffer.writeln('Python runtime: .venv/bin/python (inside $skillDirPath)');
+      }
+      if (diskSkill?.hasNode == true) {
+        buffer.writeln('Node.js runtime: node (inside $skillDirPath)');
+      }
+      if (diskSkill?.hasMcp == true && diskSkill?.mcpCommand != null) {
+        buffer.writeln('MCP command: ${diskSkill!.mcpCommand}');
+      }
+      if (allDeps.isNotEmpty) {
+        buffer.writeln(
+          'Required skills (BENOETIGT_SKILL): ${allDeps.join(', ')}',
+        );
+      }
+      if (requiresHitl) {
+        buffer.writeln(
+          'SECURITY NOTICE: This skill is marked ERFORDERT_HITL. '
+          'Any mutating/executing actions triggered for this skill are subject to '
+          'System-1 risk scoring and Human-In-The-Loop confirmation.',
+        );
+      }
+      buffer.writeln();
+      buffer.writeln('--- SKILL.md ---');
+      buffer.writeln(
+        markdown.isNotEmpty
+            ? markdown
+            : '(No SKILL.md content found for "$slug".)',
+      );
+
+      return ToolResult(
+        output: buffer.toString().trim(),
+        metadata: {
+          'skill_slug': slug,
+          'skill_name': displayName,
+          'skill_dir': skillDirPath,
+          'category': category,
+          'requires_hitl': requiresHitl,
+          'security_level': securityLevel,
+          'dependencies': allDeps,
+          'has_mcp': diskSkill?.hasMcp ?? summary?.hasMcp ?? false,
+          if (diskSkill?.mcpCommand != null)
+            'mcp_command': diskSkill!.mcpCommand,
+        },
+      );
+    } catch (e) {
+      return ToolResult.error('Failed to load skill "$requested": $e');
+    }
   }
 }
 

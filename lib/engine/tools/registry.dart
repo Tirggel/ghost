@@ -101,12 +101,22 @@ class ToolGroups {
       'memory_search',
       'memory_get',
       'memory_add',
-      'memory_query'
+      'memory_query',
+      'ghost_ontology_assert',
+      'ghost_ontology_query',
     ],
     'group:web': ['web_search', 'web_fetch', 'download_file', 'browser'],
     'group:ui': ['browser', 'canvas'],
     'group:github': ['github'],
     'group:vault': ['store_api_key'],
+    'group:skills': [
+      'ghost_load_skill',
+      'list_skills',
+      'import_skill',
+      'create_skill_template',
+      'debug_skill',
+      'download_github_skill',
+    ],
     'group:kanban': [
       'kanban_list',
       'kanban_create',
@@ -157,10 +167,11 @@ class ToolProfiles {
       'group:web',
       'group:ui',
       'group:vault',
+      'group:skills',
       'group:kanban',
       'group:blockchain',
     ],
-    'messaging': ['message', 'group:sessions'],
+    'messaging': ['message', 'group:sessions', 'ghost_load_skill'],
     'full': [], // Empty = no restrictions
   };
 

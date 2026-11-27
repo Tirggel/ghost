@@ -29,12 +29,17 @@ class ModelInfoBadge extends ConsumerWidget {
       modelLabel = parts.last;
     }
 
-    // Get active skills display names
+    // Get active skills display names (opt-out model)
     String skillsLabel = '';
-    final activeSkillSlugs = config.agent.skills;
+    final allSkills = skillsAsync.value ?? [];
+    final activeSkillSlugs = allSkills.isNotEmpty
+        ? allSkills
+            .map((s) => s['slug'] as String)
+            .where((slug) => !config.agent.disabledSkills.contains(slug))
+            .toList()
+        : config.agent.skills;
 
     if (activeSkillSlugs.isNotEmpty) {
-      final allSkills = skillsAsync.value ?? [];
       final skillNames = <String>[];
       for (final slug in activeSkillSlugs) {
         final skill = allSkills.where((s) => s['slug'] == slug).firstOrNull;
@@ -44,7 +49,12 @@ class ModelInfoBadge extends ConsumerWidget {
           skillNames.add(slug);
         }
       }
-      skillsLabel = skillNames.join(', ');
+      if (skillNames.length > 3) {
+        skillsLabel =
+            '${skillNames.take(3).join(', ')} (+${skillNames.length - 3})';
+      } else {
+        skillsLabel = skillNames.join(', ');
+      }
     }
 
     final iconPath = AppConstants.getProviderIcon(rawProvider ?? '');
