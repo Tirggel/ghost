@@ -9,6 +9,7 @@ import '../../../../providers/gateway_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_dialogs.dart';
 import '../../../widgets/app_snackbar.dart';
+import 'widgets/ontology_section.dart';
 
 class MemoryTab extends ConsumerStatefulWidget {
 
@@ -25,6 +26,8 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
   late bool _standardEnabled;
   late bool _ragEnabled;
   late bool _workspaceRagEnabled;
+  late bool _ontologyEnabled;
+  late bool _ontologyAutoExtract;
   late String _embeddingProvider;
   late String _embeddingModel;
   bool _isInit = false;
@@ -47,6 +50,8 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
       _standardEnabled = config.memory.enabled;
       _ragEnabled = config.memory.ragEnabled;
       _workspaceRagEnabled = config.memory.workspaceRagEnabled;
+      _ontologyEnabled = config.memory.ontologyEnabled;
+      _ontologyAutoExtract = config.memory.ontologyAutoExtract;
       _embeddingProvider = config.memory.embeddingProvider;
       _embeddingModel = config.memory.embeddingModel;
       _selectedProvider = _embeddingProvider.isNotEmpty
@@ -100,6 +105,8 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
       'enabled': _standardEnabled,
       'ragEnabled': false,
       'workspaceRagEnabled': false,
+      'ontologyEnabled': _ontologyEnabled,
+      'ontologyAutoExtract': _ontologyAutoExtract,
       'embeddingProvider': provider,
       'embeddingModel': '',
     });
@@ -156,6 +163,8 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
         'enabled': _standardEnabled,
         'ragEnabled': true,
         'workspaceRagEnabled': _workspaceRagEnabled,
+        'ontologyEnabled': _ontologyEnabled,
+        'ontologyAutoExtract': _ontologyAutoExtract,
         'embeddingProvider': provider,
         'embeddingModel': model,
       });
@@ -342,10 +351,14 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
     ref.listen(configProvider, (prev, next) {
       if (isSaveLoading || !_isInit) return;
       if (next.memory.embeddingProvider != _embeddingProvider ||
-          next.memory.embeddingModel != _embeddingModel) {
+          next.memory.embeddingModel != _embeddingModel ||
+          next.memory.ontologyEnabled != _ontologyEnabled ||
+          next.memory.ontologyAutoExtract != _ontologyAutoExtract) {
         setState(() {
           _embeddingProvider = next.memory.embeddingProvider;
           _embeddingModel = next.memory.embeddingModel;
+          _ontologyEnabled = next.memory.ontologyEnabled;
+          _ontologyAutoExtract = next.memory.ontologyAutoExtract;
         });
       }
     });
@@ -361,6 +374,8 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
             'enabled': _standardEnabled,
             'ragEnabled': _ragEnabled,
             'workspaceRagEnabled': _workspaceRagEnabled,
+            'ontologyEnabled': _ontologyEnabled,
+            'ontologyAutoExtract': _ontologyAutoExtract,
             'embeddingProvider': _embeddingProvider,
             'embeddingModel': _embeddingModel,
           });
@@ -389,6 +404,8 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
               'enabled': val,
               'ragEnabled': _ragEnabled,
               'workspaceRagEnabled': _workspaceRagEnabled,
+              'ontologyEnabled': _ontologyEnabled,
+              'ontologyAutoExtract': _ontologyAutoExtract,
             });
             if (!context.mounted) return;
             AppSnackBar.showSuccess(
@@ -628,6 +645,50 @@ class _MemoryTabState extends ConsumerState<MemoryTab> with SettingsSaveMixin {
                   ),
             ),
           ],
+        ),
+        const SizedBox(height: AppConstants.settingsSectionSpacing),
+        OntologySection(
+          ontologyEnabled: _ontologyEnabled,
+          ontologyAutoExtract: _ontologyAutoExtract,
+          onToggleEnabled: (val) async {
+            setState(() => _ontologyEnabled = val);
+            await ref.read(configProvider.notifier).updateMemory({
+              'enabled': _standardEnabled,
+              'ragEnabled': _ragEnabled,
+              'workspaceRagEnabled': _workspaceRagEnabled,
+              'ontologyEnabled': val,
+              'ontologyAutoExtract': _ontologyAutoExtract,
+              'embeddingProvider': _embeddingProvider,
+              'embeddingModel': _embeddingModel,
+            });
+            if (!context.mounted) return;
+            AppSnackBar.showSuccess(
+              context,
+              'settings.memory.saved'.tr(),
+            );
+          },
+          onToggleAutoExtract: (val) async {
+            setState(() => _ontologyAutoExtract = val);
+            await ref.read(configProvider.notifier).updateMemory({
+              'enabled': _standardEnabled,
+              'ragEnabled': _ragEnabled,
+              'workspaceRagEnabled': _workspaceRagEnabled,
+              'ontologyEnabled': _ontologyEnabled,
+              'ontologyAutoExtract': val,
+              'embeddingProvider': _embeddingProvider,
+              'embeddingModel': _embeddingModel,
+            });
+            if (!context.mounted) return;
+            AppSnackBar.showSuccess(
+              context,
+              'settings.memory.saved'.tr(),
+            );
+          },
+          onClearOntology: () => _clearMemory(
+            'ontology',
+            'settings.memory.delete_ontology_title',
+            'settings.memory.delete_ontology_content',
+          ),
         ),
       ],
     );

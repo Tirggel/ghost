@@ -154,6 +154,7 @@ class OntologyEdge {
 /// Resolved triple returned by queries and multi-hop graph traversal.
 class OntologyTriple {
   const OntologyTriple({
+    this.edgeId,
     required this.subject,
     required this.predicate,
     required this.object,
@@ -162,8 +163,10 @@ class OntologyTriple {
     this.isInferred = false,
     this.hopDepth = 1,
     this.pathChain = const [],
+    this.isGovernance = false,
   });
 
+  final int? edgeId;
   final OntologyNode subject;
   final String predicate;
   final OntologyNode object;
@@ -171,6 +174,7 @@ class OntologyTriple {
   final DateTime createdAt;
   final bool isInferred;
   final int hopDepth;
+  final bool isGovernance;
 
   /// Sequence of steps for multi-hop/inferred triples (e.g. ["Peter --[WOHNT_IN]--> Zürich", "Zürich --[LIEGT_IN]--> Schweiz"]).
   final List<String> pathChain;
@@ -181,6 +185,7 @@ class OntologyTriple {
   }
 
   Map<String, dynamic> toJson() => {
+        if (edgeId != null) 'edgeId': edgeId,
         'subject': subject.label,
         'subjectKey': subject.canonicalKey,
         'subjectType': subject.entityType,
@@ -192,6 +197,7 @@ class OntologyTriple {
         'createdAt': createdAt.toIso8601String(),
         'isInferred': isInferred,
         'hopDepth': hopDepth,
+        'isGovernance': isGovernance,
         if (pathChain.isNotEmpty) 'pathChain': pathChain,
       };
 }
@@ -288,16 +294,59 @@ class OntologyStats {
     required this.relationCount,
     required this.nodeCount,
     required this.edgeCount,
+    this.skillCount = 0,
+    this.linkedSkillCount = 0,
+    this.personalEdgeCount = 0,
+    this.governanceEdgeCount = 0,
   });
 
   final int relationCount;
   final int nodeCount;
   final int edgeCount;
+  final int skillCount;
+  final int linkedSkillCount;
+  final int personalEdgeCount;
+  final int governanceEdgeCount;
 
   Map<String, dynamic> toJson() => {
         'relations': relationCount,
         'nodes': nodeCount,
         'edges': edgeCount,
+        'skills': skillCount,
+        'linkedSkills': linkedSkillCount,
+        'personalEdges': personalEdgeCount,
+        'governanceEdges': governanceEdgeCount,
+      };
+}
+
+/// Lightweight summary of an [OntologyNode] for the Explorer UI.
+class OntologyNodeSummary {
+  const OntologyNodeSummary({
+    required this.nodeId,
+    required this.canonicalKey,
+    required this.label,
+    required this.entityType,
+    required this.edgeCount,
+    required this.isGovernance,
+    required this.updatedAt,
+  });
+
+  final int nodeId;
+  final String canonicalKey;
+  final String label;
+  final String entityType;
+  final int edgeCount;
+  final bool isGovernance;
+  final DateTime updatedAt;
+
+  Map<String, dynamic> toJson() => {
+        'nodeId': nodeId,
+        'canonicalKey': canonicalKey,
+        'label': label,
+        'entityType': entityType,
+        'edgeCount': edgeCount,
+        'isGovernance': isGovernance,
+        'updatedAt': updatedAt.toIso8601String(),
       };
 }
 

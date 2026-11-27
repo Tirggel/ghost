@@ -1159,6 +1159,9 @@ class ConfigRouter {
       if (type == null) throw ProtocolError('Missing required parameter: type');
 
       await agentManager.clearMemory(type);
+      if (type == 'ontology') {
+        gateway.broadcast('ontology.changed', {});
+      }
       return {'status': 'ok'};
     });
 

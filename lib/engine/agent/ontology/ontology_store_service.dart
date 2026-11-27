@@ -557,7 +557,13 @@ class OntologyStoreService {
         final hopDepth = current.depth + 1;
 
         if (visitedEdgeIds.add(edge.obxId)) {
+          final isGov = isGovernanceTriple(
+            current.currentNode,
+            edge.predicate,
+            targetNode,
+          );
           final triple = OntologyTriple(
+            edgeId: hopDepth == 1 ? edge.obxId : null,
             subject: current.currentNode,
             predicate: edge.predicate,
             object: targetNode,
@@ -566,6 +572,7 @@ class OntologyStoreService {
             isInferred: hopDepth > 1,
             hopDepth: hopDepth,
             pathChain: hopDepth > 1 ? nextPath : const [],
+            isGovernance: isGov,
           );
 
           if (hopDepth == 1) {
@@ -596,6 +603,11 @@ class OntologyStoreService {
                   isInferred: true,
                   hopDepth: hopDepth,
                   pathChain: nextPath,
+                  isGovernance: isGovernanceTriple(
+                    current.rootNode,
+                    firstPred,
+                    targetNode,
+                  ),
                 ),
               );
             }
@@ -630,6 +642,7 @@ class OntologyStoreService {
           if (sourceNode == null) continue;
           directFacts.add(
             OntologyTriple(
+              edgeId: edge.obxId,
               subject: sourceNode,
               predicate: edge.predicate,
               object: current.currentNode,
@@ -637,6 +650,11 @@ class OntologyStoreService {
               createdAt: edge.createdAt,
               isInferred: false,
               hopDepth: 1,
+              isGovernance: isGovernanceTriple(
+                sourceNode,
+                edge.predicate,
+                current.currentNode,
+              ),
             ),
           );
         }
@@ -692,6 +710,17 @@ class OntologyStoreService {
     return matches;
   }
 
+  /// Returns whether a triple belongs to the Skill / Agent governance layer.
+  static bool isGovernanceTriple(
+    OntologyNode subject,
+    String predicate,
+    OntologyNode object,
+  ) {
+    return governancePredicates.contains(predicate) ||
+        governanceEntityTypes.contains(subject.entityType) ||
+        governanceEntityTypes.contains(object.entityType);
+  }
+
   /// Returns all T-Box relation definitions.
   List<OntologyRelationDef> getAllRelationDefs() {
     if (!_initialized || _relationBox == null) return const [];
@@ -703,11 +732,198 @@ class OntologyStoreService {
     if (!_initialized || _relationBox == null || _nodeBox == null || _edgeBox == null) {
       return const OntologyStats(relationCount: 0, nodeCount: 0, edgeCount: 0);
     }
+
+    final nodes = _nodeBox!.getAll();
+    final edges = _edgeBox!.getAll();
+    final nodeCache = <int, OntologyNode>{
+      for (final n in nodes) n.obxId: n,
+    };
+
+    var skillCount = 0;
+    for (final node in nodes) {
+      if (node.entityType == 'Skill') {
+        skillCount++;
+      }
+    }
+
+    final linkedSkillIds = <int>{};
+    var personalEdgeCount = 0;
+    var governanceEdgeCount = 0;
+
+    for (final edge in edges) {
+      final subj = nodeCache[edge.subjectId];
+      final obj = nodeCache[edge.objectId];
+      if (subj == null || obj == null) continue;
+
+      if (edge.predicate == predicateCanUseSkill && obj.entityType == 'Skill') {
+        linkedSkillIds.add(obj.obxId);
+      }
+
+      if (isGovernanceTriple(subj, edge.predicate, obj)) {
+        governanceEdgeCount++;
+      } else {
+        personalEdgeCount++;
+      }
+    }
+
     return OntologyStats(
       relationCount: _relationBox!.count(),
-      nodeCount: _nodeBox!.count(),
-      edgeCount: _edgeBox!.count(),
+      nodeCount: nodes.length,
+      edgeCount: edges.length,
+      skillCount: skillCount,
+      linkedSkillCount: linkedSkillIds.length,
+      personalEdgeCount: personalEdgeCount,
+      governanceEdgeCount: governanceEdgeCount,
     );
+  }
+
+  /// Lists resolved triples filtered by [category] (`all`, `personal`, `governance`)
+  /// and case-insensitive search [query], sorted newest-first.
+  ({List<OntologyTriple> facts, int totalCount}) listFacts({
+    String category = 'all',
+    String query = '',
+    int limit = 200,
+    int offset = 0,
+  }) {
+    if (!_initialized || _nodeBox == null || _edgeBox == null) {
+      return (facts: const <OntologyTriple>[], totalCount: 0);
+    }
+
+    final nodeCache = <int, OntologyNode>{
+      for (final n in _nodeBox!.getAll()) n.obxId: n,
+    };
+    final edges = _edgeBox!.getAll();
+    final normalizedCat = category.trim().toLowerCase();
+    final normalizedQuery = query.trim().toLowerCase();
+
+    final matched = <OntologyTriple>[];
+    for (final edge in edges) {
+      final subj = nodeCache[edge.subjectId];
+      final obj = nodeCache[edge.objectId];
+      if (subj == null || obj == null) continue;
+
+      final isGov = isGovernanceTriple(subj, edge.predicate, obj);
+      if (normalizedCat == 'personal' && isGov) continue;
+      if (normalizedCat == 'governance' && !isGov) continue;
+
+      if (normalizedQuery.isNotEmpty) {
+        final haystacks = [
+          subj.label,
+          subj.canonicalKey,
+          subj.entityType,
+          edge.predicate,
+          obj.label,
+          obj.canonicalKey,
+          obj.entityType,
+        ];
+        final hits = haystacks.any((h) => h.toLowerCase().contains(normalizedQuery));
+        if (!hits) continue;
+      }
+
+      matched.add(
+        OntologyTriple(
+          edgeId: edge.obxId,
+          subject: subj,
+          predicate: edge.predicate,
+          object: obj,
+          confidence: edge.confidence,
+          createdAt: edge.createdAt,
+          isInferred: false,
+          hopDepth: 1,
+          isGovernance: isGov,
+        ),
+      );
+    }
+
+    matched.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    final totalCount = matched.length;
+    final safeOffset = offset.clamp(0, totalCount);
+    final safeLimit = limit.clamp(1, 1000);
+    final end = (safeOffset + safeLimit).clamp(0, totalCount);
+
+    return (
+      facts: matched.sublist(safeOffset, end),
+      totalCount: totalCount,
+    );
+  }
+
+  /// Lists entity nodes filtered by [category] (`all`, `personal`, `governance`)
+  /// and case-insensitive [query], including each node's incident edge count.
+  List<OntologyNodeSummary> listNodes({
+    String category = 'all',
+    String query = '',
+  }) {
+    if (!_initialized || _nodeBox == null || _edgeBox == null) {
+      return const [];
+    }
+
+    final nodes = _nodeBox!.getAll();
+    final edges = _edgeBox!.getAll();
+    final edgeCounts = <int, int>{};
+    for (final edge in edges) {
+      edgeCounts[edge.subjectId] = (edgeCounts[edge.subjectId] ?? 0) + 1;
+      if (edge.objectId != edge.subjectId) {
+        edgeCounts[edge.objectId] = (edgeCounts[edge.objectId] ?? 0) + 1;
+      }
+    }
+
+    final normalizedCat = category.trim().toLowerCase();
+    final normalizedQuery = query.trim().toLowerCase();
+    final summaries = <OntologyNodeSummary>[];
+
+    for (final node in nodes) {
+      final isGov = governanceEntityTypes.contains(node.entityType);
+      if (normalizedCat == 'personal' && isGov) continue;
+      if (normalizedCat == 'governance' && !isGov) continue;
+
+      if (normalizedQuery.isNotEmpty) {
+        final hits = node.label.toLowerCase().contains(normalizedQuery) ||
+            node.canonicalKey.toLowerCase().contains(normalizedQuery) ||
+            node.entityType.toLowerCase().contains(normalizedQuery);
+        if (!hits) continue;
+      }
+
+      summaries.add(
+        OntologyNodeSummary(
+          nodeId: node.obxId,
+          canonicalKey: node.canonicalKey,
+          label: node.label,
+          entityType: node.entityType,
+          edgeCount: edgeCounts[node.obxId] ?? 0,
+          isGovernance: isGov,
+          updatedAt: node.updatedAt,
+        ),
+      );
+    }
+
+    summaries.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return summaries;
+  }
+
+  /// Deletes a single fact edge by its ObjectBox [edgeId].
+  Future<bool> deleteEdge(int edgeId) async {
+    if (!_initialized || _store == null || _edgeBox == null) {
+      return false;
+    }
+    return _store!.runInTransaction(TxMode.write, () {
+      return _edgeBox!.remove(edgeId);
+    });
+  }
+
+  /// Deletes an entity node by [canonicalKey] along with all incident edges.
+  Future<bool> deleteNode(String canonicalKey) async {
+    if (!_initialized || _store == null || _nodeBox == null || _edgeBox == null) {
+      return false;
+    }
+    final cleanKey = canonicalKey.trim();
+    if (cleanKey.isEmpty) return false;
+    return _store!.runInTransaction(TxMode.write, () {
+      final node = _findNodeByKeySync(cleanKey);
+      if (node == null) return false;
+      _deleteNodeAndEdgesSync(node.obxId);
+      return true;
+    });
   }
 
   /// Exports the full T-Box and A-Box as portable JSON using `canonicalKey` references.

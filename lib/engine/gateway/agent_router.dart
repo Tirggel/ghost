@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import '../infra/errors.dart';
 import '../gateway/server.dart';
 import '../agent/manager.dart';
+import '../agent/ontology/ontology_store_service.dart';
 
 import '../models/message.dart';
 import '../sessions/manager.dart';
@@ -369,6 +370,7 @@ class AgentRouter {
       final data = params?['data'] as String?;
       if (data == null) throw ProtocolError('Missing required parameter: data');
       await agentManager.ontologyStoreService.importJson(data);
+      gateway.broadcast('ontology.changed', {});
       return {'status': 'ok'};
     });
 
@@ -376,6 +378,150 @@ class AgentRouter {
       return {
         'status': 'ok',
         'stats': agentManager.ontologyStoreService.getStats().toJson(),
+      };
+    });
+
+    gateway.rpcRegistry.register('memory.ontology.list', (params, context) async {
+      final category = (params?['category'] as String?)?.trim().toLowerCase() ?? 'all';
+      final query = (params?['query'] as String?)?.trim() ?? '';
+      final limit = (params?['limit'] as num?)?.toInt() ?? 200;
+      final offset = (params?['offset'] as num?)?.toInt() ?? 0;
+
+      final ontology = agentManager.ontologyStoreService;
+      final factCategory = category == 'rules' ? 'all' : category;
+      final factsRes = ontology.listFacts(
+        category: factCategory,
+        query: query,
+        limit: limit,
+        offset: offset,
+      );
+      final nodes = ontology.listNodes(
+        category: factCategory,
+        query: query,
+      );
+
+      final queryLower = query.toLowerCase();
+      final allRelations = ontology.getAllRelationDefs();
+      final relations = queryLower.isEmpty
+          ? allRelations
+          : allRelations
+              .where(
+                (r) =>
+                    r.predicate.toLowerCase().contains(queryLower) ||
+                    r.domainType.toLowerCase().contains(queryLower) ||
+                    r.rangeType.toLowerCase().contains(queryLower),
+              )
+              .toList();
+
+      return {
+        'status': 'ok',
+        'stats': ontology.getStats().toJson(),
+        'facts': factsRes.facts.map((f) => f.toJson()).toList(),
+        'totalFacts': factsRes.totalCount,
+        'nodes': nodes.map((n) => n.toJson()).toList(),
+        'relations': relations.map((r) => r.toJson()).toList(),
+      };
+    });
+
+    gateway.rpcRegistry.register('memory.ontology.assert', (params, context) async {
+      final subject = (params?['subject'] as String?)?.trim() ?? '';
+      final predicate = (params?['predicate'] as String?)?.trim() ?? '';
+      final object = (params?['object'] as String?)?.trim() ?? '';
+      if (subject.isEmpty || predicate.isEmpty || object.isEmpty) {
+        throw ProtocolError(
+          'Missing required parameters: subject, predicate, and object must be non-empty',
+        );
+      }
+
+      final subjectType = (params?['subjectType'] as String?)?.trim() ?? 'Entity';
+      final objectType = (params?['objectType'] as String?)?.trim() ?? 'Entity';
+      final explicitSubjectKey = (params?['subjectKey'] as String?)?.trim();
+      final confidence = (params?['confidence'] as num?)?.toDouble() ?? 1.0;
+
+      final lowerSubj = subject.toLowerCase();
+      final isPrimaryUser = explicitSubjectKey == OntologyStoreService.primaryUserKey ||
+          lowerSubj == 'user:primary' ||
+          lowerSubj == 'user' ||
+          lowerSubj == 'ich' ||
+          lowerSubj == 'me';
+      final configuredUserName = agentManager.config.user.name.trim();
+      final effectiveSubjectLabel = isPrimaryUser
+          ? (configuredUserName.isNotEmpty ? configuredUserName : 'User')
+          : subject;
+
+      final ontology = agentManager.ontologyStoreService;
+      final result = await ontology.assertFact(
+        subjectLabel: effectiveSubjectLabel,
+        subjectType: isPrimaryUser ? 'Person' : subjectType,
+        subjectKey: isPrimaryUser ? OntologyStoreService.primaryUserKey : explicitSubjectKey,
+        predicate: predicate,
+        objectLabel: object,
+        objectType: objectType,
+        confidence: confidence,
+      );
+
+      gateway.broadcast('ontology.changed', {});
+      return {
+        'status': 'ok',
+        'result': result.toJson(),
+        'stats': ontology.getStats().toJson(),
+      };
+    });
+
+    gateway.rpcRegistry.register('memory.ontology.deleteEdge', (params, context) async {
+      final edgeId = (params?['edgeId'] as num?)?.toInt();
+      if (edgeId == null || edgeId <= 0) {
+        throw ProtocolError('Missing or invalid required parameter: edgeId');
+      }
+      final ontology = agentManager.ontologyStoreService;
+      final deleted = await ontology.deleteEdge(edgeId);
+      if (deleted) {
+        gateway.broadcast('ontology.changed', {});
+      }
+      return {
+        'status': 'ok',
+        'deleted': deleted,
+        'stats': ontology.getStats().toJson(),
+      };
+    });
+
+    gateway.rpcRegistry.register('memory.ontology.deleteNode', (params, context) async {
+      final canonicalKey = (params?['canonicalKey'] as String?)?.trim() ?? '';
+      if (canonicalKey.isEmpty) {
+        throw ProtocolError('Missing required parameter: canonicalKey');
+      }
+      final ontology = agentManager.ontologyStoreService;
+      final deleted = await ontology.deleteNode(canonicalKey);
+      if (deleted) {
+        gateway.broadcast('ontology.changed', {});
+      }
+      return {
+        'status': 'ok',
+        'deleted': deleted,
+        'stats': ontology.getStats().toJson(),
+      };
+    });
+
+    gateway.rpcRegistry.register('memory.ontology.query', (params, context) async {
+      final entity = (params?['entity'] as String?)?.trim() ?? '';
+      if (entity.isEmpty) {
+        throw ProtocolError('Missing required parameter: entity');
+      }
+      final maxDepth = (params?['maxDepth'] as num?)?.toInt() ?? 2;
+      final maxResults = (params?['maxResults'] as num?)?.toInt() ?? 30;
+      final includeIncoming = params?['includeIncoming'] as bool? ?? true;
+
+      final result = await agentManager.ontologyStoreService.queryFactsForEntity(
+        entity,
+        maxDepth: maxDepth,
+        maxResults: maxResults,
+        includeIncoming: includeIncoming,
+      );
+
+      return {
+        'status': 'ok',
+        'result': result.toJson(),
+        'promptPreview': result.toCompactPromptString(),
       };
     });
   }

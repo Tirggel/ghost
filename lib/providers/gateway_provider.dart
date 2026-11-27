@@ -10,7 +10,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../core/models/chat_session.dart';
 import '../core/models/config_models.dart';
+import '../core/models/ontology_ui_models.dart';
 export '../core/models/config_models.dart';
+export '../core/models/ontology_ui_models.dart';
 import '../core/internal_gateway.dart';
 import '../core/secure_storage_impl.dart';
 import '../core/platform_storage.dart';
@@ -1033,6 +1035,106 @@ class ConfigNotifier extends Notifier<AppConfig> {
     } catch (e) {
       rethrow;
     }
+  }
+
+  // --- Ontology & Knowledge Graph ---
+
+  Future<OntologyStatsDto> getOntologyStats() async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      final result = await client.call('memory.ontology.stats');
+      if (result is Map && result['stats'] is Map) {
+        return OntologyStatsDto.fromJson(
+          Map<String, dynamic>.from(result['stats'] as Map),
+        );
+      }
+    } catch (_) {}
+    return const OntologyStatsDto();
+  }
+
+  Future<OntologyListResponseDto> listOntology({
+    String category = 'all',
+    String query = '',
+    int limit = 200,
+    int offset = 0,
+  }) async {
+    final client = ref.read(gatewayClientProvider);
+    final result = await client.call('memory.ontology.list', {
+      'category': category,
+      'query': query,
+      'limit': limit,
+      'offset': offset,
+    });
+    return OntologyListResponseDto.fromJson(
+      Map<String, dynamic>.from(result as Map),
+    );
+  }
+
+  Future<Map<String, dynamic>> assertOntologyFact({
+    required String subject,
+    required String predicate,
+    required String object,
+    String subjectType = 'Entity',
+    String objectType = 'Entity',
+    String? subjectKey,
+    double confidence = 1.0,
+  }) async {
+    final client = ref.read(gatewayClientProvider);
+    final result = await client.call('memory.ontology.assert', {
+      'subject': subject,
+      'predicate': predicate,
+      'object': object,
+      'subjectType': subjectType,
+      'objectType': objectType,
+      if (subjectKey != null && subjectKey.isNotEmpty) 'subjectKey': subjectKey,
+      'confidence': confidence,
+    });
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<bool> deleteOntologyEdge(int edgeId) async {
+    final client = ref.read(gatewayClientProvider);
+    final result = await client.call('memory.ontology.deleteEdge', {
+      'edgeId': edgeId,
+    });
+    return (result as Map)['deleted'] == true;
+  }
+
+  Future<bool> deleteOntologyNode(String canonicalKey) async {
+    final client = ref.read(gatewayClientProvider);
+    final result = await client.call('memory.ontology.deleteNode', {
+      'canonicalKey': canonicalKey,
+    });
+    return (result as Map)['deleted'] == true;
+  }
+
+  Future<OntologyQueryResponseDto> queryOntologyEntity(
+    String entity, {
+    int maxDepth = 2,
+    int maxResults = 30,
+    bool includeIncoming = true,
+  }) async {
+    final client = ref.read(gatewayClientProvider);
+    final result = await client.call('memory.ontology.query', {
+      'entity': entity,
+      'maxDepth': maxDepth,
+      'maxResults': maxResults,
+      'includeIncoming': includeIncoming,
+    });
+    return OntologyQueryResponseDto.fromJson(
+      Map<String, dynamic>.from(result as Map),
+    );
+  }
+
+  Future<String?> backupOntology() async {
+    final client = ref.read(gatewayClientProvider);
+    final result = await client.call('memory.ontology.backup');
+    return (result as Map)['data'] as String?;
+  }
+
+  Future<void> restoreOntology(String data) async {
+    final client = ref.read(gatewayClientProvider);
+    await client.call('memory.ontology.restore', {'data': data});
   }
 
   // --- Avatar Upload ---
