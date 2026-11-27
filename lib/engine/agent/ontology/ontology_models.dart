@@ -208,25 +208,29 @@ class OntologyAssertResult {
     required this.subject,
     required this.predicate,
     required this.object,
-    required this.edge,
+    this.edge,
+    double? confidence,
     required this.replacedCount,
     required this.wasDuplicate,
     required this.isFunctional,
-  });
+  }) : _confidence = confidence;
 
   final OntologyNode subject;
   final String predicate;
   final OntologyNode object;
-  final OntologyEdge edge;
+  final OntologyEdge? edge;
+  final double? _confidence;
   final int replacedCount;
   final bool wasDuplicate;
   final bool isFunctional;
+
+  double get confidence => edge?.confidence ?? _confidence ?? 1.0;
 
   Map<String, dynamic> toJson() => {
         'subject': subject.toJson(),
         'predicate': predicate,
         'object': object.toJson(),
-        'confidence': edge.confidence,
+        'confidence': confidence,
         'isFunctional': isFunctional,
         'replacedCount': replacedCount,
         'wasDuplicate': wasDuplicate,
@@ -429,4 +433,47 @@ class SkillOntologySummary {
         'hasPython': hasPython,
         'hasNode': hasNode,
       };
+}
+
+/// Represents a single `(Agent) -[HAT_KOMPETENZ]-> (Domain)` capability entry.
+class AgentCompetency {
+  const AgentCompetency({
+    required this.domainKey,
+    required this.label,
+    required this.confidence,
+    required this.source,
+    this.isExplicit = false,
+  });
+
+  final String domainKey;
+  final String label;
+  final double confidence;
+  /// Origin of this competency: `'explicit'`, `'prompt'`, `'skill'`, or `'merged'`.
+  final String source;
+  final bool isExplicit;
+
+  Map<String, dynamic> toJson() => {
+        'domainKey': domainKey,
+        'label': label,
+        'confidence': confidence,
+        'source': source,
+        'isExplicit': isExplicit,
+      };
+}
+
+/// Aggregated ontology capability profile for an agent used during task routing.
+class AgentCapabilityProfile {
+  const AgentCapabilityProfile({
+    required this.agentId,
+    required this.agentName,
+    required this.competencies,
+    required this.allowedSkills,
+    required this.skillDomainsBySlug,
+  });
+
+  final String agentId;
+  final String agentName;
+  final List<AgentCompetency> competencies;
+  final List<SkillOntologySummary> allowedSkills;
+  final Map<String, String> skillDomainsBySlug;
 }

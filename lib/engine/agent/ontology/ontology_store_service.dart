@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import '../../../objectbox.g.dart';
 import '../../config/config.dart';
 import '../../models/skill.dart';
+import 'agent_domain_taxonomy.dart';
 import 'ontology_models.dart';
 
 final _log = Logger('Ghost.OntologyStore');
@@ -107,6 +108,13 @@ const List<Map<String, dynamic>> _defaultRelations = [
     'isTransitive': false,
   },
   {
+    'predicate': 'HAT_KOMPETENZ',
+    'domainType': 'Agent',
+    'rangeType': 'Domain',
+    'isFunctional': false,
+    'isTransitive': false,
+  },
+  {
     'predicate': 'GEHOERT_ZU_DOMAIN',
     'domainType': 'Skill',
     'rangeType': 'Domain',
@@ -150,13 +158,16 @@ class OntologyStoreService {
   static const String hitlPolicyKey = 'policy:hitl_required';
   static const String backupFileName = 'ontology_backup.json';
 
+  static const String predicateHeisst = 'HEISST';
   static const String predicateCanUseSkill = 'DARF_NUTZEN';
+  static const String predicateHasCompetency = 'HAT_KOMPETENZ';
   static const String predicateSkillDomain = 'GEHOERT_ZU_DOMAIN';
   static const String predicateRequiresSkill = 'BENOETIGT_SKILL';
   static const String predicateRequiresHitl = 'ERFORDERT_HITL';
 
   static const Set<String> governancePredicates = {
     predicateCanUseSkill,
+    predicateHasCompetency,
     predicateSkillDomain,
     predicateRequiresSkill,
     predicateRequiresHitl,
@@ -236,7 +247,8 @@ class OntologyStoreService {
     _initialized = false;
   }
 
-  /// Idempotently seeds default T-Box relation rules on startup.
+  /// Idempotently seeds default T-Box relation rules on startup and cleans up
+  /// any legacy `HEISST` self-edges.
   Future<void> _seedDefaultRelations() async {
     if (_store == null || _relationBox == null) return;
 
@@ -256,6 +268,7 @@ class OntologyStoreService {
           );
         }
       }
+      _cleanupHeisstSelfEdgesSync();
     });
   }
 
@@ -296,29 +309,21 @@ class OntologyStoreService {
 
   /// Synchronizes the configured primary user profile to the `user:primary` anchor node.
   Future<void> syncUserProfile(UserConfig user) async {
-    if (!_initialized || _store == null) return;
+    if (!_initialized || _store == null || _edgeBox == null) return;
     final cleanName = user.name.trim();
     final label = cleanName.isNotEmpty ? cleanName : 'User';
 
     _store!.runInTransaction(TxMode.write, () {
-      _upsertNodeSync(
+      final userNode = _upsertNodeSync(
         canonicalKey: primaryUserKey,
         label: label,
         entityType: 'Person',
       );
-    });
-
-    if (cleanName.isNotEmpty) {
-      await assertFact(
-        subjectLabel: cleanName,
-        subjectType: 'Person',
-        subjectKey: primaryUserKey,
-        predicate: 'HEISST',
-        objectLabel: cleanName,
-        objectType: 'Text',
-        confidence: 1.0,
+      _removeEdgesSync(
+        subjectId: userNode.obxId,
+        predicate: predicateHeisst,
       );
-    }
+    });
   }
 
   /// Asserts a structured triple `(subject, predicate, object)` with T-Box rule enforcement.
@@ -379,6 +384,32 @@ class OntologyStoreService {
           (subjectKey != null && subjectKey.trim().isNotEmpty)
               ? subjectKey.trim()
               : _resolveOrCanonicalizeKeySync(effectiveSubjType, cleanSubject);
+
+      // Option 1 (no self-echo): HEISST updates the subject node's label
+      // directly instead of creating a redundant (X) -[HEISST]-> (X) edge.
+      if (normPredicate == predicateHeisst) {
+        final existingSubject = _findNodeByKeySync(resolvedSubjKey);
+        final previousLabel = existingSubject?.label;
+        final subjectNode = _upsertNodeSync(
+          canonicalKey: resolvedSubjKey,
+          label: cleanObject,
+          entityType: effectiveSubjType,
+        );
+        final removedCount = _removeEdgesSync(
+          subjectId: subjectNode.obxId,
+          predicate: predicateHeisst,
+        );
+        return OntologyAssertResult(
+          subject: subjectNode,
+          predicate: normPredicate,
+          object: subjectNode,
+          confidence: clampedConfidence,
+          replacedCount: removedCount,
+          wasDuplicate: existingSubject != null && previousLabel == cleanObject,
+          isFunctional: relDef.isFunctional,
+        );
+      }
+
       final resolvedObjKey =
           (objectKey != null && objectKey.trim().isNotEmpty)
               ? objectKey.trim()
@@ -1253,6 +1284,308 @@ class OntologyStoreService {
     });
   }
 
+  /// Synchronizes `(Agent) -[HAT_KOMPETENZ]-> (Domain)` competency edges for an agent.
+  ///
+  /// Combines:
+  /// 1. Explicit competencies from config (`confidence = 1.0`)
+  /// 2. Implicit competencies derived from [systemPrompt], [agentName], [cronMessage], [notes] (`0.65..0.78`)
+  /// 3. Implicit competencies derived from `(Agent) -[DARF_NUTZEN]-> (Skill) -[GEHOERT_ZU_DOMAIN]-> (Domain)`
+  ///    weighted by the agent's skill focus relative to [totalInstalledSkills].
+  Future<void> syncAgentCompetencies({
+    required String agentId,
+    required String agentName,
+    List<String> explicitCompetencies = const [],
+    String systemPrompt = '',
+    String cronMessage = '',
+    String notes = '',
+    int? totalInstalledSkills,
+    String languageCode = 'de',
+  }) async {
+    if (!_initialized || _store == null || _nodeBox == null || _edgeBox == null) {
+      return;
+    }
+
+    _store!.runInTransaction(TxMode.write, () {
+      final nodeCache = <int, OntologyNode>{
+        for (final n in _nodeBox!.getAll()) n.obxId: n,
+      };
+      final allSkillsCount = totalInstalledSkills ??
+          nodeCache.values.where((n) => n.entityType == 'Skill').length;
+
+      final existingAgent = _findNodeByKeySync(agentCanonicalKey(agentId));
+      final existingMeta = existingAgent?.metadata ?? const <String, dynamic>{};
+
+      // Map<canonicalDomainKey, ({String label, double confidence, String source})>
+      final merged = <String, ({String label, double confidence, String source})>{};
+      final explicitKeys = <String>[];
+      final promptKeys = <String>[];
+      final skillKeys = <String>[];
+
+      void record(
+        String domainKey,
+        String label,
+        double confidence,
+        String source,
+      ) {
+        final prev = merged[domainKey];
+        if (prev == null || confidence > prev.confidence) {
+          merged[domainKey] = (
+            label: prev != null && prev.source == 'explicit' ? prev.label : label,
+            confidence: confidence,
+            source: source,
+          );
+        }
+      }
+
+      // 1. Explicit competencies (highest priority: confidence 1.0)
+      for (final raw in explicitCompetencies) {
+        final trimmed = raw.trim();
+        if (trimmed.isEmpty) continue;
+        final domainKey = AgentDomainTaxonomy.canonicalDomainKey(trimmed);
+        if (domainKey == 'general') continue;
+        final label = AgentDomainTaxonomy.displayLabel(
+          trimmed,
+          languageCode: languageCode,
+        );
+        if (!explicitKeys.contains(domainKey)) explicitKeys.add(domainKey);
+        record(domainKey, label, 1.0, 'explicit');
+      }
+
+      // 2. Prompt / role profile inference
+      final promptInferred = AgentDomainTaxonomy.inferCompetenciesFromProfile(
+        name: agentName,
+        systemPrompt: systemPrompt,
+        cronMessage: cronMessage,
+        notes: notes,
+        languageCode: languageCode,
+      );
+      for (final item in promptInferred) {
+        if (!promptKeys.contains(item.domainKey)) promptKeys.add(item.domainKey);
+        record(item.domainKey, item.label, item.confidence, 'prompt');
+      }
+
+      // 3. Skill-derived competencies from DARF_NUTZEN -> GEHOERT_ZU_DOMAIN
+      if (existingAgent != null) {
+        final allowedSkillEdges = _getOutgoingEdgesSync(existingAgent.obxId)
+            .where((e) => e.predicate == predicateCanUseSkill)
+            .toList();
+
+        final domainSkillCounts = <String, int>{};
+        var totalCategorized = 0;
+
+        for (final skillEdge in allowedSkillEdges) {
+          final skillNode = nodeCache[skillEdge.objectId];
+          if (skillNode == null || skillNode.entityType != 'Skill') continue;
+
+          String? rawCategory;
+          final domainEdges = _getOutgoingEdgesSync(skillNode.obxId)
+              .where((e) => e.predicate == predicateSkillDomain);
+          for (final de in domainEdges) {
+            final domNode = nodeCache[de.objectId];
+            if (domNode != null) {
+              rawCategory = domNode.label;
+              break;
+            }
+          }
+          rawCategory ??= skillNode.metadata['category'] as String? ?? 'general';
+          final canonicalDomain = AgentDomainTaxonomy.canonicalDomainKey(rawCategory);
+          if (canonicalDomain == 'general') continue;
+          domainSkillCounts[canonicalDomain] =
+              (domainSkillCounts[canonicalDomain] ?? 0) + 1;
+          totalCategorized++;
+        }
+
+        if (totalCategorized > 0) {
+          final allowedCount = allowedSkillEdges.length;
+          final specificity = allSkillsCount <= 1
+              ? 0.5
+              : (1.0 - (allowedCount / allSkillsCount).clamp(0.0, 1.0));
+          for (final entry in domainSkillCounts.entries) {
+            final share = entry.value / totalCategorized;
+            // Base 0.50, boosted up to 0.75 when agent is focused on this domain
+            final conf = (0.50 + 0.15 * share + 0.10 * specificity)
+                .clamp(0.50, 0.75)
+                .toDouble();
+            if (!skillKeys.contains(entry.key)) skillKeys.add(entry.key);
+            record(
+              entry.key,
+              AgentDomainTaxonomy.displayLabel(
+                entry.key,
+                languageCode: languageCode,
+              ),
+              conf,
+              'skill',
+            );
+          }
+        }
+      }
+
+      final nextMeta = Map<String, dynamic>.from(existingMeta)
+        ..['agentId'] = agentId
+        ..['explicitCompetencies'] = explicitKeys
+        ..['promptCompetencies'] = promptKeys
+        ..['skillCompetencies'] = skillKeys;
+
+      final agentNode = _upsertNodeSync(
+        canonicalKey: agentCanonicalKey(agentId),
+        label: agentName.trim().isNotEmpty ? agentName.trim() : agentId,
+        entityType: 'Agent',
+        metadataJson: jsonEncode(nextMeta),
+      );
+
+      final targetWeights = <int, double>{};
+      for (final entry in merged.entries) {
+        final domKey = domainCanonicalKey(entry.key);
+        final existingDom = _findNodeByKeySync(domKey);
+        final domNode = _upsertNodeSync(
+          canonicalKey: domKey,
+          label: existingDom != null && existingDom.label.trim().isNotEmpty
+              ? existingDom.label
+              : entry.value.label,
+          entityType: 'Domain',
+        );
+        targetWeights[domNode.obxId] = entry.value.confidence;
+      }
+
+      _syncWeightedEdgeTargetsSync(
+        subjectId: agentNode.obxId,
+        predicate: predicateHasCompetency,
+        targetWeights: targetWeights,
+      );
+    });
+  }
+
+  /// Returns all `(Agent) -[HAT_KOMPETENZ]-> (Domain)` competencies for [agentId].
+  List<AgentCompetency> getCompetenciesForAgent(String agentId) {
+    if (!_initialized || _nodeBox == null || _edgeBox == null) {
+      return const [];
+    }
+    final agentNode = _findNodeByKeySync(agentCanonicalKey(agentId));
+    if (agentNode == null) return const [];
+
+    final nodeCache = <int, OntologyNode>{
+      for (final n in _nodeBox!.getAll()) n.obxId: n,
+    };
+    return _extractAgentCompetenciesSync(agentNode, nodeCache);
+  }
+
+  /// Returns capability profiles for all `Agent` nodes currently in the ontology.
+  List<AgentCapabilityProfile> getAllAgentCapabilityProfiles() {
+    if (!_initialized || _nodeBox == null || _edgeBox == null) {
+      return const [];
+    }
+    final allNodes = _nodeBox!.getAll();
+    final nodeCache = <int, OntologyNode>{
+      for (final n in allNodes) n.obxId: n,
+    };
+    final profiles = <AgentCapabilityProfile>[];
+
+    for (final agentNode in allNodes) {
+      if (agentNode.entityType != 'Agent') continue;
+      final agentId = agentNode.canonicalKey.startsWith('agent:')
+          ? agentNode.canonicalKey.substring(6)
+          : agentNode.canonicalKey;
+
+      final competencies = _extractAgentCompetenciesSync(agentNode, nodeCache);
+      final allowedSkills = <SkillOntologySummary>[];
+      final skillDomainsBySlug = <String, String>{};
+      final seenSlugs = <String>{};
+
+      final skillEdges = _getOutgoingEdgesSync(agentNode.obxId)
+          .where((e) => e.predicate == predicateCanUseSkill);
+
+      for (final edge in skillEdges) {
+        final skillNode = nodeCache[edge.objectId];
+        if (skillNode == null || skillNode.entityType != 'Skill') continue;
+        final skillEdgesOut = _getOutgoingEdgesSync(skillNode.obxId);
+        final hasHitlEdge =
+            skillEdgesOut.any((e) => e.predicate == predicateRequiresHitl);
+        final summary = SkillOntologySummary.fromNode(
+          skillNode,
+          requiresHitlOverride: hasHitlEdge ? true : null,
+        );
+        if (seenSlugs.add(summary.slug)) {
+          allowedSkills.add(summary);
+          String? domainRaw;
+          for (final se in skillEdgesOut) {
+            if (se.predicate == predicateSkillDomain) {
+              final dom = nodeCache[se.objectId];
+              if (dom != null) {
+                domainRaw = dom.label;
+                break;
+              }
+            }
+          }
+          skillDomainsBySlug[summary.slug] =
+              AgentDomainTaxonomy.canonicalDomainKey(domainRaw ?? summary.category);
+        }
+      }
+
+      profiles.add(
+        AgentCapabilityProfile(
+          agentId: agentId,
+          agentName: agentNode.label,
+          competencies: competencies,
+          allowedSkills: allowedSkills,
+          skillDomainsBySlug: skillDomainsBySlug,
+        ),
+      );
+    }
+
+    return profiles;
+  }
+
+  /// Returns all canonical domain keys currently present as `Domain` nodes.
+  Set<String> getKnownDomainKeys() {
+    if (!_initialized || _nodeBox == null) return const {};
+    return _nodeBox!
+        .getAll()
+        .where((n) => n.entityType == 'Domain')
+        .map((n) => AgentDomainTaxonomy.canonicalDomainKey(n.label))
+        .where((k) => k != 'general')
+        .toSet();
+  }
+
+  List<AgentCompetency> _extractAgentCompetenciesSync(
+    OntologyNode agentNode,
+    Map<int, OntologyNode> nodeCache,
+  ) {
+    final meta = agentNode.metadata;
+    final explicitSet = ((meta['explicitCompetencies'] as List<dynamic>?) ?? const [])
+        .map((e) => e.toString())
+        .toSet();
+    final promptSet = ((meta['promptCompetencies'] as List<dynamic>?) ?? const [])
+        .map((e) => e.toString())
+        .toSet();
+
+    final out = _getOutgoingEdgesSync(agentNode.obxId)
+        .where((e) => e.predicate == predicateHasCompetency);
+
+    final list = <AgentCompetency>[];
+    final seen = <String>{};
+    for (final edge in out) {
+      final domNode = nodeCache[edge.objectId];
+      if (domNode == null || domNode.entityType != 'Domain') continue;
+      final key = AgentDomainTaxonomy.canonicalDomainKey(domNode.label);
+      if (!seen.add(key)) continue;
+      final isExplicit = explicitSet.contains(key) || edge.confidence >= 0.95;
+      final source = isExplicit
+          ? 'explicit'
+          : (promptSet.contains(key) ? 'prompt' : 'skill');
+      list.add(
+        AgentCompetency(
+          domainKey: key,
+          label: domNode.label,
+          confidence: edge.confidence,
+          source: source,
+          isExplicit: isExplicit,
+        ),
+      );
+    }
+    list.sort((a, b) => b.confidence.compareTo(a.confidence));
+    return list;
+  }
+
   /// Removes a deleted custom agent node and its `DARF_NUTZEN` edges.
   Future<void> removeAgentNode(String agentId) async {
     if (!_initialized || _store == null || _nodeBox == null || _edgeBox == null) {
@@ -1540,7 +1873,47 @@ class OntologyStoreService {
     }
   }
 
-  void _removeEdgesSync({
+  void _cleanupHeisstSelfEdgesSync() {
+    if (_edgeBox == null || _nodeBox == null) return;
+    final q = _edgeBox!
+        .query(OntologyEdge_.predicate.equals(predicateHeisst))
+        .build();
+    final List<OntologyEdge> heisstEdges;
+    try {
+      heisstEdges = q.find();
+    } finally {
+      q.close();
+    }
+    if (heisstEdges.isEmpty) return;
+
+    final nodeCache = <int, OntologyNode>{
+      for (final n in _nodeBox!.getAll()) n.obxId: n,
+    };
+
+    final toRemoveIds = <int>[];
+    for (final edge in heisstEdges) {
+      if (edge.subjectId == edge.objectId) {
+        toRemoveIds.add(edge.obxId);
+        continue;
+      }
+      final subj = nodeCache[edge.subjectId];
+      final obj = nodeCache[edge.objectId];
+      if (subj != null &&
+          obj != null &&
+          subj.label.trim().toLowerCase() == obj.label.trim().toLowerCase()) {
+        toRemoveIds.add(edge.obxId);
+      }
+    }
+
+    if (toRemoveIds.isNotEmpty) {
+      _edgeBox!.removeMany(toRemoveIds);
+      _log.info(
+        'Cleaned up ${toRemoveIds.length} redundant $predicateHeisst self-edge(s).',
+      );
+    }
+  }
+
+  int _removeEdgesSync({
     required int subjectId,
     required String predicate,
   }) {
@@ -1555,6 +1928,7 @@ class OntologyStoreService {
       if (edges.isNotEmpty) {
         _edgeBox!.removeMany(edges.map((e) => e.obxId).toList());
       }
+      return edges.length;
     } finally {
       q.close();
     }
@@ -1603,6 +1977,61 @@ class OntologyStoreService {
             createdAt: now,
           ),
         );
+      }
+    }
+  }
+
+  void _syncWeightedEdgeTargetsSync({
+    required int subjectId,
+    required String predicate,
+    required Map<int, double> targetWeights,
+  }) {
+    final q = _edgeBox!
+        .query(
+          OntologyEdge_.subjectId.equals(subjectId) &
+              OntologyEdge_.predicate.equals(predicate),
+        )
+        .build();
+    final List<OntologyEdge> existing;
+    try {
+      existing = q.find();
+    } finally {
+      q.close();
+    }
+
+    final existingByTarget = <int, OntologyEdge>{};
+    final toRemove = <int>[];
+    for (final edge in existing) {
+      if (targetWeights.containsKey(edge.objectId) &&
+          !existingByTarget.containsKey(edge.objectId)) {
+        existingByTarget[edge.objectId] = edge;
+      } else {
+        toRemove.add(edge.obxId);
+      }
+    }
+    if (toRemove.isNotEmpty) {
+      _edgeBox!.removeMany(toRemove);
+    }
+
+    final now = DateTime.now();
+    for (final entry in targetWeights.entries) {
+      final targetId = entry.key;
+      final weight = entry.value.clamp(0.0, 1.0).toDouble();
+      final existingEdge = existingByTarget[targetId];
+      if (existingEdge == null) {
+        _edgeBox!.put(
+          OntologyEdge(
+            subjectId: subjectId,
+            predicate: predicate,
+            objectId: targetId,
+            confidence: weight,
+            createdAt: now,
+          ),
+        );
+      } else if ((existingEdge.confidence - weight).abs() > 0.001) {
+        existingEdge.confidence = weight;
+        existingEdge.createdAt = now;
+        _edgeBox!.put(existingEdge);
       }
     }
   }

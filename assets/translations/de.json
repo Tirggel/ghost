@@ -340,6 +340,7 @@
       "avatar_label": "Avatar-Bild",
       "notes_hint": "Kontext zum Verhalten der KI",
       "skills_section": "Skills zuweisen",
+      "competencies_label": "Kompetenzen (Ontologie)",
       "no_skills": "Keine Skills installiert. Füge sie im Skills-Tab hinzu.",
       "save": "Identität & Skills speichern",
       "saved": "Identität und Skills gespeichert"
@@ -559,6 +560,12 @@
       "edit_title": "Agent bearbeiten",
       "name_label": "Agent-Name",
       "name_hint": "Agent-Name",
+      "system_prompt_label": "System-Prompt / Rollenprofil",
+      "system_prompt_hint": "Beschreibe Rolle, Spezialisierung und Verhalten...",
+      "competencies_label": "Kompetenzen (Ontologie)",
+      "competencies_hint": "Fachgebiete für automatisches Routing wählen",
+      "competencies_custom_hint": "Eigene Kompetenz hinzufügen (z.B. Legal)...",
+      "competencies_derived_hint": "Automatisch abgeleitet (Skills & Profil)",
       "avatar_label": "Agent-Avatar",
       "provider_label": "Anbieter-Override",
       "provider_default": "Standard (Global/Identität folgen)",
@@ -913,7 +920,8 @@
     "welcome_headline": "Willkommen",
     "edit_title": "Titel bearbeiten",
     "edit_title_hint": "Neuen Titel eingeben",
-    "search_hint": "Im Chat suchen..."
+    "search_hint": "Im Chat suchen...",
+    "active_agent": "Aktiver Agent"
   },
   "wizard": {
     "subtitle": "Lass uns in wenigen Schritten alles einrichten.",
@@ -1051,6 +1059,11 @@
     "priority": "Priorität",
     "assigned_agent": "Zugewiesener Agent",
     "unassigned": "Nicht zugewiesen",
+    "auto_ontology": "Auto (Ontologie)",
+    "default_agent": "Standard",
+    "reroute_ontology": "Jetzt via Ontologie routen",
+    "routing_decision": "Ontologie-Routing",
+    "routing_score": "Score",
     "subtasks": "Subtasks",
     "comments": "Kommentare",
     "add_subtask_hint": "Subtask hinzufügen...",

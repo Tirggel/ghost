@@ -66,8 +66,10 @@ class TaskManager {
     String? assignedAgentId,
     String? assignedAgentName,
     String? createdByAgentId,
+    String? sessionId,
     DateTime? dueDate,
     List<String> dependsOnIds = const [],
+    Map<String, dynamic> metadata = const {},
   }) async {
     // Compute sort order: place at the bottom of the column
     final tasksInColumn = getTasksByStatus(status);
@@ -86,18 +88,22 @@ class TaskManager {
       assignedAgentId: assignedAgentId,
       assignedAgentName: assignedAgentName,
       createdByAgentId: createdByAgentId,
+      sessionId: sessionId,
       dueDate: dueDate,
       dependsOnIds: dependsOnIds,
       sortOrder: maxSort + 1,
+      metadata: metadata,
     );
 
     _tasks.add(task);
     await store.save(task);
-    _eventController.add(TaskEvent(
-      type: TaskEventType.created,
-      taskId: task.id,
-      task: task,
-    ));
+    if (!_eventController.isClosed) {
+      _eventController.add(TaskEvent(
+        type: TaskEventType.created,
+        taskId: task.id,
+        task: task,
+      ));
+    }
     _log.info('Created task: ${task.title} (${task.id})');
     return task;
   }
@@ -113,21 +119,25 @@ class TaskManager {
     final updated = task.copyWith(updatedAt: DateTime.now());
     _tasks[index] = updated;
     await store.save(updated);
-    _eventController.add(TaskEvent(
-      type: TaskEventType.updated,
-      taskId: updated.id,
-      task: updated,
-    ));
+    if (!_eventController.isClosed) {
+      _eventController.add(TaskEvent(
+        type: TaskEventType.updated,
+        taskId: updated.id,
+        task: updated,
+      ));
+    }
   }
 
   /// Delete a task.
   Future<void> deleteTask(String taskId) async {
     _tasks.removeWhere((t) => t.id == taskId);
     await store.delete(taskId);
-    _eventController.add(TaskEvent(
-      type: TaskEventType.deleted,
-      taskId: taskId,
-    ));
+    if (!_eventController.isClosed) {
+      _eventController.add(TaskEvent(
+        type: TaskEventType.deleted,
+        taskId: taskId,
+      ));
+    }
     _log.info('Deleted task: $taskId');
   }
 
@@ -178,13 +188,15 @@ class TaskManager {
     if (taskIndex != -1) _tasks[taskIndex] = updated;
     await store.save(updated);
 
-    _eventController.add(TaskEvent(
-      type: TaskEventType.moved,
-      taskId: taskId,
-      task: updated,
-      oldStatus: oldStatus,
-      newStatus: newStatus,
-    ));
+    if (!_eventController.isClosed) {
+      _eventController.add(TaskEvent(
+        type: TaskEventType.moved,
+        taskId: taskId,
+        task: updated,
+        oldStatus: oldStatus,
+        newStatus: newStatus,
+      ));
+    }
     _log.info('Moved task $taskId: ${oldStatus.name} → ${newStatus.name}');
   }
 
@@ -209,11 +221,13 @@ class TaskManager {
     if (index != -1) _tasks[index] = updated;
     await store.save(updated);
 
-    _eventController.add(TaskEvent(
-      type: TaskEventType.assigned,
-      taskId: taskId,
-      task: updated,
-    ));
+    if (!_eventController.isClosed) {
+      _eventController.add(TaskEvent(
+        type: TaskEventType.assigned,
+        taskId: taskId,
+        task: updated,
+      ));
+    }
     _log.info('Assigned task $taskId to agent: ${agentId ?? "unassigned"}');
   }
 

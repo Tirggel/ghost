@@ -6,6 +6,7 @@ import '../infra/errors.dart';
 import '../gateway/server.dart';
 import '../tasks/task.dart';
 import '../tasks/task_manager.dart';
+import '../tasks/task_orchestrator.dart';
 
 final _log = Logger('Ghost.KanbanRouter');
 
@@ -14,10 +15,12 @@ class KanbanRouter {
   KanbanRouter({
     required this.gateway,
     required this.taskManager,
+    this.orchestrator,
   });
 
   final GatewayServer gateway;
   final TaskManager taskManager;
+  final TaskOrchestrator? orchestrator;
 
   /// Register kanban-related RPC methods.
   void register() {
@@ -66,23 +69,35 @@ class KanbanRouter {
         throw ProtocolError('Missing required parameter: title');
       }
 
-      final task = await taskManager.createTask(
+      final requestedAgentId = params?['assignedAgentId'] as String?;
+      final requestedAgentName = params?['assignedAgentName'] as String?;
+      final requestedStatus = TaskStatus.values.firstWhere(
+        (s) => s.name == (params?['status'] as String?),
+        orElse: () => TaskStatus.backlog,
+      );
+
+      var task = await taskManager.createTask(
         title: title,
         description: params?['description'] as String? ?? '',
         priority: TaskPriority.values.firstWhere(
           (p) => p.name == (params?['priority'] as String?),
           orElse: () => TaskPriority.normal,
         ),
-        status: TaskStatus.values.firstWhere(
-          (s) => s.name == (params?['status'] as String?),
-          orElse: () => TaskStatus.backlog,
-        ),
+        status: requestedStatus,
         labels: (params?['labels'] as List<dynamic>?)?.cast<String>() ?? [],
-        assignedAgentId: params?['assignedAgentId'] as String?,
-        assignedAgentName: params?['assignedAgentName'] as String?,
+        assignedAgentId: requestedAgentId,
+        assignedAgentName: requestedAgentName,
         createdByAgentId: params?['createdByAgentId'] as String?,
         dependsOnIds: (params?['dependsOnIds'] as List<dynamic>?)?.cast<String>() ?? [],
       );
+
+      if (orchestrator != null &&
+          (requestedAgentId == KanbanTask.autoAgentId ||
+              (requestedStatus == TaskStatus.inProgress &&
+                  requestedAgentId == null))) {
+        await orchestrator!.routeTask(task.id, force: true);
+        task = taskManager.getTask(task.id) ?? task;
+      }
 
       gateway.broadcast('kanban.changed');
       return {'status': 'ok', 'task': task.toJson()};
@@ -134,8 +149,17 @@ class KanbanRouter {
         orElse: () => throw ProtocolError('Invalid status: $newStatusStr'),
       );
 
+      final oldStatus = taskManager.getTask(taskId)?.status;
       final insertAt = (params?['insertAt'] as num?)?.toInt();
       await taskManager.moveTask(taskId, newStatus, insertAt: insertAt);
+      if (orchestrator != null &&
+          oldStatus == TaskStatus.backlog &&
+          newStatus == TaskStatus.inProgress) {
+        final moved = taskManager.getTask(taskId);
+        if (moved != null && moved.isAutoRoutingRequested) {
+          await orchestrator!.routeTask(taskId);
+        }
+      }
       gateway.broadcast('kanban.changed');
 
       return {'status': 'ok'};
@@ -149,9 +173,44 @@ class KanbanRouter {
       final agentId = params?['agentId'] as String?;
       final agentName = params?['agentName'] as String?;
 
-      await taskManager.assignTask(taskId, agentId, agentName);
+      if (agentId == KanbanTask.autoAgentId && orchestrator != null) {
+        await orchestrator!.routeTask(taskId, force: true);
+      } else {
+        await taskManager.assignTask(taskId, agentId, agentName);
+      }
       gateway.broadcast('kanban.changed');
       return {'status': 'ok'};
+    });
+
+    // --- Explicitly route task via Ontology ---
+    gateway.rpcRegistry.register('kanban.route', (params, context) async {
+      final taskId = params?['id'] as String?;
+      if (taskId == null) throw ProtocolError('Missing required parameter: id');
+      final dryRun = params?['dryRun'] as bool? ?? false;
+
+      final task = taskManager.getTask(taskId);
+      if (task == null) throw ProtocolError('Task not found: $taskId');
+      if (orchestrator == null) {
+        throw ProtocolError('TaskOrchestrator is not available');
+      }
+
+      if (dryRun) {
+        final decision = await orchestrator!.evaluateAgentRouting(task);
+        return {
+          'status': 'ok',
+          'decision': decision.toMetadataJson(),
+          'task': task.toJson(),
+        };
+      }
+
+      final decision = await orchestrator!.routeTask(taskId, force: true);
+      final updated = taskManager.getTask(taskId) ?? task;
+      gateway.broadcast('kanban.changed');
+      return {
+        'status': 'ok',
+        if (decision != null) 'decision': decision.toMetadataJson(),
+        'task': updated.toJson(),
+      };
     });
 
     // --- Delete task ---

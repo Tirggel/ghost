@@ -340,6 +340,7 @@
       "avatar_label": "Avatar Image",
       "notes_hint": "Context about how the AI should behave",
       "skills_section": "Skills Assignment",
+      "competencies_label": "Competencies (Ontology)",
       "no_skills": "No skills installed. Add them in the Skills tab.",
       "save": "Save Identity & Skills",
       "saved": "Identity and Skills saved"
@@ -559,6 +560,12 @@
       "edit_title": "Edit Agent",
       "name_label": "Agent Name",
       "name_hint": "Agent name",
+      "system_prompt_label": "System Prompt / Role Profile",
+      "system_prompt_hint": "Describe role, specialization, and behavior...",
+      "competencies_label": "Competencies (Ontology)",
+      "competencies_hint": "Select domains for automatic routing",
+      "competencies_custom_hint": "Add custom competency (e.g. Legal)...",
+      "competencies_derived_hint": "Automatically inferred (Skills & Profile)",
       "avatar_label": "Agent Avatar",
       "provider_label": "Provider Override",
       "provider_default": "Default (Follow Global/Identity)",
@@ -913,7 +920,8 @@
     "welcome_headline": "Welcome",
     "edit_title": "Edit Title",
     "edit_title_hint": "Enter new title",
-    "search_hint": "Search chat..."
+    "search_hint": "Search chat...",
+    "active_agent": "Active Agent"
   },
   "wizard": {
     "subtitle": "Let's get you set up in a few steps.",
@@ -1051,6 +1059,11 @@
     "priority": "Priority",
     "assigned_agent": "Assigned Agent",
     "unassigned": "Unassigned",
+    "auto_ontology": "Auto (Ontology)",
+    "default_agent": "Default",
+    "reroute_ontology": "Route via Ontology now",
+    "routing_decision": "Ontology Routing",
+    "routing_score": "Score",
     "subtasks": "Subtasks",
     "comments": "Comments",
     "add_subtask_hint": "Add subtask...",

@@ -112,6 +112,8 @@ class KanbanTasksNotifier extends Notifier<List<KanbanTask>> {
     String description = '',
     TaskPriority priority = TaskPriority.normal,
     List<String> labels = const [],
+    String? assignedAgentId,
+    String? assignedAgentName,
   }) async {
     final client = ref.read(gatewayClientProvider);
     try {
@@ -120,11 +122,30 @@ class KanbanTasksNotifier extends Notifier<List<KanbanTask>> {
         'description': description,
         'priority': priority.name,
         'labels': labels,
+        if (assignedAgentId != null) 'assignedAgentId': assignedAgentId,
+        if (assignedAgentName != null) 'assignedAgentName': assignedAgentName,
       });
       final task =
           KanbanTask.fromJson(result['task'] as Map<String, dynamic>);
       await refresh();
       return task;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> routeTask(
+    String taskId, {
+    bool dryRun = false,
+  }) async {
+    final client = ref.read(gatewayClientProvider);
+    try {
+      final result = await client.call('kanban.route', {
+        'id': taskId,
+        'dryRun': dryRun,
+      });
+      await refresh();
+      return result as Map<String, dynamic>;
     } catch (_) {
       return null;
     }

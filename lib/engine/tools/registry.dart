@@ -125,6 +125,9 @@ class ToolGroups {
       'kanban_assign',
       'kanban_subtask',
       'kanban_comment',
+      'kanban_pipeline',
+      'kanban_suggest',
+      'ghost_delegate_task',
     ],
     'group:blockchain': [
       'execute_blockchain_payment',

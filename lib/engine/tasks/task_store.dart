@@ -67,7 +67,9 @@ class TaskStore {
     await file.writeAsString(
       const JsonEncoder.withIndent('  ').convert(task.toJson()),
     );
-    _changedController.add(null);
+    if (!_changedController.isClosed) {
+      _changedController.add(null);
+    }
     _log.fine('Saved task ${task.id}: ${task.title}');
   }
 
@@ -76,7 +78,9 @@ class TaskStore {
     final file = File(p.join(_tasksDir, '$taskId.json'));
     if (await file.exists()) {
       await file.delete();
-      _changedController.add(null);
+      if (!_changedController.isClosed) {
+        _changedController.add(null);
+      }
       _log.info('Deleted task $taskId');
     }
   }

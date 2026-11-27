@@ -115,18 +115,24 @@ class OntologyAssertTool extends Tool {
         confidence: confidence,
       );
 
-      final actionNote = result.replacedCount > 0
-          ? 'Updated functional relation (replaced ${result.replacedCount} previous edge(s)).'
-          : (result.wasDuplicate
-              ? 'Updated existing triple timestamp/confidence.'
-              : 'Stored new Knowledge Graph triple.');
+      final actionNote = result.edge == null
+          ? (result.wasDuplicate
+              ? 'Entity label already matches "${result.subject.label}" (no redundant HEISST self-edge created).'
+              : 'Updated entity label to "${result.subject.label}" (no redundant HEISST self-edge created).')
+          : result.replacedCount > 0
+              ? 'Updated functional relation (replaced ${result.replacedCount} previous edge(s)).'
+              : (result.wasDuplicate
+                  ? 'Updated existing triple timestamp/confidence.'
+                  : 'Stored new Knowledge Graph triple.');
 
       return ToolResult(
-        output:
-            '$actionNote\n'
-            'Triple: ${result.subject.label} (${result.subject.canonicalKey}) '
-            '--[${result.predicate}]--> '
-            '${result.object.label} (${result.object.canonicalKey})',
+        output: result.edge == null
+            ? '$actionNote\n'
+                'Entity: ${result.subject.label} (${result.subject.canonicalKey})'
+            : '$actionNote\n'
+                'Triple: ${result.subject.label} (${result.subject.canonicalKey}) '
+                '--[${result.predicate}]--> '
+                '${result.object.label} (${result.object.canonicalKey})',
         metadata: result.toJson(),
       );
     } catch (e) {

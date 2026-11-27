@@ -59,7 +59,8 @@ class _KanbanTaskCardState extends State<KanbanTaskCard> {
     final task = widget.task;
     final priColor = _priorityColor(task.priority);
     final hasSubtasks = task.subtasks.isNotEmpty;
-    final hasAgent = task.assignedAgentName != null;
+    final isAutoPending = task.assignedAgentId == KanbanTask.autoAgentId;
+    final hasAgent = task.assignedAgentName != null || isAutoPending;
     final hasLabels = task.labels.isNotEmpty;
 
     return Draggable<KanbanTask>(
@@ -181,28 +182,39 @@ class _KanbanTaskCardState extends State<KanbanTaskCard> {
                   children: [
                     // Agent badge
                     if (hasAgent) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.smart_toy,
-                                size: 10, color: AppColors.primary),
-                            const SizedBox(width: 4),
-                            Text(
-                              task.assignedAgentName!,
-                              style: const TextStyle(
+                      Tooltip(
+                        message: (task.routingInfo?['reason'] as String?) ?? '',
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                (task.assignedAgentId == KanbanTask.autoAgentId ||
+                                        task.routingInfo != null)
+                                    ? Icons.hub_outlined
+                                    : Icons.smart_toy,
+                                size: 10,
                                 color: AppColors.primary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Text(
+                                task.assignedAgentId == KanbanTask.autoAgentId
+                                    ? 'kanban.auto_ontology'.tr()
+                                    : (task.assignedAgentName ?? ''),
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],

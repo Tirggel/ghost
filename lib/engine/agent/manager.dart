@@ -248,6 +248,7 @@ class AgentManager {
         // 3. Task assigned to a deleted custom agent
         if (t.assignedAgentId != null &&
             t.assignedAgentId != 'default-agent' &&
+            t.assignedAgentId != KanbanTask.autoAgentId &&
             !activeAgentIds.contains(t.assignedAgentId)) {
           shouldDelete = true;
         }
@@ -737,6 +738,7 @@ class AgentManager {
         agent.autonomousPayments = config.billing.autonomous;
       }
     }
+    await syncOntologySkillsAndPermissions();
     _log.info('Updated config, providers, and system prompts for all agents');
   }
   
@@ -998,6 +1000,14 @@ class AgentManager {
       agentName: config.identity.name,
       allowedSkillSlugs: defaultAllowed,
     );
+    await ontologyStoreService.syncAgentCompetencies(
+      agentId: 'default-agent',
+      agentName: config.identity.name,
+      explicitCompetencies: config.agent.competencies,
+      notes: '${config.identity.vibe} ${config.identity.notes}'.trim(),
+      totalInstalledSkills: allSlugs.length,
+      languageCode: config.user.language,
+    );
     defaultAgent.skills = defaultAllowed;
 
     final activeAgentIds = <String>{'default-agent'};
@@ -1008,6 +1018,15 @@ class AgentManager {
         agentId: ca.id,
         agentName: ca.name,
         allowedSkillSlugs: allowed,
+      );
+      await ontologyStoreService.syncAgentCompetencies(
+        agentId: ca.id,
+        agentName: ca.name,
+        explicitCompetencies: ca.competencies,
+        systemPrompt: ca.systemPrompt,
+        cronMessage: ca.cronMessage,
+        totalInstalledSkills: allSlugs.length,
+        languageCode: config.user.language,
       );
       final liveAgent = _customAgents[ca.id];
       if (liveAgent != null) {

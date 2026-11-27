@@ -306,64 +306,133 @@ class _KanbanTaskDetailDialogState
                     const SizedBox(height: AppConstants.settingsSectionSpacing),
 
                     // Agent assignment
-                    if (agents.isNotEmpty) ...[
-                      const AppFormLabel('kanban.assigned_agent'),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<String?>(
-                        initialValue: agents.any((a) => a.id == currentTask.assignedAgentId)
-                            ? currentTask.assignedAgentId
-                            : null,
-                        decoration: AppInputDecoration.compact(),
-                        dropdownColor: AppColors.surface,
-                        isExpanded: true,
-                        style: const TextStyle(
-                            color: AppColors.textMain,
-                            fontSize: AppConstants.fontSizeBody),
-                        items: [
-                          DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text(
-                              'kanban.unassigned'.tr(),
-                              style: const TextStyle(color: AppColors.textDim),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
+                    const AppFormLabel('kanban.assigned_agent'),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String?>(
+                            initialValue: (() {
+                              final aid = currentTask.assignedAgentId;
+                              if (aid == KanbanTask.autoAgentId ||
+                                  aid == 'default-agent' ||
+                                  agents.any((a) => a.id == aid)) {
+                                return aid;
+                              }
+                              return null;
+                            })(),
+                            decoration: AppInputDecoration.compact(),
+                            dropdownColor: AppColors.surface,
+                            isExpanded: true,
+                            style: const TextStyle(
+                                color: AppColors.textMain,
+                                fontSize: AppConstants.fontSizeBody),
+                            items: [
+                              DropdownMenuItem<String?>(
+                                value: KanbanTask.autoAgentId,
+                                child: Text(
+                                  '🧭 ${'kanban.auto_ontology'.tr()}',
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text(
+                                  'kanban.unassigned'.tr(),
+                                  style:
+                                      const TextStyle(color: AppColors.textDim),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              DropdownMenuItem<String?>(
+                                value: 'default-agent',
+                                child: Text(
+                                  '👻 ${config.identity.name} (${'kanban.default_agent'.tr()})',
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              ...agents.map((a) => DropdownMenuItem<String?>(
+                                    value: a.id,
+                                    child: Row(
+                                      children: [
+                                        const Text('🤖',
+                                            style: TextStyle(fontSize: 14)),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            a.name,
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )),
+                            ],
+                            onChanged: (agentId) {
+                              String? agentName;
+                              if (agentId == KanbanTask.autoAgentId) {
+                                agentName = 'kanban.auto_ontology'.tr();
+                              } else if (agentId == 'default-agent') {
+                                agentName = config.identity.name;
+                              } else if (agentId != null) {
+                                agentName = agents
+                                    .where((a) => a.id == agentId)
+                                    .firstOrNull
+                                    ?.name;
+                              }
+                              ref
+                                  .read(kanbanTasksProvider.notifier)
+                                  .assignTask(
+                                    currentTask.id,
+                                    agentId,
+                                    agentName,
+                                  );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Tooltip(
+                          message: 'kanban.reroute_ontology'.tr(),
+                          child: InkWell(
+                            onTap: () => ref
+                                .read(kanbanTasksProvider.notifier)
+                                .routeTask(currentTask.id),
+                            child: Container(
+                              height: 38,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                border: Border.all(
+                                  color: AppColors.primary
+                                      .withValues(alpha: 0.5),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.hub_outlined,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ),
-                          ...agents.map((a) => DropdownMenuItem<String?>(
-                                value: a.id,
-                                child: Row(
-                                  children: [
-                                    const Text('🤖',
-                                        style: TextStyle(fontSize: 14)),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        a.name,
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )),
-                        ],
-                        onChanged: (agentId) {
-                          final agentName = agentId != null
-                              ? agents
-                                  .where((a) => a.id == agentId)
-                                  .firstOrNull
-                                  ?.name
-                              : null;
-                          ref.read(kanbanTasksProvider.notifier).assignTask(
-                                currentTask.id,
-                                agentId,
-                                agentName,
-                              );
-                        },
-                      ),
-                      const SizedBox(
-                          height: AppConstants.settingsSectionSpacing),
+                        ),
+                      ],
+                    ),
+                    if (currentTask.routingInfo != null) ...[
+                      const SizedBox(height: 10),
+                      _buildRoutingInfoBox(currentTask.routingInfo!),
                     ],
+                    const SizedBox(
+                        height: AppConstants.settingsSectionSpacing),
 
                     // Subtasks
                     AppSectionHeader('kanban.subtasks'),
@@ -733,6 +802,77 @@ class _KanbanTaskDetailDialogState
     );
   }
 
+  Widget _buildRoutingInfoBox(Map<String, dynamic> routing) {
+    final reason = (routing['reason'] as String?) ?? '';
+    final score = (routing['score'] as num?)?.toDouble();
+    final matchedComps =
+        (routing['matchedCompetencies'] as List<dynamic>?)?.cast<String>() ??
+            const <String>[];
+    final matchedSkills =
+        (routing['matchedSkills'] as List<dynamic>?)?.cast<String>() ??
+            const <String>[];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.hub_outlined, size: 13, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Text(
+                'kanban.routing_decision'.tr().toUpperCase(),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const Spacer(),
+              if (score != null)
+                Text(
+                  '${'kanban.routing_score'.tr()}: ${score.toStringAsFixed(1)}',
+                  style: const TextStyle(
+                    color: AppColors.textDim,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+            ],
+          ),
+          if (reason.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              reason,
+              style: const TextStyle(
+                color: AppColors.textMain,
+                fontSize: AppConstants.fontSizeSmall,
+              ),
+            ),
+          ],
+          if (matchedComps.isNotEmpty || matchedSkills.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                ...matchedComps.map((c) => _RoutingTag(label: c)),
+                ...matchedSkills.map((s) => _RoutingTag(label: s, isSkill: true)),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   String _formatTime(DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
@@ -740,5 +880,32 @@ class _KanbanTaskDetailDialogState
     if (diff.inHours < 1) return '${diff.inMinutes}m';
     if (diff.inDays < 1) return '${diff.inHours}h';
     return '${diff.inDays}d';
+  }
+}
+
+class _RoutingTag extends StatelessWidget {
+  const _RoutingTag({required this.label, this.isSkill = false});
+  final String label;
+  final bool isSkill;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: isSkill ? 0.06 : 0.14),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: isSkill ? 0.25 : 0.45),
+        ),
+      ),
+      child: Text(
+        isSkill ? '$label-Skill' : label,
+        style: const TextStyle(
+          color: AppColors.primary,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
   }
 }

@@ -166,7 +166,9 @@ class GhostConfig {
         : '';
 
     final agentAwareness = customAgents.isNotEmpty
-        ? 'The following custom agents are additionally available in this system: ${customAgents.map((a) => a.name).join(', ')}.'
+        ? 'The following custom agents are additionally available in this system: '
+            '${customAgents.map((a) => a.competencies.isNotEmpty ? '${a.name} [${a.competencies.join(', ')}]' : a.name).join(', ')}. '
+            'For complex sub-tasks requiring a specialist, you can delegate via `ghost_delegate_task`.'
         : '';
 
     final enabledChannels = <String>[];
@@ -555,6 +557,7 @@ class CustomAgentConfig {
     this.provider,
     this.skills = const [],
     this.disabledSkills = const [],
+    this.competencies = const [],
     this.enabled = true,
     this.avatar,
     this.shouldSendChatHistory = true,
@@ -578,6 +581,11 @@ class CustomAgentConfig {
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      competencies: (json['competencies'] as List<dynamic>?)
+              ?.map((e) => e.toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          const [],
       enabled: json['enabled'] as bool? ?? true,
       avatar: json['avatar'] as String?,
       shouldSendChatHistory: json['shouldSendChatHistory'] as bool? ?? true,
@@ -594,6 +602,7 @@ class CustomAgentConfig {
   final String? provider;
   final List<String> skills;
   final List<String> disabledSkills;
+  final List<String> competencies;
   final bool enabled;
   final String? avatar;
   final bool shouldSendChatHistory;
@@ -615,6 +624,7 @@ class CustomAgentConfig {
         if (provider != null) 'provider': provider,
         'skills': skills,
         'disabledSkills': disabledSkills,
+        'competencies': competencies,
         'enabled': enabled,
         if (avatar != null) 'avatar': avatar,
         'shouldSendChatHistory': shouldSendChatHistory,
@@ -631,6 +641,7 @@ class CustomAgentConfig {
     String? provider,
     List<String>? skills,
     List<String>? disabledSkills,
+    List<String>? competencies,
     bool? enabled,
     String? avatar,
     bool? shouldSendChatHistory,
@@ -646,6 +657,7 @@ class CustomAgentConfig {
       provider: provider ?? this.provider,
       skills: skills ?? this.skills,
       disabledSkills: disabledSkills ?? this.disabledSkills,
+      competencies: competencies ?? this.competencies,
       enabled: enabled ?? this.enabled,
       avatar: avatar ?? this.avatar,
       shouldSendChatHistory:
@@ -664,6 +676,7 @@ class AgentConfig {
     this.thinkingMode = 'auto',
     this.skills = const [],
     this.disabledSkills = const [],
+    this.competencies = const [],
     this.designSystem = '',
   });
 
@@ -682,6 +695,11 @@ class AgentConfig {
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      competencies: (json['competencies'] as List<dynamic>?)
+              ?.map((e) => e.toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          const [],
       designSystem: json['designSystem'] as String? ?? '',
     );
   }
@@ -693,6 +711,7 @@ class AgentConfig {
   final String thinkingMode;
   final List<String> skills;
   final List<String> disabledSkills;
+  final List<String> competencies;
   final String designSystem;
 
   /// Resolves the allowed skill slugs using the opt-out model (`allInstalledSlugs - disabledSkills`).
@@ -709,6 +728,7 @@ class AgentConfig {
         'thinkingMode': thinkingMode,
         'skills': skills,
         'disabledSkills': disabledSkills,
+        'competencies': competencies,
         'designSystem': designSystem,
       };
 
@@ -720,6 +740,7 @@ class AgentConfig {
     String? thinkingMode,
     List<String>? skills,
     List<String>? disabledSkills,
+    List<String>? competencies,
     String? designSystem,
   }) {
     return AgentConfig(
@@ -730,6 +751,7 @@ class AgentConfig {
       thinkingMode: thinkingMode ?? this.thinkingMode,
       skills: skills ?? this.skills,
       disabledSkills: disabledSkills ?? this.disabledSkills,
+      competencies: competencies ?? this.competencies,
       designSystem: designSystem ?? this.designSystem,
     );
   }

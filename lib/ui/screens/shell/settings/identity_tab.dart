@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../core/constants.dart';
+import '../../../../engine/agent/ontology/agent_domain_taxonomy.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../../providers/shell_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_avatar_picker.dart';
 import '../../../widgets/business_card.dart';
 import '../../../widgets/app_snackbar.dart';
+import '../../../widgets/competency_tags_editor.dart';
 
 class IdentityTab extends ConsumerStatefulWidget {
   const IdentityTab({super.key, this.onBack, this.onNext, this.topPadding});
@@ -27,6 +29,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
   String _selectedDesignSystem = '';
   List<String> _availableModels = [];
   final List<String> _mainAgentDisabledSkills = [];
+  final List<String> _competencies = [];
   int _avatarNonce = 0;
   bool _isEditing = false;
 
@@ -71,6 +74,8 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
     _selectedModel = agent.model;
     _mainAgentDisabledSkills.clear();
     _mainAgentDisabledSkills.addAll(agent.disabledSkills);
+    _competencies.clear();
+    _competencies.addAll(agent.competencies);
 
     if (_selectedProvider != null) {
       _updateModels(_selectedProvider!);
@@ -117,6 +122,7 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
       final agentData = <String, dynamic>{
         'skills': enabledSlugs,
         'disabledSkills': _mainAgentDisabledSkills,
+        'competencies': _competencies,
         'designSystem': _selectedDesignSystem.trim(),
       };
       if (_selectedProvider != null) agentData['provider'] = _selectedProvider;
@@ -378,6 +384,24 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
                 },
               ),
             ),
+            BusinessCardField(
+              label: 'settings.identity.competencies_label',
+              hint: 'settings.agents.competencies_hint',
+              controller: TextEditingController(),
+              value: _competencies.isEmpty
+                  ? 'settings.common.none'.tr()
+                  : _competencies.join(', '),
+              customEditWidget: CompetencyTagsEditor(
+                selectedTags: _competencies,
+                derivedTags: _computeDerivedCompetencies(skills),
+                label: 'settings.identity.competencies_label',
+                onChanged: (next) => setState(() {
+                  _competencies
+                    ..clear()
+                    ..addAll(next);
+                }),
+              ),
+            ),
           ],
           maxViewFields: 3,
           isEditing: _isEditing,
@@ -390,6 +414,34 @@ class _IdentityTabState extends ConsumerState<IdentityTab> with SettingsSaveMixi
   );
 }
 
+
+  List<String> _computeDerivedCompetencies(List<dynamic> skills) {
+    final lang = context.locale.languageCode;
+    final derived = <String>[];
+    final seen = <String>{};
+
+    final inferred = AgentDomainTaxonomy.inferCompetenciesFromProfile(
+      name: _controllers['name']?.text ?? 'Ghost',
+      notes: '${_controllers['vibe']?.text ?? ''} ${_controllers['notes']?.text ?? ''}',
+      languageCode: lang,
+    );
+    for (final item in inferred) {
+      if (seen.add(item.domainKey)) {
+        derived.add(item.label);
+      }
+    }
+
+    for (final s in skills) {
+      final slug = s['slug'] as String? ?? '';
+      if (_mainAgentDisabledSkills.contains(slug)) continue;
+      final cat = s['category'] as String? ?? 'general';
+      final key = AgentDomainTaxonomy.canonicalDomainKey(cat);
+      if (key != 'general' && seen.add(key)) {
+        derived.add(AgentDomainTaxonomy.displayLabel(key, languageCode: lang));
+      }
+    }
+    return derived;
+  }
 
   Future<void> _onPickAvatar() async {
     try {

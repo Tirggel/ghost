@@ -12,8 +12,8 @@ import '../agent/ontology/ontology_store_service.dart';
 import '../models/message.dart';
 import '../sessions/manager.dart';
 import '../sessions/session.dart';
-import '../config/config.dart';
 import '../tasks/task.dart';
+import '../tasks/task_orchestrator.dart';
 
 
 final _log = Logger('Ghost.AgentRouter');
@@ -24,11 +24,13 @@ class AgentRouter {
     required this.agentManager,
     required this.gateway,
     required this.sessionManager,
+    this.orchestrator,
   });
 
   final AgentManager agentManager;
   final GatewayServer gateway;
   final SessionManager sessionManager;
+  final TaskOrchestrator? orchestrator;
 
   /// Register all agent-related RPC methods to the gateway's registry.
   void register() {
@@ -530,61 +532,109 @@ class AgentRouter {
       String sessionId, String content, String? agentId,
       {List<MessageAttachment> attachments = const [],
       String? workspaceDir}) async {
-    // --- /goal and /plan Kanban tracking ---
-    final isGoal = content.trim().startsWith('/goal');
-    final isPlan = content.trim().startsWith('/plan');
+    // --- /goal and /plan Kanban tracking + ontology routing ---
+    final trimmed = content.trim();
+    final isGoal = trimmed.startsWith('/goal');
+    final isPlan = trimmed.startsWith('/plan');
     final taskManager = agentManager.taskManager;
     KanbanTask? kanbanTask;
+    AgentRoutingDecision? routingDecision;
 
-    if (isGoal && taskManager != null) {
-      final goalText = content.trim().substring(5).trim();
-      final shortTitle = goalText.length > 60
-          ? '🎯 ${goalText.substring(0, 60)}...'
-          : '🎯 $goalText';
+    final session = sessionManager.getSession(sessionId);
+    final explicitAgentId = (agentId != null && agentId.isNotEmpty && agentId != KanbanTask.autoAgentId)
+        ? agentId
+        : (session != null &&
+                session.agentId.isNotEmpty &&
+                session.agentId != 'default' &&
+                session.agentId != 'default-agent' &&
+                session.agentId != KanbanTask.autoAgentId
+            ? session.agentId
+            : null);
+
+    String effectiveAgentId = explicitAgentId ?? 'default-agent';
+    String resolveDisplayName(String id) {
+      if (id == 'default-agent') {
+        final name = agentManager.config.identity.name.trim();
+        return name.isNotEmpty ? name : 'Ghost';
+      }
+      return agentManager.config.customAgents
+              .where((a) => a.id == id)
+              .firstOrNull
+              ?.name ??
+          id;
+    }
+
+    if ((isGoal || isPlan) && taskManager != null) {
+      final rawCommandText = trimmed.substring(5).trim();
+      final prefix = isGoal ? '🎯' : '📋';
+      final shortTitle = rawCommandText.length > 60
+          ? '$prefix ${rawCommandText.substring(0, 60)}...'
+          : '$prefix $rawCommandText';
+
+      final initialAgentId =
+          explicitAgentId ?? (orchestrator != null ? KanbanTask.autoAgentId : 'default-agent');
+      final initialAgentName = explicitAgentId != null
+          ? resolveDisplayName(explicitAgentId)
+          : (orchestrator != null ? 'Auto (Ontologie)' : resolveDisplayName('default-agent'));
+
       kanbanTask = await taskManager.createTask(
         title: shortTitle,
-        description: content.trim(),
+        description: trimmed,
         status: TaskStatus.inProgress,
-        assignedAgentId: agentId ?? 'default-agent',
-        assignedAgentName: agentId != null
-            ? agentManager.config.customAgents
-                    .where((a) => a.id == agentId)
-                    .firstOrNull
-                    ?.name ??
-                agentId
-            : agentManager.config.identity.name,
+        assignedAgentId: initialAgentId,
+        assignedAgentName: initialAgentName,
+        sessionId: sessionId,
       );
-      final withSession = kanbanTask.copyWith(sessionId: sessionId);
-      await taskManager.updateTask(withSession);
-      kanbanTask = withSession;
-      _log.info('/goal task created: ${kanbanTask.id}');
-    } else if (isPlan && taskManager != null) {
-      final planText = content.trim().substring(5).trim();
-      final shortTitle = planText.length > 60
-          ? '📋 ${planText.substring(0, 60)}...'
-          : '📋 $planText';
-      kanbanTask = await taskManager.createTask(
-        title: shortTitle,
-        description: content.trim(),
-        status: TaskStatus.inProgress,
-        assignedAgentId: agentId ?? 'default-agent',
-        assignedAgentName: agentId != null
-            ? agentManager.config.customAgents
-                    .where((a) => a.id == agentId)
-                    .firstOrNull
-                    ?.name ??
-                agentId
-            : agentManager.config.identity.name,
+
+      if (explicitAgentId == null && orchestrator != null) {
+        routingDecision = await orchestrator!.routeTask(kanbanTask.id, force: true);
+        kanbanTask = taskManager.getTask(kanbanTask.id) ?? kanbanTask;
+        if (routingDecision != null) {
+          effectiveAgentId = routingDecision.selectedAgentId;
+        }
+      }
+
+      gateway.broadcast('kanban.changed');
+      _log.info('/${isGoal ? "goal" : "plan"} task created: ${kanbanTask.id} -> $effectiveAgentId');
+    } else if ((isGoal || isPlan) && explicitAgentId == null && orchestrator != null) {
+      final synthetic = KanbanTask(
+        title: trimmed.substring(5).trim(),
+        description: trimmed,
       );
-      final withSession = kanbanTask.copyWith(sessionId: sessionId);
-      await taskManager.updateTask(withSession);
-      kanbanTask = withSession;
-      _log.info('/plan task created: ${kanbanTask.id}');
+      routingDecision = await orchestrator!.evaluateAgentRouting(synthetic);
+      effectiveAgentId = routingDecision.selectedAgentId;
     }
 
     try {
-      final session = sessionManager.getSession(sessionId);
-      final agent = agentManager.getAgent(agentId ?? session?.agentId);
+      final agent = agentManager.getAgent(effectiveAgentId);
+      final effectiveAgentName = agent.id == 'default-agent'
+          ? resolveDisplayName('default-agent')
+          : '${resolveDisplayName(agent.id)} Agent';
+
+      if (session != null) {
+        session.agentId = agent.id;
+        session.agentName = effectiveAgentName;
+      }
+
+      if (routingDecision != null && (isGoal || isPlan)) {
+        await sessionManager.addMessage(
+          sessionId: sessionId,
+          role: 'system',
+          content: 'session_agent_routed',
+          metadata: {
+            'agentId': agent.id,
+            'agentName': effectiveAgentName,
+            'routingReason': routingDecision.reason,
+          },
+        );
+        gateway.broadcast('agent.session_updated', {
+          'sessionId': sessionId,
+          'agentId': agent.id,
+          'agentName': effectiveAgentName,
+          'routingReason': routingDecision.reason,
+          if (session?.title != null) 'title': session!.title,
+        });
+      }
 
       if (workspaceDir != null &&
           workspaceDir.trim().isNotEmpty &&
@@ -592,10 +642,6 @@ class AgentRouter {
         agent.workspaceDir = workspaceDir.trim();
         _log.info('Dynamic workspace applied for agent ${agent.id}: ${agent.workspaceDir}');
       }
-
-      session?.agentName = agent.id == 'default-agent'
-          ? agentManager.config.identity.name
-          : '${agentManager.config.customAgents.firstWhere((a) => a.id == agent.id, orElse: () => const CustomAgentConfig(id: '', name: 'Unknown')).name} Agent';
 
       final expectedRunId = agent.currentRunId(sessionId) + 1;
       await agent.processMessage(
@@ -654,10 +700,11 @@ class AgentRouter {
         }
         await taskManager.addComment(
           kanbanTask.id,
-          authorId: agentId ?? 'default-agent',
-          authorName: agentManager.config.identity.name,
+          authorId: agent.id,
+          authorName: resolveDisplayName(agent.id),
           content: 'Ziel erreicht ✅\n\nZusammenfassung:\n$summary',
         );
+        gateway.broadcast('kanban.changed');
         _log.info('/goal task ${kanbanTask.id} marked as done.');
       }
 
@@ -672,10 +719,11 @@ class AgentRouter {
         }
         await taskManager.addComment(
           kanbanTask.id,
-          authorId: agentId ?? 'default-agent',
-          authorName: agentManager.config.identity.name,
+          authorId: agent.id,
+          authorName: resolveDisplayName(agent.id),
           content: 'Plan ausgearbeitet 📋 (Bereit zum Review)\n\nZusammenfassung:\n$summary',
         );
+        gateway.broadcast('kanban.changed');
         _log.info('/plan task ${kanbanTask.id} marked as review.');
       }
     } catch (e) {
@@ -694,6 +742,7 @@ class AgentRouter {
           authorName: 'Ghost System',
           content: 'Fehler bei der Ausführung: $e',
         );
+        gateway.broadcast('kanban.changed');
         _log.info('/${isGoal ? "goal" : "plan"} task ${kanbanTask.id} moved to review due to error.');
       }
     }

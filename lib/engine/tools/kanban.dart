@@ -1,6 +1,8 @@
 // Ghost — Kanban Board Tools for Agents.
 
 
+import 'dart:async';
+
 import '../tasks/task.dart';
 import '../tasks/task_manager.dart';
 import '../tasks/task_orchestrator.dart';
@@ -27,6 +29,216 @@ class KanbanTools {
     if (orchestrator != null) {
       registry.register(KanbanPipelineTool(orchestrator));
       registry.register(KanbanSuggestTool(orchestrator));
+      registry.register(GhostDelegateTaskTool(orchestrator));
+    }
+  }
+}
+
+/// Tool allowing the main agent (or orchestrating agent) to delegate a complex
+/// sub-task to the best-suited specialist determined by the Ontology Knowledge Graph.
+class GhostDelegateTaskTool extends Tool {
+  GhostDelegateTaskTool(this.orchestrator);
+  final TaskOrchestrator orchestrator;
+
+  static const int maxDelegationDepth = 2;
+
+  @override
+  String get name => 'ghost_delegate_task';
+
+  @override
+  String get label => 'Delegate Task (Ontology)';
+
+  @override
+  String get description =>
+      'Delegate a complex sub-task to the best-suited specialist agent using the '
+      'Ontology Knowledge Graph (HAT_KOMPETENZ, DARF_NUTZEN, GEHOERT_ZU_DOMAIN, and '
+      'current agent workload). Set dry_run=true to preview the routing recommendation '
+      'without creating or starting a Kanban task.';
+
+  @override
+  Map<String, dynamic> get inputSchema => {
+        'type': 'object',
+        'properties': {
+          'title': {
+            'type': 'string',
+            'description': 'Short, clear title of the sub-task.',
+          },
+          'description': {
+            'type': 'string',
+            'description':
+                'Detailed instructions and required context for the specialist agent.',
+          },
+          'required_competencies': {
+            'type': 'array',
+            'items': {'type': 'string'},
+            'description':
+                'Optional domain/competency hints (e.g. ["Recherche", "Finanzen", "Coding"]).',
+          },
+          'priority': {
+            'type': 'string',
+            'enum': ['low', 'normal', 'high', 'urgent'],
+            'description': 'Task priority (default: normal).',
+          },
+          'parent_task_id': {
+            'type': 'string',
+            'description':
+                'Optional parent Kanban task ID for traceability and delegation depth guard.',
+          },
+          'execute_immediately': {
+            'type': 'boolean',
+            'description':
+                'If true (default), starts autonomous execution by the routed specialist right away.',
+            'default': true,
+          },
+          'dry_run': {
+            'type': 'boolean',
+            'description':
+                'If true, only evaluates and returns the ontology routing recommendation without creating a task.',
+            'default': false,
+          },
+        },
+        'required': ['title', 'description'],
+      };
+
+  @override
+  String getLogSummary(Map<String, dynamic> input) =>
+      'Ontology routing for "${input['title']}"';
+
+  @override
+  Future<ToolResult> execute(
+      Map<String, dynamic> input, ToolContext context) async {
+    final title = (input['title'] as String? ?? '').trim();
+    final description = (input['description'] as String? ?? '').trim();
+    if (title.isEmpty || description.isEmpty) {
+      return const ToolResult.error(
+        'Parameters "title" and "description" are required and must be non-empty.',
+      );
+    }
+
+    final competencies = (input['required_competencies'] as List<dynamic>?)
+            ?.map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList() ??
+        const <String>[];
+
+    final priorityStr = input['priority'] as String? ?? 'normal';
+    final priority = TaskPriority.values.firstWhere(
+      (p) => p.name == priorityStr,
+      orElse: () => TaskPriority.normal,
+    );
+    final parentTaskId = (input['parent_task_id'] as String?)?.trim();
+    final executeImmediately = input['execute_immediately'] as bool? ?? true;
+    final dryRun = input['dry_run'] as bool? ?? false;
+
+    int parentDepth = 0;
+    if (parentTaskId != null && parentTaskId.isNotEmpty) {
+      final parentTask = orchestrator.taskManager.getTask(parentTaskId);
+      if (parentTask != null) {
+        parentDepth = (parentTask.metadata['delegationDepth'] as num?)?.toInt() ?? 0;
+      }
+    }
+    if (!dryRun && parentDepth >= maxDelegationDepth) {
+      return ToolResult.error(
+        'Maximum delegation depth ($maxDelegationDepth) reached for parent task $parentTaskId. '
+        'Complete this sub-task directly instead of delegating further.',
+      );
+    }
+
+    try {
+      final previewTask = KanbanTask(
+        title: title,
+        description: description,
+        priority: priority,
+        labels: competencies,
+      );
+
+      final excludeIds = context.agentId == 'default-agent'
+          ? const <String>[]
+          : <String>[context.agentId];
+
+      final previewDecision = await orchestrator.evaluateAgentRouting(
+        previewTask,
+        excludeAgentIds: excludeIds,
+      );
+
+      if (dryRun) {
+        final topList = previewDecision.candidates
+            .take(3)
+            .map(
+              (c) =>
+                  '- ${c.agentName} (${c.agentId}): ${c.totalScore.toStringAsFixed(1)} pts '
+                  '[comp=${c.competencyScore.toStringAsFixed(1)}, '
+                  'skill=${c.skillScore.toStringAsFixed(1)}, '
+                  'load=-${c.loadPenalty.toStringAsFixed(1)}]',
+            )
+            .join('\n');
+        return ToolResult(
+          output: 'Ontology Routing Preview:\n'
+              'Recommended Agent: ${previewDecision.selectedAgentName} (${previewDecision.selectedAgentId})\n'
+              'Score: ${previewDecision.score.toStringAsFixed(1)} | Reason: ${previewDecision.reason}\n'
+              'Top Candidates:\n$topList',
+          metadata: previewDecision.toMetadataJson(),
+        );
+      }
+
+      final task = await orchestrator.taskManager.createTask(
+        title: title,
+        description: description,
+        priority: priority,
+        status: TaskStatus.backlog,
+        labels: competencies,
+        createdByAgentId: context.agentId,
+        metadata: {
+          'delegationDepth': parentDepth + 1,
+          'delegatedByAgentId': context.agentId,
+          if (parentTaskId != null && parentTaskId.isNotEmpty)
+            'parentTaskId': parentTaskId,
+        },
+      );
+
+      final decision = await orchestrator.routeTask(
+        task.id,
+        force: true,
+        excludeAgentIds: excludeIds,
+      );
+      final routedTask = orchestrator.taskManager.getTask(task.id) ?? task;
+      final selectedId =
+          decision?.selectedAgentId ?? previewDecision.selectedAgentId;
+      final selectedName =
+          decision?.selectedAgentName ?? previewDecision.selectedAgentName;
+      final reason = decision?.reason ?? previewDecision.reason;
+      final score = decision?.score ?? previewDecision.score;
+
+      bool started = false;
+      if (executeImmediately && selectedId != context.agentId) {
+        await orchestrator.taskManager.moveTask(routedTask.id, TaskStatus.inProgress);
+        final activeTask = orchestrator.taskManager.getTask(routedTask.id) ?? routedTask;
+        unawaited(orchestrator.executeTask(activeTask));
+        started = true;
+      }
+
+      final statusNote = started
+          ? 'Execution started in background (In Progress).'
+          : (selectedId == context.agentId
+              ? 'Assigned to you (no external specialist scored significantly higher); execute directly or track on Kanban.'
+              : 'Queued in Backlog for $selectedName.');
+
+      return ToolResult(
+        output: 'Delegated task "${routedTask.title}" [${routedTask.id.substring(0, 8)}] '
+            'to $selectedName ($selectedId).\n'
+            'Routing: $reason (score: ${score.toStringAsFixed(1)})\n'
+            '$statusNote',
+        metadata: {
+          'taskId': routedTask.id,
+          'assignedAgentId': selectedId,
+          'assignedAgentName': selectedName,
+          'score': double.parse(score.toStringAsFixed(2)),
+          'reason': reason,
+          'started': started,
+        },
+      );
+    } catch (e) {
+      return ToolResult.error('Failed to delegate task: $e');
     }
   }
 }
@@ -40,7 +252,8 @@ class KanbanSuggestTool extends Tool {
   String get name => 'kanban_suggest';
 
   @override
-  String get description => 'Suggest the best agent for a task based on matching skills.';
+  String get description =>
+      'Suggest the best agent for a task based on ontology competencies, skills, and workload.';
 
   @override
   Map<String, dynamic> get inputSchema => {
@@ -63,13 +276,15 @@ class KanbanSuggestTool extends Tool {
     );
 
     try {
-      final agentId = await orchestrator.suggestAgent(task);
-      if (agentId == null) return const ToolResult(output: 'No suitable agent found.');
-
-      final agent = orchestrator.agentManager.getAgent(agentId);
+      final decision = await orchestrator.evaluateAgentRouting(task);
       return ToolResult(
-        output: 'Suggested agent: ${agent.name} ($agentId)',
-        metadata: {'agentId': agentId},
+        output: 'Suggested agent: ${decision.selectedAgentName} (${decision.selectedAgentId}) '
+            '— ${decision.reason} (score: ${decision.score.toStringAsFixed(1)})',
+        metadata: {
+          'agentId': decision.selectedAgentId,
+          'agentName': decision.selectedAgentName,
+          ...decision.toMetadataJson(),
+        },
       );
     } catch (e) {
       return ToolResult.error('Failed to suggest agent: $e');
@@ -237,9 +452,20 @@ class KanbanCreateTool extends Tool {
             'enum': ['low', 'normal', 'high', 'urgent'],
             'description': 'The priority of the task (default: normal).',
           },
+          'labels': {
+            'type': 'array',
+            'items': {'type': 'string'},
+            'description': 'Optional domain/competency labels for the task.',
+          },
           'assign_to_me': {
             'type': 'boolean',
             'description': 'If true, assigns the task to the calling agent immediately.',
+          },
+          'auto_route': {
+            'type': 'boolean',
+            'description':
+                'If true (default when assign_to_me is false), automatically routes the task via Ontology.',
+            'default': true,
           },
         },
         'required': ['title'],
@@ -251,19 +477,27 @@ class KanbanCreateTool extends Tool {
     final description = input['description'] as String? ?? '';
     final priorityStr = input['priority'] as String? ?? 'normal';
     final priority = TaskPriority.values.firstWhere((p) => p.name == priorityStr);
+    final labels = (input['labels'] as List<dynamic>?)
+            ?.map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList() ??
+        const <String>[];
+    final assignToMe = input['assign_to_me'] == true;
+    final autoRoute = !assignToMe && (input['auto_route'] as bool? ?? true);
 
     try {
       final task = await taskManager.createTask(
         title: title,
         description: description,
         priority: priority,
+        labels: labels,
+        assignedAgentId: assignToMe
+            ? context.agentId
+            : (autoRoute ? KanbanTask.autoAgentId : null),
+        assignedAgentName: assignToMe
+            ? 'Agent'
+            : (autoRoute ? 'Auto (Ontologie)' : null),
       );
-
-      if (input['assign_to_me'] == true) {
-        // We need agent name. For now we use the ID if we don't have a lookup.
-        // Actually TaskManager.assignTask handles it.
-        await taskManager.assignTask(task.id, context.agentId, 'Agent'); 
-      }
 
       return ToolResult(
         output: 'Task created successfully with ID: ${task.id}',

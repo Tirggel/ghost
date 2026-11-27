@@ -50,6 +50,8 @@ class TaskComment {
 
 /// A single task on the Kanban board.
 class KanbanTask {
+  static const String autoAgentId = 'auto';
+
   KanbanTask({
     String? id,
     required this.title,
@@ -135,6 +137,19 @@ class KanbanTask {
 
   /// Completed subtasks count.
   int get completedSubtasks => subtasks.where((s) => s.done).length;
+
+  /// Whether this task requests automatic ontology-based agent routing.
+  bool get isAutoRoutingRequested =>
+      assignedAgentId == null || assignedAgentId == autoAgentId;
+
+  /// Structured ontology routing decision metadata if present.
+  Map<String, dynamic>? get routingInfo {
+    final raw = metadata['routing'];
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+    return null;
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,

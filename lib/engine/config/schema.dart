@@ -143,6 +143,13 @@ void _validateAgent(AgentConfig agent, List<String> errors) {
       break;
     }
   }
+
+  for (final comp in agent.competencies) {
+    if (comp.trim().isEmpty) {
+      errors.add('agent.competencies must not contain empty entries');
+      break;
+    }
+  }
 }
 
 void _validateMemory(MemoryConfig memory, List<String> errors) {
@@ -250,6 +257,15 @@ void _validateCustomAgents(
       if (slug.trim().isEmpty) {
         errors.add(
           'customAgent ${agent.id}.disabledSkills must not contain empty skill slugs',
+        );
+        break;
+      }
+    }
+
+    for (final comp in agent.competencies) {
+      if (comp.trim().isEmpty) {
+        errors.add(
+          'customAgent ${agent.id}.competencies must not contain empty entries',
         );
         break;
       }

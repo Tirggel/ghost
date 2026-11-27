@@ -24,6 +24,7 @@ class InternalGatewayManager {
   AgentManager? _agentManager;
   GatewayServer? _server;
   TaskOrchestrator? _orchestrator;
+  StreamSubscription<TaskEvent>? _taskSubscription;
   EmailManager? _emailManager;
   EmailPoller? _emailPoller;
   bool _isRunning = false;
@@ -343,6 +344,7 @@ class InternalGatewayManager {
         agentManager: _agentManager!,
         gateway: _server!,
         sessionManager: sessionManager,
+        orchestrator: _orchestrator,
       ).register();
 
       final channelManager = ChannelManager(
@@ -362,7 +364,15 @@ class InternalGatewayManager {
         channelManager: channelManager,
       ).register();
 
-      KanbanRouter(gateway: _server!, taskManager: taskManager).register();
+      KanbanRouter(
+        gateway: _server!,
+        taskManager: taskManager,
+        orchestrator: _orchestrator,
+      ).register();
+      _taskSubscription?.cancel();
+      _taskSubscription = taskManager.onTaskChanged.listen((_) {
+        _server?.broadcast('kanban.changed');
+      });
       EmailRouter(
         gateway: _server!,
         emailManager: _emailManager!,
@@ -401,6 +411,11 @@ class InternalGatewayManager {
       await _emailManager?.close();
       _emailPoller = null;
       _emailManager = null;
+
+      await _taskSubscription?.cancel();
+      _taskSubscription = null;
+      _orchestrator?.dispose();
+      _orchestrator = null;
 
       await _server?.stop();
       await _agentManager?.shutdown();

@@ -5,12 +5,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
 import 'package:cron/cron.dart' as cron_pkg;
 import '../../../../core/constants.dart';
+import '../../../../engine/agent/ontology/agent_domain_taxonomy.dart';
 import '../../../../providers/gateway_provider.dart';
 import '../../../../providers/shell_provider.dart';
 import '../../../widgets/app_styles.dart';
 import '../../../widgets/app_avatar_picker.dart';
 import '../../../widgets/business_card.dart';
 import '../../../widgets/app_snackbar.dart';
+import '../../../widgets/competency_tags_editor.dart';
 
 class CustomAgentsTab extends ConsumerStatefulWidget {
   const CustomAgentsTab({super.key, this.onBack, this.onNext, this.topPadding});
@@ -76,6 +78,7 @@ class _CustomAgentsTabState extends ConsumerState<CustomAgentsTab> {
                   _newAgents.insert(0, {
                     'id': id,
                     'name': '',
+                    'systemPrompt': '',
                     'provider': null,
                     'model': null,
                     'avatar': '',
@@ -84,6 +87,7 @@ class _CustomAgentsTabState extends ConsumerState<CustomAgentsTab> {
                     'designSystem': '',
                     'skills': allSlugs,
                     'disabledSkills': <String>[],
+                    'competencies': <String>[],
                     'isNew': true,
                     'enabled': true,
                   });
@@ -197,6 +201,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
   String? _selectedProvider;
   String? _selectedModel;
   final List<String> _disabledSkills = [];
+  final List<String> _competencies = [];
   List<String> _availableModels = [];
 
   String _selectedDesignSystem = '';
@@ -251,6 +256,8 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
     final agent = widget.agent;
     if (agent is CustomAgentConfig) {
       _controllers['name'] = TextEditingController(text: agent.name);
+      _controllers['systemPrompt'] =
+          TextEditingController(text: agent.systemPrompt);
       _controllers['avatar'] = TextEditingController(text: agent.avatar ?? '');
       _controllers['cronSchedule'] =
           TextEditingController(text: agent.cronSchedule ?? '');
@@ -265,9 +272,14 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
       if (_disabledSkills.isEmpty) {
         _disabledSkills.addAll(agent.disabledSkills);
       }
+      if (_competencies.isEmpty) {
+        _competencies.addAll(agent.competencies);
+      }
     } else {
       final map = agent as Map<String, dynamic>;
       _controllers['name'] = TextEditingController(text: (map['name'] as String?) ?? '');
+      _controllers['systemPrompt'] =
+          TextEditingController(text: (map['systemPrompt'] as String?) ?? '');
       _controllers['avatar'] = TextEditingController(text: (map['avatar'] as String?) ?? '');
       _controllers['cronSchedule'] =
           TextEditingController(text: (map['cronSchedule'] as String?) ?? '');
@@ -282,6 +294,11 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
       if (_disabledSkills.isEmpty) {
         _disabledSkills.addAll(
           (map['disabledSkills'] as List<dynamic>?)?.cast<String>() ?? [],
+        );
+      }
+      if (_competencies.isEmpty) {
+        _competencies.addAll(
+          (map['competencies'] as List<dynamic>?)?.cast<String>() ?? [],
         );
       }
     }
@@ -338,6 +355,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
       final newAgentData = {
         'id': id,
         'name': _controllers['name']!.text.trim(),
+        'systemPrompt': _controllers['systemPrompt']!.text.trim(),
         'avatar': _controllers['avatar']!.text.trim(),
         'provider': _selectedProvider,
         'model': _selectedModel,
@@ -346,6 +364,7 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
         'designSystem': _selectedDesignSystem,
         'skills': enabledSlugs,
         'disabledSkills': _disabledSkills,
+        'competencies': _competencies,
         'enabled': _enabled,
         'shouldSendChatHistory': _sendChatHistory,
       };
@@ -475,6 +494,12 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
           controller: _controllers['name']!,
         ),
         BusinessCardField(
+          label: 'settings.agents.system_prompt_label',
+          hint: 'settings.agents.system_prompt_hint',
+          controller: _controllers['systemPrompt']!,
+          maxLines: 3,
+        ),
+        BusinessCardField(
           label: 'settings.agents.provider_label',
           hint: 'settings.identity.choose_provider',
           controller: TextEditingController(text: _selectedProvider ?? ''),
@@ -594,6 +619,24 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
               final emoji = skill['emoji'] != null ? '${skill['emoji']} ' : '';
               return '$emoji${skill['name']}';
             },
+          ),
+        ),
+        BusinessCardField(
+          label: 'settings.agents.competencies_label',
+          hint: 'settings.agents.competencies_hint',
+          controller: TextEditingController(),
+          value: _competencies.isEmpty
+              ? 'settings.common.none'.tr()
+              : _competencies.join(', '),
+          customEditWidget: CompetencyTagsEditor(
+            selectedTags: _competencies,
+            derivedTags: _computeDerivedCompetencies(skills),
+            label: 'settings.agents.competencies_label',
+            onChanged: (next) => setState(() {
+              _competencies
+                ..clear()
+                ..addAll(next);
+            }),
           ),
         ),
         BusinessCardField(
@@ -1079,6 +1122,35 @@ class _CustomAgentCardState extends ConsumerState<CustomAgentCard> with Settings
     );
   }
 
+
+  List<String> _computeDerivedCompetencies(List<dynamic> skills) {
+    final lang = context.locale.languageCode;
+    final derived = <String>[];
+    final seen = <String>{};
+
+    final inferred = AgentDomainTaxonomy.inferCompetenciesFromProfile(
+      name: _controllers['name']?.text ?? '',
+      systemPrompt: _controllers['systemPrompt']?.text ?? '',
+      cronMessage: _controllers['cronMessage']?.text ?? '',
+      languageCode: lang,
+    );
+    for (final item in inferred) {
+      if (seen.add(item.domainKey)) {
+        derived.add(item.label);
+      }
+    }
+
+    for (final s in skills) {
+      final slug = s['slug'] as String? ?? '';
+      if (_disabledSkills.contains(slug)) continue;
+      final cat = s['category'] as String? ?? 'general';
+      final key = AgentDomainTaxonomy.canonicalDomainKey(cat);
+      if (key != 'general' && seen.add(key)) {
+        derived.add(AgentDomainTaxonomy.displayLabel(key, languageCode: lang));
+      }
+    }
+    return derived;
+  }
 
   Future<void> _onPickAvatar() async {
     try {

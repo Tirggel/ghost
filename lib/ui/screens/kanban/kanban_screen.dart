@@ -81,6 +81,14 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
                         maxLines: 1,
                       ),
                     ),
+                    DropdownMenuItem<String?>(
+                      value: 'default-agent',
+                      child: Text(
+                        '👻 ${config.identity.name}',
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
                     ...agents.map((a) => DropdownMenuItem<String?>(
                           value: a.id,
                           child: Text(
@@ -219,103 +227,193 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
   }
 
   Future<void> _showCreateDialog(BuildContext context) async {
-    final titleCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    var priority = TaskPriority.normal;
-
-    await showDialog(
+    await showDialog<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => Dialog(
-          backgroundColor: AppColors.background,
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'kanban.create_task'.tr().toUpperCase(),
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontSize: AppConstants.fontSizeTitle,
-                      fontWeight: FontWeight.w900,
+      builder: (_) => const _CreateTaskDialog(),
+    );
+  }
+}
+
+class _CreateTaskDialog extends ConsumerStatefulWidget {
+  const _CreateTaskDialog();
+
+  @override
+  ConsumerState<_CreateTaskDialog> createState() => _CreateTaskDialogState();
+}
+
+class _CreateTaskDialogState extends ConsumerState<_CreateTaskDialog> {
+  final _titleCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  TaskPriority _priority = TaskPriority.normal;
+  String? _selectedAgentId;
+  bool _initialized = false;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final config = ref.watch(configProvider);
+    final customAgents = config.customAgents.where((a) => a.enabled).toList();
+    if (!_initialized) {
+      _selectedAgentId =
+          customAgents.isNotEmpty ? KanbanTask.autoAgentId : null;
+      _initialized = true;
+    }
+
+    return Dialog(
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440, maxHeight: 620),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'kanban.create_task'.tr().toUpperCase(),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: AppConstants.fontSizeTitle,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 20),
+              AppFormField.text(
+                controller: _titleCtrl,
+                label: 'kanban.title',
+                hint: 'kanban.title_hint',
+              ),
+              AppFormField.text(
+                controller: _descCtrl,
+                label: 'kanban.description',
+                hint: 'kanban.description_hint',
+                maxLines: 3,
+              ),
+              const AppFormLabel('kanban.priority'),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<TaskPriority>(
+                initialValue: _priority,
+                decoration: AppInputDecoration.compact(),
+                dropdownColor: AppColors.surface,
+                isExpanded: true,
+                style: const TextStyle(
+                    color: AppColors.textMain,
+                    fontSize: AppConstants.fontSizeBody),
+                items: TaskPriority.values
+                    .map((p) => DropdownMenuItem(
+                          value: p,
+                          child: Text(
+                            p.name.toUpperCase(),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _priority = v ?? _priority),
+              ),
+              const SizedBox(height: 16),
+              const AppFormLabel('kanban.assigned_agent'),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String?>(
+                initialValue: _selectedAgentId,
+                decoration: AppInputDecoration.compact(),
+                dropdownColor: AppColors.surface,
+                isExpanded: true,
+                style: const TextStyle(
+                    color: AppColors.textMain,
+                    fontSize: AppConstants.fontSizeBody),
+                items: [
+                  DropdownMenuItem<String?>(
+                    value: KanbanTask.autoAgentId,
+                    child: Text(
+                      '🧭 ${'kanban.auto_ontology'.tr()}',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  AppFormField.text(
-                    controller: titleCtrl,
-                    label: 'kanban.title',
-                    hint: 'kanban.title_hint',
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text(
+                      'kanban.unassigned'.tr(),
+                      style: const TextStyle(color: AppColors.textDim),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
-                  AppFormField.text(
-                    controller: descCtrl,
-                    label: 'kanban.description',
-                    hint: 'kanban.description_hint',
-                    maxLines: 3,
+                  DropdownMenuItem<String?>(
+                    value: 'default-agent',
+                    child: Text(
+                      '👻 ${config.identity.name} (${'kanban.default_agent'.tr()})',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
-                  const AppFormLabel('kanban.priority'),
-                  const SizedBox(height: 6),
-                  DropdownButtonFormField<TaskPriority>(
-                    initialValue: priority,
-                    decoration: AppInputDecoration.compact(),
-                    dropdownColor: AppColors.surface,
-                    isExpanded: true,
-                    style: const TextStyle(
-                        color: AppColors.textMain,
-                        fontSize: AppConstants.fontSizeBody),
-                    items: TaskPriority.values
-                        .map((p) => DropdownMenuItem(
-                              value: p,
-                              child: Text(
-                                p.name.toUpperCase(),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ))
-                        .toList(),
-                    onChanged: (v) =>
-                        setDialogState(() => priority = v ?? priority),
+                  ...customAgents.map((a) => DropdownMenuItem<String?>(
+                        value: a.id,
+                        child: Text(
+                          '🤖 ${a.name}',
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      )),
+                ],
+                onChanged: (v) => setState(() => _selectedAgentId = v),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  AppNavButton(
+                    label: 'common.cancel',
+                    onPressed: () => Navigator.pop(context),
                   ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      AppNavButton(
-                        label: 'common.cancel',
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
-                      const SizedBox(width: 12),
-                      AppNavButton(
-                        label: 'kanban.create',
-                        onPressed: () {
-                          if (titleCtrl.text.trim().isNotEmpty) {
-                            ref.read(kanbanTasksProvider.notifier).createTask(
-                                  title: titleCtrl.text.trim(),
-                                  description: descCtrl.text.trim(),
-                                  priority: priority,
-                                );
-                            Navigator.pop(ctx);
-                          }
-                        },
-                        isPrimary: true,
-                        icon: Icons.add,
-                      ),
-                    ],
+                  const SizedBox(width: 12),
+                  AppNavButton(
+                    label: 'kanban.create',
+                    onPressed: () {
+                      if (_titleCtrl.text.trim().isNotEmpty) {
+                        String? agentName;
+                        if (_selectedAgentId == KanbanTask.autoAgentId) {
+                          agentName = 'kanban.auto_ontology'.tr();
+                        } else if (_selectedAgentId == 'default-agent') {
+                          agentName = config.identity.name;
+                        } else if (_selectedAgentId != null) {
+                          agentName = customAgents
+                              .where((a) => a.id == _selectedAgentId)
+                              .firstOrNull
+                              ?.name;
+                        }
+                        ref.read(kanbanTasksProvider.notifier).createTask(
+                              title: _titleCtrl.text.trim(),
+                              description: _descCtrl.text.trim(),
+                              priority: _priority,
+                              assignedAgentId: _selectedAgentId,
+                              assignedAgentName: agentName,
+                            );
+                        Navigator.pop(context);
+                      }
+                    },
+                    isPrimary: true,
+                    icon: Icons.add,
                   ),
                 ],
               ),
-            ),
+            ],
           ),
         ),
       ),
     );
-
-    titleCtrl.dispose();
-    descCtrl.dispose();
   }
 }
 

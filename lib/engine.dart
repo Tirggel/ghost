@@ -35,6 +35,7 @@ export 'engine/models/provider.dart';
 export 'engine/agent/agent.dart';
 export 'engine/agent/manager.dart'; // Wait, double engine? No, agent/manager.dart.
 export 'engine/agent/memory_system.dart';
+export 'engine/agent/ontology/agent_domain_taxonomy.dart';
 export 'engine/agent/ontology/ontology_models.dart';
 export 'engine/agent/ontology/ontology_store_service.dart';
 export 'engine/agent/ontology/ontology_extractor.dart';

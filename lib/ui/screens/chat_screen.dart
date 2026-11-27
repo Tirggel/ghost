@@ -368,13 +368,62 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           ),
                           const SizedBox(width: 12),
                           Flexible(
-                            child: Text(
-                              currentSession?.title ??
-                                  '${'chat.session_label'.tr()} ${widget.sessionId.substring(0, 8)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  currentSession?.title ??
+                                      '${'chat.session_label'.tr()} ${widget.sessionId.substring(0, 8)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (currentSession?.agentName != null &&
+                                    currentSession!.agentName!.isNotEmpty) ...[
+                                  const SizedBox(height: 3),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.1),
+                                      border: Border.all(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.35),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          (currentSession.agentId != null &&
+                                                  currentSession.agentId !=
+                                                      'default' &&
+                                                  currentSession.agentId !=
+                                                      'default-agent')
+                                              ? Icons.hub_outlined
+                                              : Icons.smart_toy_outlined,
+                                          size: 11,
+                                          color: AppColors.primary,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${'chat.active_agent'.tr()}: ${currentSession.agentName!}',
+                                          style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                         ],

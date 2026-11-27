@@ -569,6 +569,12 @@ class ConfigRouter {
             .toList();
       }
 
+      final requestedCompetencies = (params['competencies'] as List<dynamic>?)
+          ?.map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .toSet()
+          .toList();
+
       final updated = current.copyWith(
         workspace: params['workspace'] as String?,
         model: params['model'] as String?,
@@ -577,6 +583,7 @@ class ConfigRouter {
         thinkingMode: params['thinkingMode'] as String?,
         skills: nextSkills,
         disabledSkills: nextDisabled,
+        competencies: requestedCompetencies,
         designSystem: params['designSystem'] as String?,
       );
 

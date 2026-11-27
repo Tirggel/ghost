@@ -68,6 +68,12 @@ class ManageAgentsTool extends Tool {
             'description':
                 'Optional list of skill slugs to disable for this agent (opt-out).',
           },
+          'competencies': {
+            'type': 'array',
+            'items': {'type': 'string'},
+            'description':
+                'Optional domain competencies (e.g. ["Coding", "Recherche", "Finanzen"]).',
+          },
           'enabled': {
             'type': 'boolean',
             'description': 'Whether the agent (and its schedule) is enabled.',
@@ -145,6 +151,11 @@ class ManageAgentsTool extends Tool {
     }
 
     final enabled = input['enabled'] as bool? ?? true;
+    final competencies = (input['competencies'] as List<dynamic>?)
+            ?.map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList() ??
+        const <String>[];
 
     final newAgent = CustomAgentConfig(
       id: id,
@@ -154,6 +165,7 @@ class ManageAgentsTool extends Tool {
       cronMessage: cronMessage,
       skills: skills,
       disabledSkills: disabledSkills,
+      competencies: competencies,
       enabled: enabled,
       model: agentManager.config.agent.model,
       provider: agentManager.config.agent.provider,

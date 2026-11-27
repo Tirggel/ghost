@@ -212,22 +212,24 @@ class SessionsNotifier extends Notifier<List<ChatSession>> {
       if (msg['method'] == 'agent.session_updated') {
         final sessionId = msg['params']?['sessionId'] as String?;
         final title = msg['params']?['title'] as String?;
+        final agentId = msg['params']?['agentId'] as String?;
+        final agentName = msg['params']?['agentName'] as String?;
         final edited = msg['params']?['edited'] == true;
         if (sessionId != null) {
           final exists = state.any((s) => s.id == sessionId);
           if (!exists || edited) {
             refresh();
-          } else if (title != null) {
+          } else if (title != null || agentId != null || agentName != null) {
             state = state.map((s) {
               if (s.id == sessionId) {
                 return ChatSession(
                   id: s.id,
-                  title: title,
+                  title: title ?? s.title,
                   model: s.model,
                   provider: s.provider,
                   messageCount: s.messageCount,
-                  agentName: s.agentName,
-                  agentId: s.agentId,
+                  agentName: agentName ?? s.agentName,
+                  agentId: agentId ?? s.agentId,
                   createdAt: s.createdAt,
                   lastActiveAt: s.lastActiveAt,
                   inputTokens: s.inputTokens,
