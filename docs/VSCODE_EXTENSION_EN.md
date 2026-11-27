@@ -9,11 +9,12 @@ Integrates Ghost directly into your developer environment — as a secondary sid
 ## 🌟 Key Features
 
 - **Secondary Sidebar (Auxiliary Bar)**: Appears as a native tab on the right side next to *Antigravity* and *Chat*.
-- **Real-Time Token Streaming**: Responses are streamed token by token without delay (`agent.stream`).
+- **Real-Time Token Streaming & Stop/Edit Controls**: Stream responses token by token (`agent.stream`), stop generation mid-turn (`agent.stop`), or edit previous user messages (`agent.editMessage`).
 - **Live Tool Activities**: Shows in real-time what Ghost is doing (e.g. searching workspace files, analyzing diagnostics).
+- **Provider & Model Switching + API Key Management**: Switch LLM providers/models directly per session (`agent.setSessionModel`) and manage vault API keys (`Ghost: API-Keys verwalten`).
+- **Session Management & Deletion**: Switch between unlimited sessions, create new chats, or delete individual / all sessions (`Ghost: Aktuelle Sitzung löschen`, `Ghost: Alle Sitzungen löschen`).
 - **Dynamic Workspace Detection**: Automatically identifies the open VS Code workspace folder (`workspaceDir`) and sets it for filesystem tools (`read_file`, `write_file`, `list_dir`) and terminal commands (`bash`).
 - **Codeblock Actions**: Every generated code block provides 1-click buttons for **"Insert into Editor"** and **"Copy"**.
-- **Session Management**: Manage unlimited chats, switch between sessions seamlessly, and view full history.
 - **Google Antigravity IDE Compatibility**: Fully optimized for Google Antigravity IDE (VS Code Fork).
 - **Guarded Autopilot**: Interactive diff inspection (`reviewMode`) before applying file patches or terminal executions with approval dialogs (`Accept` / `Reject`).
 - **Workspace & Kanban Synchronization**: Automatically syncs saved files and Antigravity plan steps with the Ghost backend.
@@ -24,12 +25,14 @@ Integrates Ghost directly into your developer environment — as a secondary sid
 ## 🛡️ Guarded Autopilot & Antigravity
 
 The extension supports the safety levels of the Google Antigravity platform:
-* **`reviewMode` (Default):** Modifications to workspace files (`apply_patch`, `edit_file`) and terminal commands are intercepted and displayed as an in-editor diff review. The user must explicitly approve or reject the change.
-* **`autoAccept`:** Autonomous mode where changes are applied directly.
+- **`reviewMode` (Default):** Modifications to workspace files (`apply_patch`, `edit_file`) and terminal commands are intercepted and displayed as an in-editor diff review. The user must explicitly approve or reject the change.
+- **`autoAccept`:** Autonomous mode where changes are applied directly.
 
-Commands:
-* `Ctrl+Shift+P` → **`Ghost: Toggle Autopilot Mode (reviewMode / autoAccept)`**
-* `Ctrl+Shift+P` → **`Ghost: Force Sync Workspace with Ghost State`**
+Useful Commands (`Ctrl+Shift+P`):
+- **`Ghost: Autopilot-Modus umschalten (Review vs. Auto-Accept)`** (`ghost.toggleAutopilotMode`)
+- **`Ghost: Workspace-RAG synchronisieren`** (`ghost.syncWorkspace`)
+- **`Ghost: Modell & Provider wechseln`** (`ghost.changeModel`)
+- **`Ghost: API-Keys verwalten`** (`ghost.manageApiKeys`)
 
 For complete architecture and CLI details, see **[Google Antigravity & ACP Guide](ANTIGRAVITY_ACP_EN.md)**.
 
@@ -41,10 +44,10 @@ Select code in any file and choose **`👻 Ghost AI`** in the context menu:
 
 | Action | Description |
 |---|---|
-| **Ghost: Explain Code** | Explains the selected code snippet clearly and thoroughly. |
-| **Ghost: Refactor Code** | Proposes clean improvements for readability, performance, and type safety. |
-| **Ghost: Generate Unit Tests** | Writes comprehensive unit tests covering edge cases and error handling. |
-| **Ghost: Fix Errors** | Reads active VS Code Diagnostics (linter/compiler errors) and prompts Ghost to fix them. |
+| **Ghost: Code erklären** | Explains the selected code snippet clearly and thoroughly. |
+| **Ghost: Code refaktorisieren** | Proposes clean improvements for readability, performance, and type safety. |
+| **Ghost: Unit-Tests generieren** | Writes comprehensive unit tests covering edge cases and error handling. |
+| **Ghost: Linter-/Compiler-Fehler beheben** | Reads active VS Code Diagnostics (linter/compiler errors) and prompts Ghost to fix them. |
 
 ---
 
@@ -53,8 +56,8 @@ Select code in any file and choose **`👻 Ghost AI`** in the context menu:
 - `/explain <code/topic>`: Explain code or architectural concepts.
 - `/refactor`: Refactor selected code.
 - `/tests`: Generate unit tests.
-- `/plan <target>`: Creates a structured architectural analysis and creates a Kanban task in Ghost (status: `review`).
-- `/goal <target>`: Autonomous multi-step execution to achieve a goal (status: `done` on completion).
+- `/plan <target>`: Creates a structured architectural analysis and an ontology-routed Kanban task in Ghost (status: `review`).
+- `/goal <target>`: Autonomous multi-step execution routed to the best specialist via the Ontology Graph (status: `done` on completion).
 
 ---
 
@@ -67,9 +70,9 @@ flutter run
 ```
 
 ### Install Extension (`.vsix`)
-From the VS Code project terminal:
+From the Ghost repository root:
 ```bash
-code --install-extension /home/peter/Developer/flutter-dev/ghost/vscode-extension/ghost-vscode-0.1.0.vsix
+code --install-extension vscode-extension/ghost-vscode-0.1.0.vsix
 ```
 
 Then reload the VS Code window (`Ctrl+Shift+P` → **"Developer: Reload Window"**).

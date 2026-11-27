@@ -192,6 +192,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab> with SettingsSa
       'sessions',
       'skills',
       'design',
+      'automations',
       'memory',
     };
 
@@ -294,9 +295,10 @@ class _BackupSectionDialogState extends State<_BackupSectionDialog> {
     ('config',   Icons.settings_rounded,           'settings.maintenance.backup_section_config',   'settings.maintenance.backup_section_config_desc'),
     ('vault',    Icons.lock_rounded,               'settings.maintenance.backup_section_vault',    'settings.maintenance.backup_section_vault_desc'),
     ('sessions', Icons.chat_bubble_outline_rounded,'settings.maintenance.backup_section_sessions', 'settings.maintenance.backup_section_sessions_desc'),
-    ('skills',   Icons.extension_rounded,          'settings.maintenance.backup_section_skills',   'settings.maintenance.backup_section_skills_desc'),
-    ('design',   Icons.palette_rounded,            'settings.maintenance.backup_section_design',   'settings.maintenance.backup_section_design_desc'),
-    ('memory',   Icons.memory_rounded,             'settings.maintenance.backup_section_memory',   'settings.maintenance.backup_section_memory_desc'),
+    ('skills',      Icons.extension_rounded,          'settings.maintenance.backup_section_skills',      'settings.maintenance.backup_section_skills_desc'),
+    ('design',      Icons.palette_rounded,            'settings.maintenance.backup_section_design',      'settings.maintenance.backup_section_design_desc'),
+    ('automations', Icons.bolt_rounded,               'settings.maintenance.backup_section_automations', 'settings.maintenance.backup_section_automations_desc'),
+    ('memory',      Icons.memory_rounded,             'settings.maintenance.backup_section_memory',      'settings.maintenance.backup_section_memory_desc'),
   ];
 
   @override

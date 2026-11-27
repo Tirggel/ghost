@@ -24,18 +24,21 @@ Ghost agiert sowohl als autonomer Coding-Agent in Antigravity-kompatiblen Editor
 └───────────────────────────▲────────────────────────────┘
                             │
 ┌───────────────────────────▼────────────────────────────┐
-│                     Ghost Engine                       │
-│  - TaskManager & Kanban Pipeline Bridge                │
-│  - ObjectBox Vector RAG & Secure Storage               │
+│            Ghost Pure-Dart Engine (`lib/engine.dart`)  │
+│  - TaskManager & Ontologie-Kanban-Pipeline-Bridge      │
+│  - ObjectBox Vektor-RAG, Ontologie & Tresor            │
 │  - Tools: ApplyPatch, EditFile, Exec, WebSearch, Vault │
 └────────────────────────────────────────────────────────┘
 ```
+
+> [!NOTE]
+> `bin/ghost_acp.dart` und `lib/engine/**` sind strikt von Flutter (`dart:ui`) entkoppelt und nutzen bedingte Imports über `lib/engine/infra/objectbox_flutter_libs_stub.dart`, sodass der Headless-ACP-Server direkt auf der reinen Dart-VM läuft.
 
 ---
 
 ## 2. Ghost ACP Server starten
 
-Ghost stellt ein dediziertes Binary bereit: [`bin/ghost_acp.dart`](file:///home/peter/Developer/flutter-dev/ghost/bin/ghost_acp.dart).
+Ghost stellt ein dediziertes Binary bereit: [`bin/ghost_acp.dart`](../bin/ghost_acp.dart).
 
 ### 2.1 Standard-Betrieb via STDIO (für `agy` & Zed)
 Im STDIO-Modus werden alle Diagnose-Logs nach `stderr` umgeleitet, sodass `stdout` strikt der JSON-RPC 2.0 Spezifikation folgt:
@@ -56,7 +59,7 @@ Für Multi-Client-Setups oder Remote-Container kann Ghost als WebSocket-Server g
 dart bin/ghost_acp.dart --ws --port 3001 --workspace /pfad/zum/projekt
 ```
 
-Alternativ stellt auch das integrierte Ghost-Gateway den WebSocket-Endpunkt unter `ws://127.0.0.1:3000/acp` zur Verfügung.
+Zusätzlich stellt das integrierte Ghost-Gateway den Endpunkt unter `ws://127.0.0.1:3000/acp` bereit und brückt `acp.*`-Methoden auch über `/`.
 
 ---
 
@@ -72,7 +75,7 @@ In Antigravity-Projekten kann Ghost als benutzerdefinierter Subagent oder ACP-Ag
       "ghost": {
         "command": "dart",
         "args": [
-          "/home/peter/Developer/flutter-dev/ghost/bin/ghost_acp.dart",
+          "/pfad/zu/ghost/bin/ghost_acp.dart",
           "--workspace",
           "${workspaceFolder}",
           "--guardrails",
@@ -103,11 +106,11 @@ Ghost implementiert analog zum Guarded Autopilot von Antigravity feingranulare S
 
 1. **`reviewMode` (Standard):**
    * Änderungen an Dateien (`apply_patch`, `edit_file`) oder die Ausführung von Shell-Befehlen lösen eine `session/review_request`-Benachrichtigung an den Client aus.
-   * Der Client/Editor visualisiert den Diff und blockiert die Ausführung, bis der Benutzer bestätigt (`decision: "accept"` oder `"reject"`).
+   * Der Client/Editor visualisiert den Diff und pausiert die Ausführung, bis der Benutzer bestätigt (`session/review_response` mit `decision: "accept"` oder `"reject"`).
 2. **`autoAccept`:**
-   * Autonome Ausführung für CI/CD-Pipelines oder vertrauenswürdige repetitive Refactorings.
+   * Autonome Ausführung für CI/CD-Pipelines oder vertrauenswürdige Refactorings.
 
-Der Modus kann dynamisch über das Protokoll umgeschaltet werden:
+Der Modus kann dynamisch über `session/set_autopilot_mode` umgeschaltet werden:
 ```json
 {
   "jsonrpc": "2.0",
@@ -124,20 +127,21 @@ Der Modus kann dynamisch über das Protokoll umgeschaltet werden:
 
 ## 5. Workspace-RAG Context Provider
 
-Ghost registriert sein ObjectBox-Vektor-RAG als Antigravity Context-Provider:
+Ghost registriert sein ObjectBox-Vektor-RAG über [`acp_context_provider.dart`](../lib/engine/acp/acp_context_provider.dart) als Antigravity Context-Provider:
 
 * **Provider-ID:** `ghost-rag`
-* **Funktion:** Semantische Suche nach Code-Ausschnitten, Dokumentationen und Kontexten direkt im Projektindex.
-* **Fallback:** Gibt bei noch unindizierten Projekten automatisch eine strukturierte Workspace-Struktur mit Verzeichnisbaum und Projektdateien zurück.
+* **Funktion:** Semantische Suche nach Code-Ausschnitten, Symboldefinitionen und Dokumentationen direkt im Projektindex.
+* **Fallback:** Gibt bei noch unindizierten Projekten automatisch eine strukturierte Workspace-Übersicht zurück.
 
 ---
 
 ## 6. Antigravity Tools & Kanban-Bridge
 
-Ghost exportiert spezifische Fähigkeiten in Antigravity:
+Ghost exportiert spezialisierte Tools über [`antigravity_tools.dart`](../lib/services/antigravity/antigravity_tools.dart):
 
-* [`ghost_apply_patch`](file:///home/peter/Developer/flutter-dev/ghost/lib/engine/tools/fs.dart): Atomares Anwenden von SEARCH/REPLACE-Blöcken oder Git-Diffs.
-* [`ghost_workspace_rag`](file:///home/peter/Developer/flutter-dev/ghost/lib/services/antigravity/antigravity_tools.dart): Abfragen des semantischen Projektindex.
-* [`ghost_kanban_pipeline`](file:///home/peter/Developer/flutter-dev/ghost/lib/services/antigravity/antigravity_tools.dart): Zerlegung eines Antigravity-Plans in verknüpfte Ghost-Kanban-Tasks (`todo` -> `inProgress` -> `done`).
-* [`ghost_vault_keys`](file:///home/peter/Developer/flutter-dev/ghost/lib/services/antigravity/antigravity_tools.dart): Sicherer Zugriff auf verschlüsselte Projekt-Schlüssel und Tokens.
-* [`ghost_web_search`](file:///home/peter/Developer/flutter-dev/ghost/lib/services/antigravity/antigravity_tools.dart): DuckDuckGo Web-Recherche mit Reranking.
+* `ghost_apply_patch`: Atomares Anwenden von SEARCH/REPLACE-Blöcken (`apply_patch`).
+* `ghost_workspace_rag`: Abfragen des semantischen ObjectBox-Projektindex.
+* `ghost_kanban_pipeline`: Zerlegung eines Antigravity-Plans in verknüpfte Ghost-Kanban-Tasks (`backlog` → `inProgress` → `done`).
+* `ghost_vault_keys`: Sichere Auflistung gespeicherter Schlüsselnamen im Tresor ohne Offenlegung von Secrets.
+* `ghost_exec`: Shell-Befehlsausführung mit automatischer Python-`.venv`- und `node_modules/.bin`-Umgebungsinjektion.
+* `ghost_web_search`: DuckDuckGo Web-Recherche in Echtzeit.

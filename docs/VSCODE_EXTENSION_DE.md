@@ -9,11 +9,12 @@ Sie integriert Ghost direkt in deine Entwicklungsumgebung – als Seitenleisten-
 ## 🌟 Hauptfunktionen
 
 - **Rechte Seitenleiste (Auxiliary Bar)**: Erscheint als nativer Reiter neben *Antigravity* und *Chat*.
-- **Echtzeit-Token-Streaming**: Antworten werden verzögerungsfrei Token für Token gestreamt (`agent.stream`).
+- **Echtzeit-Token-Streaming, Stop & Nachricht bearbeiten**: Antworten werden verzögerungsfrei Token für Token gestreamt (`agent.stream`), lassen sich jederzeit stoppen (`agent.stop`) oder nachträglich editieren (`agent.editMessage`).
 - **Live-Tool-Aktivitäten**: Visualisiert in Echtzeit, welche Werkzeuge Ghost gerade ausführt (z. B. Workspace-Dateien durchsuchen, Linter analysieren).
+- **Provider- & Modell-Wechsel + API-Key-Verwaltung**: Wähle LLM-Provider und Modell direkt pro Sitzung (`Ghost: Modell & Provider wechseln`) und verwalte Tresor-Schlüssel direkt aus VS Code (`Ghost: API-Keys verwalten`).
+- **Sitzungsverwaltung & Löschung**: Beliebig viele Chats verwalten, wechseln oder einzelne bzw. alle Sitzungen löschen (`Ghost: Aktuelle Sitzung löschen`, `Ghost: Alle Sitzungen löschen`).
 - **Dynamische Workspace-Erkennung**: Erkennt automatisch den aktuell in VS Code geöffneten Projektordner (`workspaceDir`) und setzt ihn für Dateisystem-Tools (`read_file`, `write_file`, `list_dir`) und Terminal-Befehle (`bash`).
 - **Codeblock-Aktionen**: Jeder generierte Codeblock bietet 1-Klick-Buttons für **"In Editor einfügen"** und **"Kopieren"**.
-- **Sitzungsverwaltung**: Beliebig viele Chats verwalten, nahtlos zwischen Sitzungen wechseln und Historie abrufen.
 - **Google Antigravity IDE Kompatibilität**: Vollständig optimiert für die Google Antigravity IDE (VS Code Fork).
 - **Guarded Autopilot**: Interaktive Diff-Prüfung (`reviewMode`) vor dem Ausführen von Datei-Patches und Terminalbefehlen mit Genehmigungs-Dialog (`Accept` / `Reject`).
 - **Workspace- & Kanban-Synchronisation**: Automatische Synchronisation gespeicherter Projektdateien und Antigravity-Plan-Schritte mit dem Ghost-Backend.
@@ -24,12 +25,14 @@ Sie integriert Ghost direkt in deine Entwicklungsumgebung – als Seitenleisten-
 ## 🛡️ Guarded Autopilot & Antigravity
 
 Die Erweiterung unterstützt die Sicherheitsstufen der Google Antigravity Plattform:
-* **`reviewMode` (Standard):** Änderungen an Workspace-Dateien (`apply_patch`, `edit_file`) sowie Terminal-Befehle werden abgefangen und als Diff-Review im Editor angezeigt. Der Benutzer muss die Änderung bestätigen.
-* **`autoAccept`:** Autonomer Modus, der Aktionen sofort ausführt.
+- **`reviewMode` (Standard):** Änderungen an Workspace-Dateien (`apply_patch`, `edit_file`) sowie Terminal-Befehle werden abgefangen und als Diff-Review im Editor angezeigt. Der Benutzer muss die Änderung bestätigen.
+- **`autoAccept`:** Autonomer Modus, der Aktionen sofort ausführt.
 
-Befehl zum Umschalten:
-* `Ctrl+Shift+P` → **`Ghost: Toggle Autopilot Mode (reviewMode / autoAccept)`**
-* `Ctrl+Shift+P` → **`Ghost: Force Sync Workspace with Ghost State`**
+Wichtige Befehle (`Ctrl+Shift+P`):
+- **`Ghost: Autopilot-Modus umschalten (Review vs. Auto-Accept)`** (`ghost.toggleAutopilotMode`)
+- **`Ghost: Workspace-RAG synchronisieren`** (`ghost.syncWorkspace`)
+- **`Ghost: Modell & Provider wechseln`** (`ghost.changeModel`)
+- **`Ghost: API-Keys verwalten`** (`ghost.manageApiKeys`)
 
 Ausführliche Informationen siehe **[Google Antigravity & ACP Anleitung](ANTIGRAVITY_ACP_DE.md)**.
 
@@ -53,8 +56,8 @@ Markiere einen Codeabschnitt in einer beliebigen Datei und wähle im Kontextmen�
 - `/explain <code/thema>`: Code oder Konzept erklären.
 - `/refactor`: Code optimieren.
 - `/tests`: Tests generieren.
-- `/plan <ziel>`: Erstellt eine strukturierte Architekturanalyse und legt eine Kanban-Aufgabe im Ghost-Backend an (Status: `review`).
-- `/goal <ziel>`: Startet eine autonome Mehrschritt-Aktion zur Erreichung eines Ziels (Status: `done` bei Erfolg).
+- `/plan <ziel>`: Erstellt eine strukturierte Architekturanalyse und legt eine ontologie-geroutete Kanban-Aufgabe im Ghost-Backend an (Status: `review`).
+- `/goal <ziel>`: Startet eine autonome Mehrschritt-Aktion über das Ontologie-Routing an den passenden Spezialisten (Status: `done` bei Erfolg).
 
 ---
 
@@ -63,14 +66,13 @@ Markiere einen Codeabschnitt in einer beliebigen Datei und wähle im Kontextmen�
 ### Voraussetzungen
 Stelle sicher, dass Ghost mit aktiviertem Gateway läuft:
 ```bash
-# Im Projektverzeichnis ausführen:
 flutter run
 ```
 
 ### Extension installieren (`.vsix`)
-Im Terminal des VS Code Projekts:
+Im Projekt-Root von Ghost:
 ```bash
-code --install-extension /home/peter/Developer/flutter-dev/ghost/vscode-extension/ghost-vscode-0.1.0.vsix
+code --install-extension vscode-extension/ghost-vscode-0.1.0.vsix
 ```
 
 Danach in VS Code das Fenster kurz neu laden (`Ctrl+Shift+P` → **"Developer: Reload Window"**).
@@ -95,5 +97,5 @@ Danach in VS Code das Fenster kurz neu laden (`Ctrl+Shift+P` → **"Developer: R
 ## 🛠️ Entwicklung & Debugging
 
 1. Öffne den Ordner `vscode-extension` in einem separaten VS Code Fenster.
-2. Drücke **`F5`** ("Run Ghost Extension").
+2. Drücke **`F5`** ("Run Extension").
 3. Es öffnet sich ein neues Entwicklungsfenster mit aktivierter Erweiterung.

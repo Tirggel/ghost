@@ -119,6 +119,25 @@ class TaskOrchestrator {
     _subscription?.cancel();
   }
 
+  /// Evaluates ontology-driven routing for an ad-hoc request (e.g. an Automation).
+  Future<AgentRoutingDecision> evaluateRoutingForRequest({
+    required String title,
+    required String description,
+    List<String> labels = const [],
+    List<String> excludeAgentIds = const [],
+  }) {
+    final syntheticTask = KanbanTask(
+      id: '__routing_eval__',
+      title: title,
+      description: description,
+      labels: labels,
+    );
+    return evaluateAgentRouting(
+      syntheticTask,
+      excludeAgentIds: excludeAgentIds,
+    );
+  }
+
   /// Evaluates all enabled agents via the Ontology Knowledge Graph
   /// (`HAT_KOMPETENZ`, `DARF_NUTZEN`, `GEHOERT_ZU_DOMAIN`) and current workload.
   Future<AgentRoutingDecision> evaluateAgentRouting(

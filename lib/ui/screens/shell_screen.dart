@@ -11,6 +11,7 @@ import '../../providers/chat_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/constants.dart';
 import 'chat_screen.dart';
+import 'automations/automations_screen.dart';
 import 'kanban/kanban_screen.dart';
 import 'email/email_screen.dart';
 import 'setup_wizard_screen.dart';
@@ -333,6 +334,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     }
 
     for (final s in sessions.reversed) {
+      if (s.id.startsWith('auto_')) continue;
       final agentName = s.agentName ?? defaultAgentName;
       final title = (s.title ?? '').toLowerCase();
       final agentLower = agentName.toLowerCase();
@@ -359,12 +361,14 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                 ? const EmailScreen()
                 : shellState.showKanban
                     ? const KanbanScreen()
-                    : activeSessionId == null
-                        ? _buildEmptyState()
-                        : ChatScreen(
-                            key: ValueKey(activeSessionId),
-                            sessionId: activeSessionId,
-                          ),
+                    : shellState.showAutomations
+                        ? const AutomationsScreen()
+                        : activeSessionId == null
+                            ? _buildEmptyState()
+                            : ChatScreen(
+                                key: ValueKey(activeSessionId),
+                                sessionId: activeSessionId,
+                              ),
           ),
         ],
       ),

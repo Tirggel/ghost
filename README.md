@@ -21,11 +21,12 @@
 Ghost features a modern, integrated architecture:
 - **Integrated Engine**: A high-performance backend managing AI agents, memory, and tools—built directly into the Flutter application.
 - **Sleek UI**: A minimalist, high-performance interface for Desktop (Linux, macOS, Windows) and Web.
-- **Agents & Skills**: Extensible AI capabilities added via a modular, Markdown-based system.
-- **Kanban & Task Orchestration**: Integrated Multi-Agent Kanban system for automated task management, dependency tracking (`dependsOnIds`), and autonomous workflow transitions.
+- **Agents & Skills**: Extensible AI capabilities via a modular, Markdown-based system with **Opt-Out Progressive Skill Loading** (`disabledSkills` & on-demand `ghost_load_skill`).
+- **Kanban & Task Orchestration**: Integrated Multi-Agent Kanban system for automated task management, dependency tracking (`dependsOnIds`), autonomous workflow transitions, and **Ontology-Driven Multi-Agent Routing & Delegation** (`HAT_KOMPETENZ`, `ghost_delegate_task`).
+- **Automations & Scheduled Workflows**: Dedicated Automations workspace with human-friendly schedule modes, `+ Create with Prompt` AI drafting, dynamic `Auto (Ontology)` agent routing, provider/model overrides, and persistent run logs with full chat transcripts.
 - **Design Systems**: Centralized theme management with custom branding, Markdown-based styling ("The Monolith"), and unified token distribution.
-- **Memory Engine**: Dual-mode memory using Hive (standard) and ObjectBox (RAG) for secure, local knowledge.
-- **System-1 Decision Middleware**: Ultra-fast, non-autoregressive local ModernBERT INT8 ONNX engine for sub-15ms pre-flight security checks, categorical choice routing, tool payload risk scoring, and smart HITL intent verification.
+- **Memory Engine**: Triple-layer local knowledge powered by Hive (standard), ObjectBox (Workspace & long-term RAG), and a **Native ObjectBox Ontology & Knowledge Graph** (T-Box/A-Box rules, multi-hop inference, and Monolith Graph Explorer).
+- **System-1 Decision Middleware**: Ultra-fast, non-autoregressive local ModernBERT INT8 ONNX engine for sub-15ms pre-flight security checks, categorical choice routing, tool payload risk scoring, smart HITL intent verification, and Memory-Poisoning protection.
 - **Google Antigravity & ACP**: Native Agent Client Protocol (ACP) adapter over STDIO and WebSocket, connecting Ghost as an autonomous coding agent to Antigravity CLI (`agy`), Antigravity IDE, and Zed.
 
 ---
@@ -72,24 +73,26 @@ For new users, Ghost includes an interactive **Setup Wizard** that starts automa
 > **System Restore**: If you already have a backup, you can upload it in the very first step of the wizard. Ghost will automatically restore all agents, settings, and even your encrypted API tokens.
 
 ### 🛠️ Maintenance & Backup
-Ghost features a dedicated **Maintenance Tab** in the settings, giving you full control over your system:
+Ghost features a dedicated **Reset / Maintenance Tab** (**Settings → Reset**) giving you full control over your system:
 - **Factory Reset**: Completely wipe the application state and databases with explicit confirmation protection (`CONFIRM_RESET`), silent high-performance reset, and automatic reboot.
-- **System Backup**: Create an encrypted ZIP archive of your entire configuration (including agents, skills, and design systems).
+- **System Backup**: Create a selective, encrypted ZIP archive of your configuration (`config`, `vault`, `sessions`, `skills`, `design`, `automations`, and `memory` including portable `ontology_backup.json`).
 - **Restore**: Import a backup archive and seamlessly restore your Ghost assistant's state without UI disruptions.
 - **Design Systems**: Manage, export, and restore visual themes independently.
 
 ### 📚 Further Documentation
+- **[Ontology & Knowledge Graph Guide](docs/ONTOLOGY_EN.md)**: T-Box/A-Box schema, 17 default predicates, multi-hop graph explorer, and System-1 Memory-Poisoning protection.
+- **[Automations & Scheduled Workflows](docs/AUTOMATIONS_EN.md)**: Dedicated Automations workspace, `+ Create with Prompt` AI wizard, 6 cron schedule modes, `Auto (Ontology)` routing, and run transcripts.
 - **[System-1 Decision Middleware](docs/SYSTEM1_MIDDLEWARE_EN.md)**: Deep dive into the local ModernBERT INT8 ONNX architecture, dataset generation, training in Colab, and sub-15ms pre-flight safety & smart HITL.
 - **[Google Workspace Setup](docs/GOOGLE_WORKSPACE_SETUP_EN.md)**: Guide for configuring Gmail, Calendar, and Drive.
 - **[Microsoft 365 Setup](docs/MICROSOFT_365_SETUP_EN.md)**: Guide for configuring Outlook and OneDrive via Azure AD.
 - **[Payments, Wallet & Binance Setup](docs/PAYMENTS_SETUP_EN.md)**: Guide for configuring credit cards, EVM blockchain wallets, and Binance API trading (including spot and demo accounts).
-- **[Skills Development Guide](docs/SKILLS_GUIDE.md)**: Learn how to create and package your own AI skills.
+- **[Skills Development Guide](docs/SKILLS_GUIDE.md)**: Learn about Opt-Out permissions, Progressive Disclosure (`ghost_load_skill`), and packaging custom AI skills.
 - **[STT & TTS Setup](docs/STT_TTS_SETUP.md)**: Configure local speech recognition and synthesis.
 - **[Multi-Channel Setup](docs/CHANNELS_EN.md)**: Detailed guide for connecting Telegram, Discord, WhatsApp, etc.
-- **[RPC API Reference](docs/RPC_API_REFERENCE.md)**: Detailed documentation of the JSON-RPC 2.0 WebSocket API.
-- **[VS Code Extension](docs/VSCODE_EXTENSION_EN.md)**: Official Visual Studio Code extension with sidebar chat and editor context actions.
-- **[Chrome Extension](docs/CHROME_EXTENSION_EN.md)**: Official Google Chrome extension with Side Panel chat, web context, and context-menu actions.
-- **[Kanban & Task Orchestration](docs/KANBAN_ORCHESTRATION.md)**: How the Multi-Agent Kanban and automated workflows work.
+- **[RPC API Reference](docs/RPC_API_REFERENCE.md)**: Complete documentation of the JSON-RPC 2.0 WebSocket API (including Automations, Ontology, Kanban, Email, and ACP).
+- **[VS Code Extension](docs/VSCODE_EXTENSION_EN.md)**: Official Visual Studio Code extension with sidebar chat, model switching, session controls, and editor actions.
+- **[Chrome Extension](docs/CHROME_EXTENSION_EN.md)**: Official Google Chrome extension with Side Panel chat, web context, model switcher, and context-menu actions.
+- **[Kanban & Task Orchestration](docs/KANBAN_ORCHESTRATION.md)**: How Multi-Agent Kanban, ontology routing, `/goal`, `/plan`, and `ghost_delegate_task` work.
 - **[Google Antigravity & ACP Guide](docs/ANTIGRAVITY_ACP_EN.md)**: Connect Ghost to Google Antigravity CLI (`agy`), Zed, and Antigravity IDE with Guarded Autopilot.
 - **[Design System Guidelines](DESIGN.md)**: Specifications and customization guide for the visual theme ("The Monolith").
 
@@ -109,6 +112,15 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
     - **Automated Execution**: The background `TaskOrchestrator` automatically moves tasks from "Backlog" to "To Do" when prerequisites are met.
     - **Goal-Oriented Execution (`/goal`)**: Messages starting with `/goal` automatically create a Kanban task. The agent enters an autonomous, multi-turn loop to implement the goal, updating status/comments. Tasks are set to `done` on success or `review` with detailed error traces on failure.
     - **Structured Planning Mode (`/plan`)**: Messages starting with `/plan` create a Kanban task and prompt the agent to perform read-only architectural analysis and generate a step-by-step roadmap without modifying the codebase. Once complete, the task is moved to `review` ready for user approval or `/goal` execution.
+    - **Ontology-Driven Multi-Agent Routing & Delegation**:
+        - **Automatic Competency Derivation (`HAT_KOMPETENZ`)**: Automatically derives agent domain competencies in the Knowledge Graph by combining explicit `competencies` tags, prompt/profile keyword analysis (`AgentDomainTaxonomy`), and allowed skill domains (`DARF_NUTZEN` → `GEHOERT_ZU_DOMAIN`).
+        - **Intelligent `/goal`, `/plan` & Kanban Routing**: `TaskOrchestrator` evaluates all enabled agents across competency match, skill match, name match, and current workload penalty to automatically assign `/goal`, `/plan`, and `Auto (Ontologie)` Kanban tasks to the best-suited specialist.
+        - **Dynamic Sub-Task Delegation (`ghost_delegate_task`)**: Agents can delegate specialized sub-tasks to the top-scoring specialist via the ontology graph, complete with `dry_run` routing previews and recursion depth protection (`maxDelegationDepth`).
+- **Native ObjectBox Ontology & Knowledge Graph Memory**: Structured symbolic memory alongside vector RAG and standard key-value storage.
+    - **T-Box & A-Box Rules**: Local ObjectBox graph (`OntologyRelationDef`, `OntologyNode`, `OntologyEdge`) with functional predicates (e.g., `WOHNT_IN`, `HEISST`, `ARBEITET_BEI` automatically replacing prior values) and transitive predicates (e.g., `LIEGT_IN`, `TEIL_VON`, `BENOETIGT_SKILL`) for multi-hop reasoning.
+    - **Automatic Fact Extraction with System-1 Memory-Poisoning Protection**: Pre-turn graph context injection (`[KNOWLEDGE GRAPH]`) and async post-turn LLM fact extraction (`OntologyExtractor`), strictly gated behind System-1 security checks (`system1Middleware`, injection/HITL flags) so malicious or untrusted prompts cannot poison long-term memory.
+    - **Graph Tools**: Agents can directly assert and traverse structured facts via `ghost_ontology_assert` and `ghost_ontology_query`.
+    - **Multi-Hop Query Inspector & Monolith Graph Explorer**: Dedicated Settings UI (**Settings → Toolbox → Memory → Ontology**) to filter facts and entities (`All`, `Personal`, `Governance`, `Rules`), test 1–4 hop graph traversals with prompt previews, add facts manually, and import/export JSON backups.
 - **Memory Engine (RAG & Standard)**: Expand your agent's knowledge through local vector and keyword storage.
     - **Standard Memory**: Keyword-based, encrypted local memory (Hive). Information is stored securely and retrieved via exact matches.
     - **RAG Memory (ObjectBox)**: Retrieval-Augmented Generation with semantic vector search, powered by a high-performance local ObjectBox database.
@@ -143,7 +155,9 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
     - **Background Syncing**: The background `EmailPoller` automatically syncs mailboxes and stores cached emails locally.
     - **AI Processing**: Automated AI email analysis including priority classification, urgency checks, spam filtering, calendar detection, and generation of reply drafts based on the user's preferred writing style.
     - **Attachments**: List and download email attachments directly to your workspace.
-- **Extensible Skills**:
+- **Extensible Skills & Progressive Loading (Opt-Out)**:
+    - **Opt-Out Skill Access (`disabledSkills`)**: Every agent (default and custom) receives access to all installed skills by default and can selectively opt out via `disabledSkills` (synchronized as `DARF_NUTZEN` permission edges in the Ontology Graph).
+    - **Token-Efficient Progressive Disclosure (`ghost_load_skill`)**: Only a compact `[AVAILABLE SKILLS]` index is injected into the system prompt; agents load full `SKILL.md` instructions, `.venv`/Node/MCP runtime metadata, `BENOETIGT_SKILL` dependencies, and `ERFORDERT_HITL` security policies on demand via `ghost_load_skill`.
     - **Modular System**: Load and manage skills to extend agent capabilities.
     - **Agent-specific Skills**: Enable or disable features for specific agent profiles.
     - **UI-based Creation**: Create new skills directly in the app using pre-defined templates (Python/Node.js).
@@ -166,10 +180,13 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
     - **Resilient Connections**: Improved stability for messaging gateways (like Telegram), featuring automatic connection recovery and automated token/credential cleanup.
     - **DM Policies**: Granular control over who can message your bot (Pairing, Allowlist, Open, Disabled).
     - **Voice Messages & Local Dictation**: Supports receiving/sending voice messages and provides **high-performance local offline dictation** (Whisper `base` via Sherpa-ONNX) directly in the app.
-- **Automated Agent Scheduling**:
-    - **Cron-based Automation**: Create custom agents with specialized skills and schedule them using unix-style cron expressions (e.g., every 5 minutes).
-    - **Real-time UI Sync**: New agents and reconfiguration changes are broadcasted immediately to the UI for a seamless experience.
-    - **Interactive Error Recovery**: Resume long-running agent tasks after hits like rate-limits with manual "Continue" buttons directly in the UI.
+- **Automations & Scheduled Workflows**:
+    - **Dedicated Automations Workspace**: Accessible directly from the sidebar (`Automations`), offering real-time search, active/paused toggles, status badges, and one-click manual triggers (`Run Now`).
+    - **`+ Create with Prompt` AI Wizard**: Describe a recurring workflow in plain language and let Ghost draft the title, exact non-rounded schedule, step-by-step instructions, and Ontology specialist match automatically.
+    - **Human-Readable Schedule Picker**: Configure **Daily**, **Weekdays** (multi-time), **Weekly**, **Hourly**, **Interval** (1–59 min / 1–24 h), or **Custom Cron** schedules with live validation and next-3-runs prediction.
+    - **Ontology Routing & Model Overrides**: Assign automations to **`Auto (Ontology)`** for dynamic specialist selection per run (or pin a specific agent plus provider/model overrides).
+    - **Persistent Run History & Full Transcripts**: Inspect every run's status, duration, resolved agent/model, and summary—and click any run to view its complete `auto_*` chat transcript (kept separate from the main chat sidebar) with full ZIP backup support (`automations` section).
+    - **Scheduled Custom Agents & Recovery**: Supports background cron schedules on custom agents (`cronSchedule`), real-time gateway sync, and interactive "Continue" recovery after rate limits.
 - **Privacy & Security**:
     - **System-1 Decision Middleware**: Ultra-fast non-autoregressive local Cross-Encoder engine (`ModernBERT INT8 ONNX`) operating in sub-15ms on CPU. Features pre-flight prompt injection / jailbreak blocking, phishing & crypto-drainer screening, dynamic tool payload risk scoring (evaluating full shell commands, financial amounts, and contracts), and smart Human-In-The-Loop (HITL) semantic intent verification (distinguishing explicit approval from refusal).
     - **Human-In-The-Loop (HITL)**: Sensitive actions (file system, terminal, web access) require explicit user confirmation via interactive **YES / NO buttons** in the chat.
@@ -196,9 +213,9 @@ Ghost features a dedicated **Maintenance Tab** in the settings, giving you full 
     - **"The Monolith" Design**: A minimalist, high-contrast interface inspired by "Ghost Minimalist Noir" for a distraction-free experience.
     - **Folder Organization & Batch Deletion**: Group chats into folders and batch-delete entire session trees permanently from disk, guaranteeing complete transcript cleanup without reappearance.
     - **Smart Autoscroll**: Intelligent viewport tracking that respects your reading position during history inspection and automatically scrolls only on new prompts or active bottom streaming.
-    - **Chat & Kanban Integration**: Quick access to conversations and project tasks via the sidebar.
+    - **Chat, Kanban, Automations & Email Navigation**: Quick access to conversations, Kanban tasks, scheduled Automations, and Email directly from the sidebar.
     - **Code Rendering**: Highlights and formats code blocks for easy reading.
-    - **Settings Hub**: Centrally manage all your configurations, including dedicated tabs for Gateway, Security, **Skills**, **Design Systems**, and **Maintenance**.
+    - **Settings Hub**: Centrally manage all configurations across dedicated tabs for **Profile**, **Agent Profiles** (`Main Agent`, `Custom Agents`), **API Management**, **Integrations**, **Channels**, **Payments**, **Toolbox** (`Skills`, `Design Systems`, `Memory` & Ontology, `Browser`, `Filesystem`), **Security**, **Gateway**, and **Reset**.
 - **System Stability & Maintenance**:
     - **Gateway Status & Live Logs**: Real-time monitoring of gateway performance, connected clients, and system logs directly in the app.
     - **Secure Shutdown**: Robust background shutdown process ensuring all databases are properly closed before the system exits or resets.

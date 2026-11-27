@@ -11,6 +11,7 @@ class ShellState {
     this.pendingSettingsOpen = false,
     this.showKanban = false,
     this.showEmail = false,
+    this.showAutomations = false,
   });
   final String? activeSessionId;
   final String searchQuery;
@@ -20,6 +21,7 @@ class ShellState {
   final bool pendingSettingsOpen;
   final bool showKanban;
   final bool showEmail;
+  final bool showAutomations;
 
   ShellState copyWith({
     String? activeSessionId,
@@ -31,6 +33,7 @@ class ShellState {
     bool? pendingSettingsOpen,
     bool? showKanban,
     bool? showEmail,
+    bool? showAutomations,
   }) {
     return ShellState(
       activeSessionId: clearActiveSession
@@ -43,6 +46,7 @@ class ShellState {
       pendingSettingsOpen: pendingSettingsOpen ?? this.pendingSettingsOpen,
       showKanban: showKanban ?? this.showKanban,
       showEmail: showEmail ?? this.showEmail,
+      showAutomations: showAutomations ?? this.showAutomations,
     );
   }
 }
@@ -92,10 +96,20 @@ class ShellNotifier extends Notifier<ShellState> {
     state = state.copyWith(settingsSubTabIndices: updatedSubTabs);
   }
 
+  void openSession(String sessionId) {
+    state = state.copyWith(
+      activeSessionId: sessionId,
+      showKanban: false,
+      showEmail: false,
+      showAutomations: false,
+    );
+  }
+
   void toggleKanban() {
     state = state.copyWith(
       showKanban: !state.showKanban,
       showEmail: false,
+      showAutomations: false,
     );
   }
 
@@ -103,6 +117,7 @@ class ShellNotifier extends Notifier<ShellState> {
     state = state.copyWith(
       showKanban: value,
       showEmail: value ? false : state.showEmail,
+      showAutomations: value ? false : state.showAutomations,
     );
   }
 
@@ -110,6 +125,7 @@ class ShellNotifier extends Notifier<ShellState> {
     state = state.copyWith(
       showEmail: !state.showEmail,
       showKanban: false,
+      showAutomations: false,
     );
   }
 
@@ -117,6 +133,23 @@ class ShellNotifier extends Notifier<ShellState> {
     state = state.copyWith(
       showEmail: value,
       showKanban: value ? false : state.showKanban,
+      showAutomations: value ? false : state.showAutomations,
+    );
+  }
+
+  void toggleAutomations() {
+    state = state.copyWith(
+      showAutomations: !state.showAutomations,
+      showKanban: false,
+      showEmail: false,
+    );
+  }
+
+  void setShowAutomations(bool value) {
+    state = state.copyWith(
+      showAutomations: value,
+      showKanban: value ? false : state.showKanban,
+      showEmail: value ? false : state.showEmail,
     );
   }
 }

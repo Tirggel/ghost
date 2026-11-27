@@ -24,6 +24,7 @@ class InternalGatewayManager {
   AgentManager? _agentManager;
   GatewayServer? _server;
   TaskOrchestrator? _orchestrator;
+  AutomationManager? _automationManager;
   StreamSubscription<TaskEvent>? _taskSubscription;
   EmailManager? _emailManager;
   EmailPoller? _emailPoller;
@@ -304,6 +305,31 @@ class InternalGatewayManager {
       );
       _orchestrator!.initialize();
 
+      final automationStore = AutomationStore(stateDir: stateDir);
+      _automationManager = AutomationManager(
+        store: automationStore,
+        agentManager: _agentManager!,
+        sessionManager: sessionManager,
+        orchestrator: _orchestrator,
+        onChanged: (automationId, action) {
+          _server?.broadcast('automations.changed', {
+            if (automationId != null) 'automationId': automationId,
+            'action': action,
+          });
+        },
+        onRunUpdated: (automationId, run) {
+          _server?.broadcast('automations.run_updated', {
+            'automationId': automationId,
+            'run': run.toJson(),
+          });
+        },
+        onSessionDeleted: (sessionId) {
+          _server?.broadcast('agent.session_deleted', {
+            'sessionId': sessionId,
+          });
+        },
+      );
+
       KanbanTools.registerAll(toolRegistry, taskManager, orchestrator: _orchestrator);
 
       AntigravityKanbanBridge(
@@ -362,6 +388,12 @@ class InternalGatewayManager {
         configPath: configPath,
         agentManager: _agentManager!,
         channelManager: channelManager,
+        automationManager: _automationManager,
+      ).register();
+
+      AutomationRouter(
+        gateway: _server!,
+        automationManager: _automationManager!,
       ).register();
 
       KanbanRouter(
@@ -381,7 +413,11 @@ class InternalGatewayManager {
 
       // 8. Start
       await _server!.start();
-      unawaited(_agentManager!.initialize());
+      unawaited(
+        _agentManager!.initialize().then((_) async {
+          await _automationManager?.initialize();
+        }),
+      );
       unawaited(channelManager.initialize()); // Start enabled channels
 
       _emailPoller = EmailPoller(
@@ -414,6 +450,8 @@ class InternalGatewayManager {
 
       await _taskSubscription?.cancel();
       _taskSubscription = null;
+      await _automationManager?.shutdown();
+      _automationManager = null;
       _orchestrator?.dispose();
       _orchestrator = null;
 

@@ -53,6 +53,9 @@ class MainSidebar extends ConsumerWidget {
     }
 
     for (final s in sessions) {
+      // Hide automation run sessions from the regular chat sidebar
+      if (s.id.startsWith('auto_')) continue;
+
       final agentName = s.agentName ?? defaultAgentName;
       final title = (s.title ?? '').toLowerCase();
       final agentLower = agentName.toLowerCase();
@@ -62,13 +65,16 @@ class MainSidebar extends ConsumerWidget {
       }
     }
 
+    final showChatList =
+        !shellState.showKanban && !shellState.showEmail && !shellState.showAutomations;
+
     return AppSidebar(
       header: SidebarHeader(
         onNewChat: onNewChat,
         searchController: searchController,
-        showChatFunctions: !shellState.showKanban,
+        showChatFunctions: showChatList,
       ),
-      body: shellState.showKanban
+      body: !showChatList
           ? const SizedBox.shrink()
           : ListView(
               children: groupedSessions.entries.map((entry) {

@@ -961,6 +961,7 @@ class Agent {
           !isShortGreeting &&
           !sessionId.startsWith('cron_') &&
           !sessionId.startsWith('run_') &&
+          !sessionId.startsWith('auto_') &&
           memory.isOntologyAutoExtractEnabled;
 
       if (canAutoExtract) {
@@ -1001,7 +1002,8 @@ class Agent {
     List<Message> turnMessages, {
     bool isGoalMode = false,
   }) async {
-    final isCron = sessionId.startsWith('cron_');
+    final isCron =
+        sessionId.startsWith('cron_') || sessionId.startsWith('auto_');
 
     bool requiresHitl = false;
 

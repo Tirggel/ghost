@@ -1,5 +1,7 @@
 # Ghost AI Assistant — Chrome Extension 👻
 
+[English Guide](../docs/CHROME_EXTENSION_EN.md) &nbsp; &bull; &nbsp; [Deutsche Anleitung](../docs/CHROME_EXTENSION_DE.md)
+
 Offizielle Google Chrome Erweiterung (Manifest V3) für den persönlichen KI-Assistenten **Ghost**.
 
 Die Erweiterung bringt Ghost direkt in deinen Browser und verbindet sich über das modulare **WebSocket JSON-RPC 2.0 Gateway** (`GatewayServer`) mit deiner lokalen Ghost-Instanz auf Port 3000.
@@ -10,9 +12,9 @@ Die Erweiterung bringt Ghost direkt in deinen Browser und verbindet sich über d
 
 ### 1. 💬 Interaktives Side Panel (Seitenleiste)
 - **Native Chrome Side Panel API**: Bleibt beim Tab-Wechsel rechts geöffnet — genau wie in VS Code!
-- **Echtzeit-Streaming**: Antworten werden verzögerungsfrei Token für Token gestreamt (`agent.stream`).
-- **Tool-Aktivitäten**: Visualisiert live, woran Ghost gerade arbeitet (z. B. Nachdenken, Workspace-Tools).
-- **Sitzungsverwaltung**: Wechsle zwischen Chat-Sitzungen oder starte mit einem Klick eine neue Session.
+- **Echtzeit-Streaming**: Antworten werden verzögerungsfrei Token für Token gestreamt (`agent.stream`), mit Live-Tool-Aktivitäten (`agent.activity`) und Stop-Button (`agent.stop`).
+- **Provider-, Modell- & API-Key-Verwaltung**: Wechsle Provider/Modell direkt im Side Panel (`agent.setSessionModel`) und verwalte API-Keys über die Optionsseite.
+- **Sitzungsverwaltung & Löschung**: Wechsle zwischen Chat-Sitzungen, starte mit einem Klick eine neue Session oder lösche einzelne bzw. alle Sitzungen über den Löschdialog.
 - **Codeblock-Aktionen**: Jeder generierte Codeblock verfügt über einen 1-Klick-Button zum Kopieren in die Zwischenablage.
 
 ### 2. 🌐 Webseiten-Kontext & Recherche (Page Q&A)
@@ -28,7 +30,7 @@ Markiere Text auf einer beliebigen Webseite (GitHub, StackOverflow, Medium, Docs
 
 ### 4. ⚙️ Einstellungen & Auto-Discovery
 - **Auto-Discovery**: Erkennt automatisch das lokale Gateway auf `ws://localhost:3000` und liest bei Bedarf den Autorisierungs-Token über `http://localhost:3000/client-token` aus.
-- **Einstellungsseite**: Über das Zahnrad-Symbol oder `chrome://extensions` können Gateway-URL und Token individuell angepasst und mit dem Button *„Verbindung testen“* geprüft werden.
+- **Einstellungsseite**: Über das Zahnrad-Symbol oder `chrome://extensions` können Gateway-URL, Token und API-Keys individuell angepasst und mit *„Verbindung testen“* geprüft werden.
 
 ---
 
@@ -44,18 +46,11 @@ npm run build
 
 ### 2. Im Browser laden (Unpacked Extension)
 1. Öffne Google Chrome (oder Brave / Microsoft Edge / Arc).
-2. Navigiere in der Adressleiste zu:
-   ```
-   chrome://extensions
-   ```
+2. Navigiere in der Adressleiste zu `chrome://extensions`.
 3. Aktiviere oben rechts den Schalter **Entwicklermodus** (*Developer mode*).
 4. Klicke oben links auf **Entpackte Erweiterung laden** (*Load unpacked*).
-5. Wähle den Ordner `chrome-extension` aus:
-   ```
-   /home/peter/Developer/flutter-dev/ghost/chrome-extension
-   ```
-6. Die Erweiterung **Ghost AI Assistant** ist sofort einsatzbereit!
-7. **Tipp**: Klicke in der Chrome-Symbolleiste auf das Puzzle-Symbol und pinne Ghost an. Ein Klick auf das Ghost-Icon öffnet direkt das Side Panel!
+5. Wähle das Verzeichnis `chrome-extension/` im Ghost-Repository aus.
+6. Die Erweiterung **Ghost AI Assistant** ist sofort einsatzbereit. Pinne Ghost oben an und klicke auf das Icon, um das Side Panel zu öffnen!
 
 ---
 

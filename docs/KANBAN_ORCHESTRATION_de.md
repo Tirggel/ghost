@@ -1,125 +1,123 @@
 # Kanban und Task-Orchestrierung
 
-Ghost verfügt über ein leistungsstarkes Multi-Agenten-Kanban-System mit automatisierter Task-Orchestrierung. Dies ermöglicht es Agenten, an komplexen Projekten zusammenzuarbeiten, indem sie Abhängigkeiten, Pipelines und automatisierte Workflows definieren.
+Ghost verfügt über ein Multi-Agenten-Kanban-System mit automatisierter Task-Orchestrierung und **ontologiegestütztem Multi-Agent-Routing**. Agenten können dadurch über Abhängigkeiten, Pipelines, autonome `/goal`- & `/plan`-Schleifen sowie dynamische Sub-Task-Delegation nahtlos zusammenarbeiten.
+
+---
 
 ## Kernkonzepte
 
 ### 1. Kanban-Tasks (Aufgaben)
-Ein Task ist die grundlegende Arbeitseinheit. Jeder Task umfasst:
-- **Status**: `backlog`, `in_progress`, `review`, `done` (erledigt) oder `cancelled` (abgebrochen).
+Ein Task ist die grundlegende Arbeitseinheit und umfasst:
+- **Status (`TaskStatus`)**: `backlog`, `inProgress` (in der UI als *To Do / In Bearbeitung*), `review`, `done` (erledigt) oder `cancelled` (abgebrochen). *(Hinweis: Agenten-Tools akzeptieren zusätzlich `in_progress` in Snake-Case.)*
 - **Priorität**: `low` (niedrig), `normal`, `high` (hoch) oder `urgent` (dringend).
-- **Zuweisung**: Tasks können spezifischen Agenten zugewiesen werden.
+- **Zuweisung**: Zuweisung an den Haupt-Agenten (`default-agent`), einen konkreten Custom Agent oder **`Auto (Ontologie)`** (`__auto__`).
 - **Abhängigkeiten**: Tasks können von anderen Tasks abhängen (`dependsOnIds`).
+- **Domänen-Labels**: Optionale Kompetenz-/Domänen-Tags (`labels`) zur gezielten Steuerung des Ontologie-Routings.
 
-### 2. Task-Orchestrator
-Der `TaskOrchestrator` ist die Engine, die den Lebenszyklus von Tasks und deren Interaktionen steuert:
-- **Automatisierte Übergänge**: Wenn ein Task als `done` markiert wird, prüft der Orchestrator automatisch alle abhängigen Tasks.
-- **Auflösung von Abhängigkeiten**: Wenn alle Abhängigkeiten eines Tasks erfüllt sind, führt der Orchestrator folgende Schritte aus:
-    - Erstellt einen System-Kommentar: *"Alle Abhängigkeiten erfüllt. Task ist nun bereit für die Ausführung."*
-    - **Automatischer Start**: Der Task wird in den Status `in_progress` verschoben, falls er sich im `backlog` befand und bereits einem Agenten zugewiesen ist.
-- **Agenten-Vorschlag**: Der Orchestrator kann den am besten geeigneten Agenten für einen Task vorschlagen, basierend auf den Fähigkeiten (Skills) und Namen der Agenten.
+### 2. Task-Orchestrator & Ontologie-Routing
+Der `TaskOrchestrator` ([`task_orchestrator.dart`](../lib/engine/tasks/task_orchestrator.dart)) steuert den Task-Lebenszyklus, Abhängigkeiten und die ontologiebasierte Agenten-Auswahl:
+
+- **Automatisierte Abhängigkeitsübergänge**: Sobald ein Task auf `done` gesetzt wird, prüft der Orchestrator alle abhängigen Tasks. Sind alle `dependsOnIds` auf `done`, hinterlässt er einen Systemkommentar (*„All dependencies met. Task is now ready for execution.“*), löst ggf. eine `Auto (Ontologie)`-Zuweisung auf und verschiebt zugewiesene `backlog`-Tasks automatisch nach `inProgress` zur Ausführung.
+- **Ontologie-Kompetenzgraph (`HAT_KOMPETENZ`)**:
+  `AgentDomainTaxonomy` ([`agent_domain_taxonomy.dart`](../lib/engine/agent/ontology/agent_domain_taxonomy.dart)) normalisiert deutsche und englische Aliase, Skill-Kategorien und Schlüsselwörter über 7 Standarddomänen (`coding`, `research`, `finance`, `communication`, `system`, `security`, `design`) sowie benutzerdefinierte Kompetenzen. `OntologyStoreService.syncAgentCompetencies` leitet `HAT_KOMPETENZ`-Kanten automatisch ab aus:
+  1. Expliziten `competencies`-Tags des Agenten (Gewichtung `1.0`)
+  2. Prompt-/Profil-Keyword-Analyse (`0.65–0.78` Konfidenz, `0.65` Routing-Gewicht)
+  3. Erlaubten Skill-Domänen (`DARF_NUTZEN` → `GEHOERT_ZU_DOMAIN`, `0.35` Routing-Gewicht)
+- **Scoring & Auswahl (`evaluateAgentRouting`)**:
+  Jeder aktive Agent wird auf einer Skala von `0–100` bewertet:
+  - **Kompetenz-Match (`0–55` Pkt.)**: Domänen-Übereinstimmung (`0–45`) plus `+10` Bonus bei direktem Treffer zwischen Task-`labels` und expliziten Kompetenzen.
+  - **Skill-Match (`0–30` Pkt.)**: Direkte Treffer auf Skill-Slug/Name/Beschreibung sowie Domänen-Skills über `DARF_NUTZEN`, gewichtet nach Spezialisierung (`0.4 + 0.6 * (1 - allowedSkills / totalSkills)`).
+  - **Namensnennung (`0–10` Pkt.)**: Direkte Erwähnung des Agentennamens im Task.
+  - **Auslastungs-Abzug (`0–15` Pkt.)**: `-5` Pkt. pro aktivem `inProgress`-Task (max. `-15`).
+  - **Spezialisten-Schwellen**: Ein Custom-Spezialist wird gewählt, sobald `score >= 15.0` (`minSpecialistScore`) und der Vorsprung vor `default-agent` mindestens `8.0` Pkt. (`minMarginOverDefault`) beträgt; sonst greift automatisch der Haupt-Agent als Fallback.
+- **Transparente Begründung**: Die vollständige Score-Aufschlüsselung wird in `task.metadata['routing']` gespeichert (sichtbar auf Kanban-Karten und im Task-Detail-Panel) und als Kommentar (`🧭 Auto-Routed zu <Agent> (...)`) protokolliert.
+
+---
 
 ## Funktionen & Tools
 
+### Dynamische Sub-Task-Delegation (`ghost_delegate_task`)
+Agenten können spezialisierte Teilaufgaben direkt über den Knowledge Graph delegieren:
+- **Parameter**: `title`, `description`, `required_competencies` (optionale Domänen-Hinweise), `priority`, `parent_task_id`, `execute_immediately` (Standard `true`) und `dry_run` (Standard `false`).
+- **Dry-Run-Vorschau**: Mit `dry_run: true` lassen sich die Top-3-Kandidaten samt Score-Aufschlüsselung vorab prüfen, ohne einen Task anzulegen.
+- **Rekursionsschutz**: Erzwingt über `parent_task_id` eine maximale Delegationstiefe von `maxDelegationDepth = 2`, um Endlos-Delegationen zu verhindern.
+
 ### Pipelines
-Eine **Pipeline** ist eine Sequenz von Tasks, bei der jeder Task vom vorherigen abhängt. Dies ist ideal für lineare Workflows wie "Recherche -> Implementierung -> Dokumentation".
+Eine **Pipeline** ist eine Sequenz von Tasks, bei der jeder Task vom vorherigen abhängt (z. B. *„Recherche -> Implementierung -> Dokumentation“*).
 - **Tool**: `kanban_pipeline`
 - **Aktion**: Erstellt mehrere Tasks und verknüpft sie über `dependsOnIds`.
 
-### Agenten-Matching
-Agenten können die beste Person für einen Job finden, indem sie Stichwort-Abgleiche gegen die Skills durchführen.
+### Ontologie-Agenten-Vorschlag
+Findet den optimalen Spezialisten für einen bestehenden Task anhand von Ontologie-Kompetenzen, Skills und aktueller Auslastung:
 - **Tool**: `kanban_suggest`
-- **Logik**: Vergleicht Begriffe im Task-Titel oder der Beschreibung mit Agenten-Namen und deren Skill-Sets.
+- **Logik**: Führt `TaskOrchestrator.evaluateAgentRouting(task)` aus und liefert Agent, Begründung und Score zurück.
 
-### Direkte Interaktion
-Agenten verfügen über Tools zum Auflisten, Erstellen, Aktualisieren, Zuweisen und Kommentieren von Tasks:
-- `kanban_list`: Das Board anzeigen.
-- `kanban_create`: Einen neuen Task hinzufügen.
-- `kanban_update`: Status verschieben oder Details ändern.
-- `kanban_assign`: Die Verantwortung für einen Task übernehmen.
-- `kanban_subtask`: Checklisten innerhalb eines Tasks verwalten.
-- `kanban_comment`: Diskutieren oder Updates bereitstellen.
+### Direkte Board-Tools
+Agenten können das Kanban-Board direkt über folgende Tools verwalten:
+- `kanban_list`: Tasks nach Status, Priorität oder `assigned_to_me` filtern.
+- `kanban_create`: Neuen Task erstellen – optional mit `labels`, `assign_to_me` oder `auto_route` (Standard `true` für automatisches Ontologie-Routing).
+- `kanban_update`: Status, Priorität, Titel oder Beschreibung ändern.
+- `kanban_detail`: Vollständige Details inkl. Subtasks und Kommentaren abrufen.
+- `kanban_assign`: Task selbst übernehmen (`assign_to_me`).
+- `kanban_subtask`: Checklisten-Unteraufgaben verwalten (`action: "add" | "toggle"`).
+- `kanban_comment`: Fortschritt oder Hinweise kommentieren.
 
 ---
 
 ## 🎯 Autonome Codierung / Projekt-Ausführung (`/goal`)
 
-Ghost unterstützt eine autonome, zielorientierte Ausführungsschleife, die über den Chat-Befehl `/goal` gestartet wird. Dies verbindet die Chat-Schnittstelle direkt mit dem Kanban-Aufgabenverwaltungssystem und ermöglicht es dem Agenten, komplexe, mehrstufige Ziele selbstständig zu bearbeiten und gleichzeitig volle Transparenz zu bieten.
+Ghost unterstützt eine autonome, zielorientierte Ausführungsschleife über den Chat-Befehl `/goal`.
 
 ### Funktionsweise
 
-1. **Trigger & Initialisierung**:
-   Wenn ein Benutzer eine Nachricht sendet, die mit `/goal <Zielbeschreibung>` beginnt, fängt das System die Anfrage ab und erstellt automatisch einen neuen Kanban-Task auf dem Board.
-   - **Task-Titel**: `🎯 <Zieltext>` (zur besseren Lesbarkeit auf die ersten 60 Zeichen gekürzt).
-   - **Task-Beschreibung**: Der vollständige Prompt mit dem Ziel.
-   - **Anfangsstatus**: Wird sofort auf `in_progress` (in Bearbeitung) gesetzt.
-   - **Zuweisung**: Wird dem aktuellen Agenten zugewiesen, der die Sitzung betreut.
-   - **Kontext-Verknüpfung**: Der Task wird direkt mit der Chat-`sessionId` verknüpft, sodass die Arbeit des Agenten in Echtzeit mitverfolgt werden kann.
+1. **Trigger, Ontologie-Routing & Initialisierung**:
+   Bei `/goal <Zielbeschreibung>` erstellt Ghost automatisch einen Kanban-Task:
+   - **Task-Titel**: `🎯 <Zieltext>` (auf 60 Zeichen gekürzt).
+   - **Task-Beschreibung**: Der vollständige Prompt.
+   - **Anfangsstatus**: `inProgress`.
+   - **Zuweisung**: Ist kein Agent fest vorgegeben, startet der Task mit `Auto (Ontologie)` und wird sofort über `TaskOrchestrator.routeTask(..., force: true)` an den besten Spezialisten geroutet (`session_agent_routed` informiert die UI).
+   - **Kontext-Verknüpfung**: Direkt mit der `sessionId` verknüpft für Live-Streaming im Chat.
 
 2. **Autonome Schleife**:
-   Der Agent startet eine autonome Schleife aus Denkschritten (Reasoning) und Tool-Ausführungen. Er führt Shell-Befehle aus, liest/schreibt Dateien, führt Websuchen durch oder nutzt andere verfügbare Werkzeuge, um das Ziel zu erreichen.
+   Der geroutete Agent arbeitet das Ziel mehrstufig mit Shell-, Dateisystem-, Web- oder Skill-Tools ab (`isGoalMode = true`).
 
 3. **Abschluss & Nachverfolgung**:
-   Sobald der Agent seine autonome Arbeit beendet hat, wird der Task basierend auf dem Ergebnis aktualisiert:
-   - **Erfolg**: Der Task-Status wird auf `done` (erledigt) geändert, und der Agent fügt einen Kommentar mit einer Zusammenfassung hinzu: `Ziel erreicht ✅\n\nZusammenfassung: <Kurzzusammenfassung der Ergebnisse>`.
-   - **Fehlgeschlagen / Unterbrochen**: Tritt während der Ausführung ein nicht behebbarer Fehler auf, wird der Task auf `review` (Überprüfung) gesetzt und ein Systemkommentar mit der Fehlermeldung hinterlassen: `Fehler bei der Ausführung: <Fehlermeldung>`.
-
-Dadurch sind alle autonomen Aktionen auf dem Kanban-Board lückenlos nachvollziehbar, sodass Benutzer Ergebnisse prüfen, Fehler untersuchen oder Aufgaben fortsetzen können.
+   - **Erfolg**: Status wechselt auf `done` mit Zusammenfassungskommentar (`Ziel erreicht ✅`).
+   - **Fehler / Unterbrechung**: Status wechselt auf `review` inkl. Fehlerprotokoll (`Fehler bei der Ausführung: <Fehler>`).
 
 ---
 
 ## 📋 Strukturierte Planung & Roadmap-Erstellung (`/plan`)
 
-Ghost unterstützt zusätzlich einen strukturierten Planungsmodus, der über den Chat-Befehl `/plan` aufgerufen wird. Dies ist ideal für komplexe Vorhaben, die vor der eigentlichen Code-Modifikation eine gründliche Codebase-Analyse, Architekturentscheidungen und eine phasenbasierte Roadmap erfordern:
+Für komplexe Vorhaben, die vor Codeänderungen eine Analyse erfordern, dient der Modus `/plan`:
 
-### Funktionsweise
-
-1. **Trigger & Initialisierung**:
-   Wenn ein Benutzer eine Nachricht sendet, die mit `/plan <Vorhabensbeschreibung>` beginnt, erstellt das System automatisch eine neue Kanban-Aufgabe:
-   - **Task-Titel**: `📋 <Plan-Text>` (auf die ersten 60 Zeichen gekürzt).
-   - **Task-Beschreibung**: Der vollständige Planungsauftrag.
-   - **Anfangsstatus**: Sofort auf `in_progress` gesetzt, während der Agent die Analyse durchführt.
-   - **Zuweisung**: Dem aktuellen Agenten zugewiesen und mit der `sessionId` verknüpft.
-
+1. **Trigger & Ontologie-Routing**:
+   `/plan <Vorhabensbeschreibung>` legt einen Task (`📋 <Plan-Text>`, Status `inProgress`) an und routet ihn ohne expliziten Agenten automatisch über die Ontologie an den besten Spezialisten.
 2. **Schreibgeschützte Analyse (Read-Only)**:
-   Der Agent nutzt ausschließlich schreibgeschützte Werkzeuge (`read_file`, `list_dir`, `web_search`, lesende Terminal-Befehle), um die tatsächliche Struktur und Abhängigkeiten des Projekts zu verstehen. Im Planungsmodus nimmt der Agent **keine** Dateimodifikationen vor.
-
+   Der Agent nutzt ausschließlich lesende Tools (`read_file`, `list_dir`, `web_search`, lesende Befehle), ohne Dateien zu verändern.
 3. **Roadmap-Erstellung & Review**:
-   Der Agent erstellt eine detaillierte Roadmap (Ziel, Ist-Analyse, Architektur, nummerierte Schritte mit Dateipfaden, Risiken, Verifikation und optionale Kanban-Pipeline).
-   - Nach Fertigstellung wird der Kanban-Task automatisch auf `review` (Überprüfung) gesetzt und die Zusammenfassung als Kommentar angehängt.
-   - Der Benutzer kann den Plan begutachten, Rückfragen stellen oder die Umsetzung direkt über `/goal` starten.
+   Nach Abschluss wechselt der Task automatisch in den Status `review` samt Plan-Kommentar zur Freigabe oder direkten Umsetzung via `/goal`.
 
 ---
 
 ## Beispiele
 
-### Beispiel 1: Erstellen einer sequenziellen Pipeline
-Ein Agent möchte mit einer neuen Feature-Entwicklung beginnen.
+### Beispiel 1: Ontologie-gestützte Sub-Task-Delegation
+```text
+ghost_delegate_task(
+  title="Audit smart contract dependencies",
+  description="Prüfe Paketversionen und bekannte CVEs im Wallet-Skill.",
+  required_competencies=["Security", "Finanzen"],
+  dry_run=false
+)
+```
+Ghost bewertet alle aktiven Agenten anhand von `HAT_KOMPETENZ`, `DARF_NUTZEN` und Auslastung, weist den Task dem besten Security-/Finanz-Spezialisten zu und startet die Ausführung im Hintergrund.
 
-**Agenten-Eingabe:**
-`kanban_pipeline(titles=["Anforderungen analysieren", "Code implementieren", "Tests schreiben"], assign_to_me=true)`
+### Beispiel 2: Sequenzielle Pipeline
+```text
+kanban_pipeline(titles=["Anforderungen analysieren", "Code implementieren", "Tests schreiben"], assign_to_me=true)
+```
+Erstellt drei verknüpfte Tasks über `dependsOnIds`. Sobald Task 1 auf `done` steht, wird Task 2 automatisch auf `inProgress` verschoben und gestartet.
 
-**Ergebnis:**
-1. **Task A** (Anforderungen analysieren) wird in `in_progress` erstellt (da keine Abhängigkeiten bestehen).
-2. **Task B** (Code implementieren) wird im `backlog` erstellt und hängt von Task A ab.
-3. **Task C** (Tests schreiben) wird im `backlog` erstellt und hängt von Task B ab.
-
-Sobald der Agent Task A abschließt und als `done` markiert, verschiebt sich **Task B** automatisch nach `in_progress`.
-
-### Beispiel 2: Verwaltung von Abhängigkeiten
-Angenommen, Sie haben einen Task "App bereitstellen", der von "Frontend Build" und "Backend Build" abhängt.
-
-1. **Frontend Build** [ID: `fe-123`]
-2. **Backend Build** [ID: `be-456`]
-3. **App bereitstellen** [ID: `dep-789`, `dependsOnIds`: [`fe-123`, `be-456`]]
-
-Wenn der **Frontend Build** abgeschlossen ist, passiert mit "App bereitstellen" zunächst nichts. Sobald auch der **Backend Build** als `done` markiert wird, erkennt der Orchestrator, dass alle Abhängigkeiten für `dep-789` erfüllt sind, und bereitet ihn für die Ausführung vor.
-
-### Beispiel 3: Agenten-Vorschlag
-Ein Benutzer erstellt einen Task "Python-Skript reparieren".
-
-**Agenten-Aktion:**
-`kanban_suggest(taskId="python-task-id")`
-
-**Orchestrator-Logik:**
-Sucht nach "Python" in den Skills aller verfügbaren Agenten. Wenn "Agent Alpha" "python" in seinen Skills hat, erfolgt der Vorschlag: *"Vorgeschlagener Agent: Agent Alpha (alpha-id)"*.
+### Beispiel 3: Abhängigkeitsauflösung
+Hängt **App bereitstellen** (`dep-789`) über `dependsOnIds: ["fe-123", "be-456"]` von zwei Build-Tasks ab, startet er erst, nachdem **beide** auf `done` stehen.

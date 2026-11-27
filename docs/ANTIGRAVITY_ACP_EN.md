@@ -24,18 +24,21 @@ Ghost functions both as an autonomous coding agent within Antigravity-compatible
 └───────────────────────────▲────────────────────────────┘
                             │
 ┌───────────────────────────▼────────────────────────────┐
-│                     Ghost Engine                       │
-│  - TaskManager & Kanban Pipeline Bridge                │
-│  - ObjectBox Vector RAG & Secure Storage               │
+│             Ghost Pure-Dart Engine (`lib/engine.dart`) │
+│  - TaskManager & Ontology Kanban Pipeline Bridge       │
+│  - ObjectBox Vector RAG, Ontology & Secure Storage     │
 │  - Tools: ApplyPatch, EditFile, Exec, WebSearch, Vault │
 └────────────────────────────────────────────────────────┘
 ```
+
+> [!NOTE]
+> `bin/ghost_acp.dart` and `lib/engine/**` are strictly decoupled from Flutter (`dart:ui`), using conditional stubs such as `lib/engine/infra/objectbox_flutter_libs_stub.dart` so the headless ACP binary compiles and runs purely on the Dart VM.
 
 ---
 
 ## 2. Launching the Ghost ACP Server
 
-Ghost provides a dedicated executable entrypoint: [`bin/ghost_acp.dart`](file:///home/peter/Developer/flutter-dev/ghost/bin/ghost_acp.dart).
+Ghost provides a dedicated executable entrypoint: [`bin/ghost_acp.dart`](../bin/ghost_acp.dart).
 
 ### 2.1 Standard STDIO Mode (for `agy` & Zed)
 In STDIO mode, all diagnostic and system logs are sent to `stderr`, keeping `stdout` strictly compliant with JSON-RPC 2.0:
@@ -56,7 +59,7 @@ For multi-client or dev container setups:
 dart bin/ghost_acp.dart --ws --port 3001 --workspace /path/to/project
 ```
 
-Additionally, Ghost's core gateway exposes an ACP WebSocket route at `ws://127.0.0.1:3000/acp`.
+Additionally, Ghost's core gateway exposes an ACP WebSocket route at `ws://127.0.0.1:3000/acp` and bridges `acp.*` methods on `/`.
 
 ---
 
@@ -71,7 +74,7 @@ Configure Ghost in `.antigravity/config.json` or editor `settings.json`:
       "ghost": {
         "command": "dart",
         "args": [
-          "/home/peter/Developer/flutter-dev/ghost/bin/ghost_acp.dart",
+          "/path/to/ghost/bin/ghost_acp.dart",
           "--workspace",
           "${workspaceFolder}",
           "--guardrails",
@@ -102,26 +105,40 @@ Ghost supports Antigravity-aligned Guarded Autopilot modes:
 
 1. **`reviewMode` (Default):**
    * Code modifications (`apply_patch`, `edit_file`) or terminal executions emit a `session/review_request` notification to the editor.
-   * Execution halts until the user approves or rejects the change in the IDE diff viewer.
+   * Execution halts until the user approves or rejects the change (`session/review_response` with `decision: "accept"` or `"reject"`) in the IDE diff viewer.
 2. **`autoAccept`:**
    * Autonomous execution for trusted workflows or CI environments.
+
+Switch modes dynamically via `session/set_autopilot_mode`:
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "session/set_autopilot_mode",
+  "params": {
+    "sessionId": "session-123",
+    "mode": "autoAccept"
+  },
+  "id": 10
+}
+```
 
 ---
 
 ## 5. Workspace-RAG Context Provider
 
-Ghost registers its ObjectBox vector store as an Antigravity Context Provider:
+Ghost registers its ObjectBox vector store via [`acp_context_provider.dart`](../lib/engine/acp/acp_context_provider.dart) as an Antigravity Context Provider:
 * **Provider ID:** `ghost-rag`
-* **Features:** Semantic search across codebase chunks, symbol definitions, and documentations.
+* **Features:** Semantic search across codebase chunks, symbol definitions, and documentation.
 * **Fallback:** When chunks are unindexed, generates a directory structure and project summary.
 
 ---
 
 ## 6. Antigravity Tools & Kanban Bridge
 
-Ghost exposes specialized tool definitions for Antigravity:
-* [`ghost_apply_patch`](file:///home/peter/Developer/flutter-dev/ghost/lib/engine/tools/fs.dart): Precise SEARCH/REPLACE diff applicator.
-* [`ghost_workspace_rag`](file:///home/peter/Developer/flutter-dev/ghost/lib/services/antigravity/antigravity_tools.dart): Semantic query tool.
-* [`ghost_kanban_pipeline`](file:///home/peter/Developer/flutter-dev/ghost/lib/services/antigravity/antigravity_tools.dart): Decomposes Antigravity plans into synced Kanban tasks (`todo` -> `inProgress` -> `done`).
-* [`ghost_vault_keys`](file:///home/peter/Developer/flutter-dev/ghost/lib/services/antigravity/antigravity_tools.dart): Key and secret management.
-* [`ghost_web_search`](file:///home/peter/Developer/flutter-dev/ghost/lib/services/antigravity/antigravity_tools.dart): DuckDuckGo search integration.
+Ghost exposes specialized tool definitions via [`antigravity_tools.dart`](../lib/services/antigravity/antigravity_tools.dart):
+* `ghost_apply_patch`: Atomic SEARCH/REPLACE diff applicator (`apply_patch`).
+* `ghost_workspace_rag`: Semantic query tool against ObjectBox vector RAG.
+* `ghost_kanban_pipeline`: Decomposes Antigravity plans into synced Ghost Kanban pipelines (`backlog` → `inProgress` → `done`) with optional agent/ontology assignment.
+* `ghost_vault_keys`: Inspect available encrypted vault key names without exposing secret values.
+* `ghost_exec`: Execute shell commands with automatic Python `.venv` and `node_modules/.bin` PATH injection.
+* `ghost_web_search`: Real-time DuckDuckGo search integration.

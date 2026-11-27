@@ -1,75 +1,69 @@
 # 🎙️ STT & TTS Setup — Ghost
 
-Ghost supports high-performance, local Speech-to-Text (STT) and Text-to-Speech (TTS) using Python-based engines. This allows for private, offline-capable voice interactions.
+Ghost supports high-performance, local Speech-to-Text (STT) and Text-to-Speech (TTS) for private, offline-capable voice interactions across both messaging channels and in-app dictation.
 
 ---
 
 ## ⚙️ Prerequisites
 
-Before you can use voice features, ensure you have the following installed on your host system or accessible within your Docker environment:
+Before using Python-based voice scripts on messaging channels, ensure the following are installed on your host system:
 
 ### 1. System Dependencies
 - **Python 3.10+**
-- **FFmpeg**: Required for audio format conversion.
-- **Piper TTS**: Required for speech synthesis.
+- **FFmpeg**: Required for `.wav` → `.ogg` (Opus) conversion (`ffmpeg -version`).
+- **Piper TTS**: Required for local neural speech synthesis.
 
 ### 2. Python Packages
-Install the required libraries using the provided `requirements.txt`:
+Install the required libraries from `docs/installation/requirements.txt`:
 
 ```bash
-pip install -r requirements.txt
+pip install -r docs/installation/requirements.txt
 ```
-*Note: This includes `faster-whisper` for STT and `piper-tts` for TTS.*
+*Includes `faster-whisper` for gateway STT and `piper-tts` for TTS.*
 
 ---
 
 ## 🗣️ Text-to-Speech (TTS)
 
-Ghost uses **Piper**, a fast, local neural text-to-speech system.
+Ghost uses **Piper**, a fast, local neural text-to-speech engine invoked via [`scripts/tts.py`](../scripts/tts.py).
 
 ### How it works:
-- Scripts are located in `scripts/tts.py`.
-- The engine synthesizes text into a `.wav` file and then converts it to `.ogg` (Opus) using FFmpeg for optimal Telegram compatibility.
-
-### Model Configuration:
-Models are stored in `scripts/models/`. If a model is missing, the script will attempt to download it automatically.
-- **Default Model**: `de_DE-thorsten-low` (Premium voice for German).
-- **Advantage**: Provides a very natural, human-like voice with minimal CPU usage.
-- To change the model, update the settings in the Ghost App under **Settings > Voice**.
-
----
+- Synthesizes text into a temporary `.wav` file and converts it to `.ogg` (Opus) using FFmpeg for messaging platforms such as Telegram.
+- Models are stored in `scripts/models/`. If a requested model is missing, `scripts/tts.py` automatically downloads it via `piper.download_voices`.
+- **Default Model**: `de_DE-thorsten-low` (or specify a custom voice via `--model <voice_name_or_onnx_path>`, e.g., `en_US-lessac-low`).
 
 ---
 
 ## 👂 Speech-to-Text (STT)
 
-Ghost supports two modes for speech recognition: **Gateway-Client-Side** (Python) and **Local App Dictation** (Sherpa-ONNX).
+Ghost supports two local STT modes: **Gateway/Channel STT** (Python) and **Local App Dictation** (Sherpa-ONNX).
 
-### 1. Gateway STT (Faster-Whisper)
-- **Used for**: Transcribing messages sent via Telegram or other messaging channels.
-- **Implementation**: Python-based scripts in `scripts/stt.py`.
-- **Model Sizes**: You can choose model sizes (tiny, base, small, medium, large-v3) in the Ghost App settings.
+### 1. Gateway STT (`scripts/stt.py` via Faster-Whisper)
+- **Used for**: Transcribing incoming voice messages sent via Telegram or other messaging channels.
+- **CLI Options**:
+  - `--model`: Whisper model size (`tiny`, `base` [default], `small`, `medium`, `large-v3`)
+  - `--device`: Computation backend (`auto`, `cpu`, `cuda`)
+  - `--compute_type`: Quantization type (`default`, `int8`, `float16`)
 
 ### 2. Local App Dictation (Sherpa-ONNX)
-- **Used for**: Direct real-time transcription within the Ghost Desktop App (Linux).
+- **Used for**: Direct real-time voice dictation inside the Ghost desktop chat input bar (`lib/providers/stt_provider.dart`).
 - **Implementation**: Built-in [Sherpa-ONNX](https://github.com/k2-fsa/sherpa-onnx) integration.
-- **Model**: Uses the high-accuracy **Whisper `base`** model (ONNX format).
-- **Setup**: The app will automatically download the necessary model files (~150MB) on the first use.
-- **Advantage**: In-app dictation is ready to use instantly, extremely fast, and provides more accurate offline transcription than traditional CPU-based methods.
-- **Features**: Optimized for performance and low latency on desktop CPUs.
+- **Model**: Uses the **Whisper `base`** model (`sherpa-onnx-whisper-base`).
+- **Automatic Setup**: Click the microphone button in the chat input bar—Ghost automatically downloads and extracts the model (~150 MB) on first use.
 
 ---
 
 ## 🛠️ Troubleshooting
 
 ### FFmpeg not found
-Ensure `ffmpeg` is in your system `PATH`. You can verify this by running:
+Ensure `ffmpeg` is in your system `PATH`:
 ```bash
 ffmpeg -version
 ```
+If `ffmpeg` fails during TTS synthesis, `scripts/tts.py` falls back to saving the `.wav` output file.
 
 ### Piper command failure
-If the `piper` command is not found, ensure it was installed via pip or is available in your environment. You might need to install it manually from the [Piper GitHub repository](https://github.com/rhasspy/piper).
+If `piper` is not found in your `PATH`, install `piper-tts` into the active Python environment or verify the binary from the [Piper GitHub repository](https://github.com/rhasspy/piper).
 
 ### Slow transcription
-If STT is slow, try using a smaller Whisper model (e.g., `tiny`) or ensure you are utilizing a GPU if available (requires CUDA setup).
+For faster CPU transcription in `scripts/stt.py`, use `--model tiny` or `--compute_type int8`, or `--device cuda` when an NVIDIA GPU is available.

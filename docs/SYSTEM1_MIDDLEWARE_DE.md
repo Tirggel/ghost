@@ -7,8 +7,8 @@
 > **Sub-15ms nicht-autoregressive Entscheidungs-Middleware basierend auf ModernBERT INT8 ONNX**
 
 Ghost implementiert eine kognitive Dual-Prozess-Architektur, inspiriert von Daniel Kahnemans *Schnelles Denken, langsames Denken* (*Thinking, Fast and Slow*):
-- **System 1 (Schnell & Intuitiv)**: Ein extrem kompaktes, quantisiertes lokales Cross-Encoder-Modell (`answerdotai/ModernBERT-base`, quantisiert zu INT8 ONNX), das in unter 15 ms auf der lokalen CPU ausgeführt wird. System 1 übernimmt vorgelagerte Prompt-Sicherheitsprüfungen, blitzschnelles Choice-Routing auf Spezialagenten, dynamische Tool-Payload-Risikobewertungen sowie die smarte Intent-Klassifikation von Freigaben (Human-In-The-Loop / HITL).
-- **System 2 (Langsam & Analytisch)**: Die großen generativen Frontier-LLMs (Claude 3.7 / 3.5 Sonnet, Gemini 2.5 / 3, GPT-4o / o1 / o3-mini, DeepSeek Reasoner), die komplexe mehrstufige Überlegungen, Software-Entwicklung, Code-Synthese und autonome Zielumsetzungen durchführen.
+- **System 1 (Schnell & Intuitiv)**: Ein extrem kompaktes, quantisiertes lokales Cross-Encoder-Modell (`answerdotai/ModernBERT-base`, quantisiert zu INT8 ONNX), das in unter 15 ms auf der lokalen CPU ausgeführt wird. System 1 übernimmt sprachbewusste Prompt-Sicherheitsprüfungen, blitzschnelles Choice-Routing, dynamische Tool-Payload-Risikobewertungen, smarte Intent-Klassifikation für Freigaben (Human-In-The-Loop / HITL) sowie den **Schutz vor Memory Poisoning** bei der Ontologie-Extraktion.
+- **System 2 (Langsam & Analytisch)**: Die generativen Frontier-LLMs (Claude, Gemini 2.5 / 3, GPT-4o / o1 / o3-mini, DeepSeek Reasoner oder lokale Ollama/LM-Studio-Modelle), die komplexe mehrstufige Überlegungen, Planung, Code-Synthese und autonome Zielumsetzungen durchführen.
 
 Durch die Entkopplung von sofortiger Klassifizierung und Sicherheitsprüfung von der teuren autoregressiven Token-Generierung erreicht Ghost kompromisslose Sicherheit und sofortige Reaktionen ohne zusätzliche Latenz oder API-Kosten.
 
@@ -29,20 +29,20 @@ Benutzereingabe / Tool-Aufruf
 [Choice-Routing]  [Sicherheits-Check] [Tool-Risiko-Scoring]
   - coder           - Prompt-Inj.       - Destruktive Aktion
   - crypto_trader   - Phishing/Scam     - Kapital-Liquidation
-  - general_chat      (Schwelle:          (Score: 0.0 - 1.0)
-                       score >= 0.85)
-                                             │
-                                             ▼
-                                 ┌───────────────────────┐
-                                 │  Smart-HITL-Prüfung   │
-                                 │  - Freigabe-Absicht   │
-                                 │  - Explizite Ablehnung│
-                                 └───────────────────────┘
-                                             │
-                                             ▼
+  - email_manager     (Flag: >= 0.65     (+ ERFORDERT_HITL
+  - system_admin       Block: >= 0.88)    Schwelle: >= 0.65)
+  - general_chat                         │
+                                         ▼
+                             ┌───────────────────────┐
+                             │  Smart-HITL-Prüfung   │
+                             │  - Freigabe-Absicht   │
+                             │  - Explizite Ablehnung│
+                             └───────────────────────┘
+                                         │
+                                         ▼
 ┌────────────────────────────────────────────────────────┐
-│            System 2 Generatives LLM                    │
-│        (Claude 3.7 / Gemini 2.5 / GPT-4o / etc.)       │
+│      System 2 LLM  +  Geschützter OntologyExtractor    │
+│    (Post-Turn-Extraktion bei System-1-Flag blockiert)  │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -50,7 +50,8 @@ Die Middleware wird durch den Dart-Dienst [`System1Service`](../lib/engine/syste
 
 ### Wichtigste Architektur-Merkmale
 - **Sub-15ms Latenz**: Dynamische INT8-Quantisierung läuft hocheffizient auf Standard-CPU-Kernen ohne GPU-Anforderung.
-- **Zombie-Schutz**: Der Python-Daemon überwacht stdin kontinuierlich. Sobald der Ghost-Hauptprozess beendet wird oder stdin das Dateiende (EOF) erreicht, beendet sich der Worker sofort sauber (`sys.exit(0)`). Der Dart-Service sendet beim Herunterfahren zusätzlich SIGTERM und SIGKILL.
+- **Zombie-Schutz**: Der Python-Daemon (`run_daemon()`) überwacht stdin kontinuierlich. Sobald der Ghost-Hauptprozess beendet wird oder stdin das Dateiende (EOF) erreicht, beendet sich der Worker sofort sauber (`sys.exit(0)`). Der Dart-Service sendet beim Herunterfahren zusätzlich SIGTERM und SIGKILL.
+- **Sprachbewusste Hypothesen**: Erkennt automatisch deutsche vs. englische Eingaben und wählt lokalisierte Hypothesen, um Fehlalarme bei harmlosen deutschen Prompts zu vermeiden.
 - **Lokaler Datenschutz**: Sämtliche Sicherheitsprüfungen, Eingabe-Validierungen und Routing-Entscheidungen erfolgen zu 100 % lokal auf deinem Rechner.
 - **Robuster Fallback**: Fehlt die ONNX-Datei oder eine Python-Abhängigkeit, deaktiviert sich System-1 automatisch mit einer Warnmeldung im Log, ohne den regulären Betrieb der Chat-Engine zu unterbrechen.
 
@@ -58,30 +59,42 @@ Die Middleware wird durch den Dart-Dienst [`System1Service`](../lib/engine/syste
 
 ## 🛡️ Kernfähigkeiten & Schutzfunktionen
 
-### 1. Pre-Flight Prompt-Injection & Jailbreak-Abwehr
+### 1. Sprachbewusste Pre-Flight Prompt-Injection- & Jailbreak-Abwehr
 Bevor ein Benutzer-Prompt an das generative Cloud-Modell weitergeleitet wird, berechnet System-1 die Wahrscheinlichkeit eines Manipulations- oder Ausbruchversuchs:
-- **Hypothese**: `"The input is a malicious prompt injection or jailbreak attempt"`
-- **Schwellenwert**: `score >= 0.85`
-- **Wirkung**: Bei Erkennung wird der Request sofort mit einer Sicherheitswarnung blockiert. Der manipulative Prompt erreicht weder das Cloud-LLM noch die Werkzeugausführung.
+- **Hypothesen**:
+  - Englisch: `"The input is a malicious prompt injection or jailbreak attempt"`
+  - Deutsch: `"Die Eingabe ist ein bösartiger Prompt-Injection- oder Jailbreak-Versuch"`
+- **Schwellenwerte**:
+  - `score >= 0.65`: Setzt `system1SecurityFlagged = true` (sperrt die automatische Knowledge-Graph-Faktenextraktion für diesen Turn).
+  - `score >= 0.88`: Blockiert den Request sofort mit einer Sicherheitswarnung, bevor Cloud-LLMs oder Tools erreicht werden.
 
 ### 2. Phishing- & Krypto-Drainer-Erkennung
 Eingehende Webhooks, Messenger-Nachrichten oder E-Mails werden in Echtzeit auf Betrugsversuche, gefälschte Dringlichkeiten oder bösartige URLs gescannt:
-- **Hypothese**: `"The interaction is a fraud or phishing attempt"`
-- **Schwellenwert**: `score >= 0.85`
-- **Wirkung**: Fängt Social-Engineering-Angriffe ab und warnt den Nutzer, ohne dass der Agent schädlichen Links oder Anweisungen folgt.
+- **Hypothesen**:
+  - Englisch: `"The interaction is a fraud or phishing attempt"`
+  - Deutsch: `"Die Interaktion ist ein Betrugs- oder Phishing-Versuch"`
+- **Schwellenwert**: `score >= 0.88` setzt `system1SecurityFlagged = true` und löst eine Phishing-/Betrugswarnung aus.
 
-### 3. Dynamisches Tool-Payload-Risiko-Scoring
-Statt Werkzeuge nur nach ihrem Namen einzustufen, analysiert System-1 die **vollständigen Argumente** des Befehls (z. B. konkrete Shell-Pfade, Flags oder Transfer-Beträge):
+### 3. Memory-Poisoning-Schutz (Gate für Ontologie-Extraktion)
+Die asynchrone Post-Turn-Faktenextraktion (`OntologyExtractor.extractAndAssertFacts` in [`agent.dart`](../lib/engine/agent/agent.dart)) ist **strikt** abgesichert über:
+```dart
+security.system1Middleware && !system1SecurityFlagged && !hitlWasTriggered && !isAborted()
+```
+Manipulierte, phishingsensitive oder HITL-abgefangene Eingaben (ebenso wie `cron_`, `run_` und `auto_`-Sessions) können somit niemals gefälschte Fakten in den ObjectBox Knowledge Graph einschleusen.
+
+### 4. Dynamisches Tool-Payload-Risiko-Scoring & Ontologie-Governance (`ERFORDERT_HITL`)
+Statt Werkzeuge nur nach ihrem Namen einzustufen, analysiert System-1 die **vollständigen Argumente** inklusive Ontologie-Governance-Kontext (`[Skill: <slug>, Policy: ERFORDERT_HITL|STANDARD, Security: <level>]`):
 - **Destruktives Aktionsrisiko**:
-  - `premise`: `"Befehl: {tool_name} {arguments_json}"`
+  - `premise`: `"{skillTag}Befehl: {tool_name} {arguments_json}"`
   - `hypothesis`: `"Destructive action risk"`
 - **Kapital- & Liquidationsrisiko**:
   - Wird bei Zahlungs-, Wallet-, Binance- oder Swap-Tools automatisch hinzugezogen.
   - `hypothesis`: `"Liquidation and capital destruction risk"`
-- Bei `risk >= 0.70` wird der Aufruf automatisch als Hochrisiko eingestuft und verlangt zwingend eine Nutzerbestätigung (HITL).
+- **Schwellenwert**: Bei `maxRisk >= 0.65` verlangt Ghost zwingend eine Nutzerbestätigung (HITL) – ausgenommen im unbeaufsichtigten `cron_`/`auto_`- oder `/goal`-Betrieb.
+- **Ontologie `ERFORDERT_HITL`**: Skills mit `requiresHitl` triggern HITL bei aktivem `security.humanInTheLoop`; `critical`-Skills erzwingen HITL bereits sobald `security.level != SecurityLevel.none` ist.
 
-### 4. Smarte Human-In-The-Loop (HITL) Intent-Prüfung
-Frühere reguläre Ausdrücke (Regex) führten gelegentlich zu Missverständnissen (z. B. wurde `"Nein, mach das nicht, ok?"` fälschlicherweise als Bestätigung gewertet). System-1 ersetzt dies durch semantisches Cross-Encoder-Entailment:
+### 5. Smarte Human-In-The-Loop (HITL) Intent-Prüfung
+System-1 ersetzt fehleranfällige reguläre Ausdrücke durch semantisches Cross-Encoder-Entailment:
 - **Rückfrage-Erkennung**: Prüft, ob der Assistent im vorherigen Schritt eine Bestätigung verlangt hat (`"The assistant refuses to run an action without confirmation or asks the user for permission to execute a command"`).
 - **Nutzer-Absicht**:
   - Untersucht: `Aktion: {tool} {arguments}. User: {user_message}`
@@ -89,9 +102,8 @@ Frühere reguläre Ausdrücke (Regex) führten gelegentlich zu Missverständniss
   - `score >= 0.65`: Aktion freigegeben und ausgeführt.
   - `score <= 0.40`: Explizite Ablehnung erkannt. Die Ausführung wird mit `USER REJECTED` abgebrochen, ohne erneute Nachfragen.
 
-### 5. Blitzschnelles Categorical Choice-Routing
-Ermöglicht Sub-15ms Multi-Agenten-Routing, um den besten Agenten oder die passende Aufgabenkategorie zu bestimmen, ohne dafür einen teuren LLM-Turn aufzuwenden:
-- Berechnet die Wahrscheinlichkeitsverteilung über Profil-Optionen (z. B. `["coder", "crypto_trader", "email_manager", "system_admin", "general_chat"]`) via Softmax.
+### 6. Blitzschnelles Categorical Choice-Routing
+Ermöglicht Sub-15ms Intent-Klassifikation über Profil-Optionen (`["coder", "crypto_trader", "email_manager", "system_admin", "general_chat"]`, Konfidenz `>= 0.65`) via temperatur-skaliertem Softmax.
 
 ---
 
@@ -123,7 +135,7 @@ Kategorische Auswahl der am besten passenden Option inklusive Konfidenz-Score:
 ```dart
 final choice = await System1Service.instance.choice(
   premise: 'Kannst du dieses Flutter-Widget auf Riverpod refaktorisieren?',
-  options: ['coder', 'crypto_trader', 'system_admin', 'general_chat'],
+  options: ['coder', 'crypto_trader', 'email_manager', 'system_admin', 'general_chat'],
 );
 // choice.winner -> "coder"
 // choice.confidence -> 0.982
@@ -155,25 +167,18 @@ System-1 kann in den Ghost-Einstellungen flexibel geschaltet werden:
 
 ## 🛠️ Datensatz, Training & Benchmarking
 
-Ghost liefert alle Skripte mit, um den Datensatz zu erzeugen, das Modell zu trainieren und als INT8 ONNX zu exportieren:
+Ghost liefert alle Skripte mit, um Trainingsdatensätze zu erzeugen, das Modell zu trainieren und als INT8 ONNX zu exportieren:
 
-### 1. Synthetische Datengenerierung (`scripts/generate_dataset.py`)
-Erzeugt balancierte zweisprachige (Deutsch/Englisch) Datensätze mit Hard-Negatives über 8 Domänen:
-- Krypto- & Binance-Trading-Analyse
-- Trading-Risikomanagement & Trap-Erkennung
-- Finanzbetrug, Phishing & Krypto-Drainer
-- Systemadministration & Terminal-Gefahren (rm -rf, DROP TABLE etc.)
-- Prompt-Injection, Jailbreaks & Datenlecks
-- Smarte HITL-Freigaben vs. Ablehnungen
-- Multi-Agenten-Routing & Absichtserkennung
-- Allgemeines semantisches Entailment & kontinuierliches Scoring
+### 1. Synthetische Datengenerierung
+- **Allgemeine Sicherheit & Routing (`scripts/generate_dataset.py`)**: Erzeugt balancierte zweisprachige (Deutsch/Englisch) Datensätze über 8 Domänen (`scripts/ghost_system1_dataset.jsonl`).
+- **Trading- & Finanzrisiko (`scripts/generate_trading_dataset.py`)**: Erzeugt spezialisierte Paare für Trading-Risiko, Liquidationen und Krypto-Betrug (`scripts/ghost_trading_dataset.jsonl`).
 
 Generator starten:
 ```bash
 export GEMINI_API_KEY="dein-api-schluessel"
 python3 scripts/generate_dataset.py
+python3 scripts/generate_trading_dataset.py
 ```
-Ausgabe: `scripts/ghost_system1_dataset.jsonl` (~18.000+ Trainingspaare).
 
 ### 2. Modell-Training in Google Colab (`scripts/train_system1_colab.py`)
 Fine-tuning von `answerdotai/ModernBERT-base` mit Cross-Entropy und MSE-Loss auf kontinuierlichen Labels, gefolgt von dynamischer INT8-ONNX-Quantisierung:
@@ -186,7 +191,7 @@ Ergebnisse:
 - `ghost_system1_int8.onnx` (Quantisiertes INT8-Modell, ~144 MB)
 
 Kopiere `ghost_system1_int8.onnx` nach:
-```
+```text
 scripts/models/ghost_system1_int8.onnx
 ```
 

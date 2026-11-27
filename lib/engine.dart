@@ -74,8 +74,15 @@ export 'engine/tasks/task_store.dart';
 export 'engine/tasks/task_manager.dart';
 export 'engine/tasks/task_orchestrator.dart';
 
+// Automations
+export 'engine/automations/automation_models.dart';
+export 'engine/automations/cron_utils.dart';
+export 'engine/automations/automation_store.dart';
+export 'engine/automations/automation_manager.dart';
+
 // Routers
 export 'engine/gateway/agent_router.dart';
+export 'engine/gateway/automation_router.dart';
 export 'engine/gateway/config_router.dart';
 export 'engine/gateway/kanban_router.dart';
 export 'engine/gateway/email_router.dart';

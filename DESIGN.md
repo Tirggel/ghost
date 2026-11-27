@@ -183,8 +183,8 @@ The Kanban system extends The Monolith with functional color coding for prioriti
 
 ## 6. Navigation & Sidebar
 *   **Structure:** Vertical sidebar with high-contrast text and pure-white primary icons.
-*   **Ordering:** Chat is positioned as the primary entry point, followed by Kanban and Knowledge.
-*   **Global Actions:** Settings and Profile are anchored to the bottom.
+*   **Ordering:** Chat is positioned as the primary entry point, followed by Kanban, Automations, Email, and Settings, with Identity anchored at the bottom.
+*   **Consistency:** Newer workspace views (`Automations`, `Ontology Explorer`) reuse `AppHoverCard`, `AppSwitch`, `AppActionButton`, `AppSaveButton`, and sharp `0px` rectangular borders (`AppColors.surface` / `AppColors.border`).
 
 ---
 

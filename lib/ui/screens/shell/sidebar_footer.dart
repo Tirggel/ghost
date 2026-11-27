@@ -20,6 +20,8 @@ class SidebarFooter extends ConsumerWidget {
     final emoji = identity.emoji ?? '🫥';
     final showKanban = ref.watch(shellProvider.select((s) => s.showKanban));
     final showEmail = ref.watch(shellProvider.select((s) => s.showEmail));
+    final showAutomations =
+        ref.watch(shellProvider.select((s) => s.showAutomations));
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 24),
@@ -31,10 +33,11 @@ class SidebarFooter extends ConsumerWidget {
           SettingsSideNavTile(
             label: 'common.chat'.tr(),
             icon: Icons.chat_bubble_outline,
-            isActive: !showKanban && !showEmail,
+            isActive: !showKanban && !showEmail && !showAutomations,
             onTap: () {
               ref.read(shellProvider.notifier).setShowKanban(false);
               ref.read(shellProvider.notifier).setShowEmail(false);
+              ref.read(shellProvider.notifier).setShowAutomations(false);
             },
           ),
           const SizedBox(height: 4),
@@ -43,6 +46,14 @@ class SidebarFooter extends ConsumerWidget {
             icon: Icons.dashboard,
             isActive: showKanban,
             onTap: () => ref.read(shellProvider.notifier).setShowKanban(true),
+          ),
+          const SizedBox(height: 4),
+          SettingsSideNavTile(
+            label: 'automations.title'.tr(),
+            icon: Icons.bolt_outlined,
+            isActive: showAutomations,
+            onTap: () =>
+                ref.read(shellProvider.notifier).setShowAutomations(true),
           ),
           const SizedBox(height: 4),
           SettingsSideNavTile(

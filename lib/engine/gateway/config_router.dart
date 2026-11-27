@@ -19,6 +19,7 @@ import '../infra/errors.dart';
 import '../agent/manager.dart';
 import '../agent/ontology/ontology_store_service.dart';
 import '../agent/providers/factory.dart';
+import '../automations/automation_manager.dart';
 import '../config/config.dart';
 import '../channels/manager.dart';
 import '../channels/telegram.dart';
@@ -35,6 +36,7 @@ class ConfigRouter {
     required this.configPath,
     required this.agentManager,
     required this.channelManager,
+    this.automationManager,
   });
 
   final GatewayServer gateway;
@@ -42,6 +44,7 @@ class ConfigRouter {
   final String configPath;
   final AgentManager agentManager;
   final ChannelManager channelManager;
+  final AutomationManager? automationManager;
 
   /// Register config-related RPC methods.
   void register() {
@@ -1261,6 +1264,7 @@ class ConfigRouter {
 
       // 1. Properly shutdown all managers and releases file handles
       try {
+        await automationManager?.shutdown();
         await agentManager.ontologyStoreService.clear(reseedDefaults: false);
         await channelManager.shutdown();
         await agentManager.shutdown(); // Closes memory engines & ObjectBox stores
@@ -1359,7 +1363,8 @@ class ConfigRouter {
                 name == 'vault.json' ||
                 name == OntologyStoreService.backupFileName ||
                 name == 'skills' ||
-                name == 'design-systems')
+                name == 'design-systems' ||
+                name == 'automations')
               continue;
             if (entity is File) {
               await encoder.addFile(entity, name);
@@ -1397,6 +1402,14 @@ class ConfigRouter {
           final dsDir = Directory(p.join(ghostDir.path, 'design-systems'));
           if (await dsDir.exists()) {
             await encoder.addDirectory(dsDir, includeDirName: true);
+          }
+        }
+
+        // 3.6. Automations (definitions & persistent run history)
+        if (include('automations')) {
+          final automationsDir = Directory(p.join(ghostDir.path, 'automations'));
+          if (await automationsDir.exists()) {
+            await encoder.addDirectory(automationsDir, includeDirName: true);
           }
         }
 
@@ -1526,6 +1539,7 @@ class ConfigRouter {
         final archive = ZipDecoder().decodeBytes(bytes);
 
         // 1. Prepare for wipe
+        await automationManager?.shutdown();
         await agentManager.ontologyStoreService.close();
         await agentManager.ragMemoryEngine.close();
         await agentManager.shutdown();
