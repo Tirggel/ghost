@@ -90,7 +90,7 @@ To compile a standalone release bundle for your current OS (including bundled na
 
 ### Multi-Platform CI/CD via GitHub Actions
 Because Flutter Desktop requires native platform toolchains (MSVC on Windows, Xcode on macOS, Clang/GTK3 on Linux), Ghost includes an automated workflow in [`.github/workflows/build-releases.yml`](../../.github/workflows/build-releases.yml):
-- **Automatic Release on Tag**: Pushing a version tag (`git tag v0.1.0 && git push origin v0.1.0`) compiles **Linux (`x64`)**, **Windows (`x64`)**, and **macOS (`Universal`)** in parallel and publishes `ghost-linux-x64.tar.gz`, `ghost-windows-x64.zip`, and `ghost-macos-universal.zip` to **GitHub Releases**.
+- **Automatic Release on Tag**: Pushing a version tag (`git tag v0.2.0 && git push origin v0.2.0`) compiles **Linux (`x64`)**, **Windows (`x64`)**, and **macOS (`Universal`)** in parallel and publishes `ghost-linux-x64.tar.gz`, `ghost-windows-x64.zip`, and `ghost-macos-universal.zip` to **GitHub Releases**.
 - **Manual Trigger**: Run the workflow anytime under the **Actions** tab on GitHub via **Run workflow**.
 
 ---

@@ -8,7 +8,7 @@ class AppConstants {
       GlobalKey<ScaffoldMessengerState>();
 
   static const String appName = 'Ghost';
-  static const String appVersion = 'v0.10.0-alpha';
+  static const String appVersion = 'v0.2.0-alpha';
   static const String logoGhost = 'assets/icons/logo/ghost.png';
 
   // UI Constants

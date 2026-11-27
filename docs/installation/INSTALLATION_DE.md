@@ -89,7 +89,7 @@ Kompiliert ein eigenständiges Release-Paket für dein Betriebssystem (inklusive
 
 ### Multi-Plattform CI/CD via GitHub Actions
 Da Flutter Desktop jeweils native Compiler erfordert (MSVC unter Windows, Xcode unter macOS, Clang/GTK3 unter Linux), enthält Ghost eine automatische Pipeline unter [`.github/workflows/build-releases.yml`](../../.github/workflows/build-releases.yml):
-- **Automatisches GitHub Release per Tag**: Beim Pushen eines Tags (`git tag v0.1.0 && git push origin v0.1.0`) baut GitHub Actions parallel **Linux (`x64`)**, **Windows (`x64`)** und **macOS (`Universal`)** und veröffentlicht `ghost-linux-x64.tar.gz`, `ghost-windows-x64.zip` und `ghost-macos-universal.zip` unter **GitHub Releases**.
+- **Automatisches GitHub Release per Tag**: Beim Pushen eines Tags (`git tag v0.2.0 && git push origin v0.2.0`) baut GitHub Actions parallel **Linux (`x64`)**, **Windows (`x64`)** und **macOS (`Universal`)** und veröffentlicht `ghost-linux-x64.tar.gz`, `ghost-windows-x64.zip` und `ghost-macos-universal.zip` unter **GitHub Releases**.
 - **Manueller Start**: Der Workflow kann jederzeit auf GitHub unter **Actions → Run workflow** ausgelöst werden.
 
 ---

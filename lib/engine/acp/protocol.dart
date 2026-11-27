@@ -49,7 +49,7 @@ class AcpClientInfo {
 class AcpAgentInfo {
   const AcpAgentInfo({
     this.name = 'ghost',
-    this.version = '0.1.0',
+    this.version = '0.2.0',
     this.description = 'Ghost Personal AI Assistant & Antigravity Coding Agent',
   });
 
